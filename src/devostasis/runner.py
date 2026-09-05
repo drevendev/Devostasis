@@ -83,7 +83,7 @@ def run_project(project: ResolvedProject, store: FilesystemHistoryStore, client:
     try:
         run_meta = {"collection_started_at": timeutil.format_ts(started), "requests": client.request_count}
         bundle = build_from_observations(project, obs, store, run_meta)
-        path = store.commit(bundle, bundle.bands())
+        path = store.commit(bundle, bundle.bands(), bundle.gauges())
     except (BundleError, HistoryStoreError) as exc:
         return RunOutcome(project.locator, False, error=str(exc), requests=client.request_count)
     return RunOutcome(

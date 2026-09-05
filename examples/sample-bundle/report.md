@@ -2,28 +2,39 @@
 
 - Observed at: 2026-09-05T12:00:00Z
 - Comparison: BASELINE
-- Bundle: `f82618b5f40d38d2b73ac34b3688aceb067c2bf358a762f02823aed1012dcbc6`
+- Bundle: `c6e34ba1e2e98068f8439bd61f9bbaea461e621ff3d9e3ff5bc7c8afe5834178`
 - Contracts: vitals PV-VITALS-V1-002, observations RAW-OBS-V0, policy devostasis.policy.v1
 
-Bands are descriptive states, not grades, and there is no composite number. UNKNOWN means evidence was insufficient; DEGRADED means the band is a conservative bound.
+```text
+Horizon    ████████░░    84  EXTENDED
+Clutter    █░░░░░░░░░    10  LIGHT
+Direction  █████░░░░░    50  MIXED
+Flow       █░░░░░░░░░    10  MOVING
+Integrity  ██████░░░░    62  FLAKY
+Debt       █░░░░░░░░░    11  PRESENT
+Pulse      ████████░░    82  SURGING
+```
+
+Bands are the canonical states. The 0-100 gauges are presentation only (devostasis.gauge.v1): they place a band on the scale of the phenomenon it describes (activity, queue pressure, verification stability, residue, declared future work, traceability share, registered debt) and are never machine truth. UNKNOWN means evidence was insufficient; DEGRADED means a conservative bound, shown as ≥ or ~.
 
 ## Vitals
 
-| Vital | Band | Evaluation | Semantics | Explanation |
-| --- | --- | --- | --- | --- |
-| Horizon | EXTENDED | AVAILABLE | EXACT | 1 open planning targets, 1 with a future boundary, 1 reaching beyond 28 days. |
-| Clutter | LIGHT | AVAILABLE | EXACT | 1 stale work items out of 5 tracked open items; 1 stale non-default branches. |
-| Direction | MIXED | AVAILABLE | EXACT | 5 of 10 active change requests are explicitly linked to an open planning target. |
-| Flow | MOVING | AVAILABLE | EXACT | 2 open change requests; 8 merged in 28 days; oldest open for 3 days; median time to merge 20 hours. |
-| Integrity | FLAKY | AVAILABLE | EXACT | 1 of 8 decisive revisions failed verification in 14 days; latest decisive verdict is VERIFY_PASS. |
-| Debt | PRESENT | AVAILABLE | EXACT | 1 open registered debt items under mapping version example-1. |
-| Pulse | SURGING | AVAILABLE | EXACT | 19 default-branch commits on 19 active days and 32 activity events across 3 channels in 28 days. |
+| Vital | Gauge | Band | Evaluation | Semantics | Explanation |
+| --- | --- | --- | --- | --- | --- |
+| Horizon | 84 | EXTENDED | AVAILABLE | EXACT | 1 open planning targets, 1 with a future boundary, 1 reaching beyond 28 days. |
+| Clutter | 10 | LIGHT | AVAILABLE | EXACT | 1 stale work items out of 5 tracked open items; 1 stale non-default branches. |
+| Direction | 50 | MIXED | AVAILABLE | EXACT | 5 of 10 active change requests are explicitly linked to an open planning target. |
+| Flow | 10 | MOVING | AVAILABLE | EXACT | 2 open change requests; 8 merged in 28 days; oldest open for 3 days; median time to merge 20 hours. |
+| Integrity | 62 | FLAKY | AVAILABLE | EXACT | 1 of 8 decisive revisions failed verification in 14 days; latest decisive verdict is VERIFY_PASS. |
+| Debt | 11 | PRESENT | AVAILABLE | EXACT | 1 open registered debt items under mapping version example-1. |
+| Pulse | 82 | SURGING | AVAILABLE | EXACT | 19 default-branch commits on 19 active days and 32 activity events across 3 channels in 28 days. |
 
 ### Horizon: EXTENDED
 
 _Is future work explicitly declared, and does any declaration reach beyond 28 days?_
 
 - Evaluation: AVAILABLE; rule `horizon.bands.v1`
+- Gauge (declared future work): ████████░░ 84
 - Shares signals with: HORIZON_DIRECTION_PLANNING
 
 | Metric | Value |
@@ -39,6 +50,7 @@ _Is future work explicitly declared, and does any declaration reach beyond 28 da
 _How much unresolved stale residue is observable?_
 
 - Evaluation: AVAILABLE; rule `clutter.bands.v0`
+- Gauge (stale residue): █░░░░░░░░░ 10
 - Shares signals with: CLUTTER_FLOW_FORGE
 
 | Metric | Value |
@@ -53,6 +65,7 @@ _How much unresolved stale residue is observable?_
 _Is active change work explicitly traceable to declared targets?_
 
 - Evaluation: AVAILABLE; rule `direction.bands.v1.1`
+- Gauge (traceability share): █████░░░░░ 50
 - Shares signals with: HORIZON_DIRECTION_PLANNING, DIRECTION_PULSE_ACTIVITY
 
 | Metric | Value |
@@ -70,6 +83,7 @@ Diagnostics:
 _What is the state and friction of the current change-request queue?_
 
 - Evaluation: AVAILABLE; rule `flow.bands.v0`
+- Gauge (queue pressure): █░░░░░░░░░ 10
 - Shares signals with: CLUTTER_FLOW_FORGE, FLOW_PULSE_ACTIVITY
 
 | Metric | Value |
@@ -84,6 +98,7 @@ _What is the state and friction of the current change-request queue?_
 _What does automated verification say about recent immutable revisions?_
 
 - Evaluation: AVAILABLE; rule `integrity.bands.v0+ci-unit-004`
+- Gauge (verification stability): ██████░░░░ 62
 - Shares signals with: INTEGRITY_ONLY
 
 | Metric | Value |
@@ -99,6 +114,7 @@ _What does automated verification say about recent immutable revisions?_
 _How much explicitly registered maintenance obligation is unresolved?_
 
 - Evaluation: AVAILABLE; rule `debt.bands.v1.1`
+- Gauge (registered debt): █░░░░░░░░░ 11
 - Shares signals with: DEBT_CLUTTER_MAINTENANCE
 
 | Metric | Value |
@@ -113,6 +129,7 @@ _How much explicitly registered maintenance obligation is unresolved?_
 _How intense is recent observable activity?_
 
 - Evaluation: AVAILABLE; rule `pulse.bands.v0`
+- Gauge (activity intensity): ████████░░ 82
 - Shares signals with: FLOW_PULSE_ACTIVITY, DIRECTION_PULSE_ACTIVITY
 
 | Metric | Value |
@@ -180,7 +197,7 @@ Releases:
 
 ## Provenance
 
-- Artifact contract: devostasis.bundle.v1; bundle identity: PV-BUNDLE-ID-002; renderer: devostasis.render.v1
+- Artifact contract: devostasis.bundle.v1; bundle identity: PV-BUNDLE-ID-002; renderer: devostasis.render.v2; gauges: devostasis.gauge.v1 (presentation only)
 - Effective config digest: `sha256:35a43d1a9e243a617bc76aba57435486457a04c7eedd9060c9cdfab30d1f7c9b` (config version `example-1`)
 - Adapters: github devostasis.github.v1
 - Observations digest: `sha256:61531d2a880e51902e9d0723cc71eaeb495286ac61fe337c9f90480b31015e8e`

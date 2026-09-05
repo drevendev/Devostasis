@@ -52,6 +52,11 @@ class Bundle:
     def bands(self) -> dict[str, str | None]:
         return {item["vital_id"]: item["band"] for item in self.snapshot["vitals"]}
 
+    def gauges(self) -> dict[str, int | None]:
+        from .gauges import gauge_values
+
+        return gauge_values(self.snapshot)
+
 
 class BundleError(Exception):
     """Raised when a bundle cannot be built or verified."""

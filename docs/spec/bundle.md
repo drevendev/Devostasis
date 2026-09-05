@@ -57,7 +57,9 @@ The identity preimage contains: `bundle_identity_contract`,
 the report, output digests and `run_meta` are post-identity, so the dependency
 graph is acyclic; `renderer_version` is identity-bearing so a changed renderer
 never collides with an old bundle; `observed_at` is identity-bearing so two
-collections of the same repository are distinct bundles.
+collections of the same repository are distinct bundles. Presentation gauges
+(see [gauges.md](gauges.md)) are derived at render time and are neither a
+member nor part of the identity.
 
 ## Verification
 

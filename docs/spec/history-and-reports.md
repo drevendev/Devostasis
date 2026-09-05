@@ -58,19 +58,23 @@ must not be more permissive than its sources. Rename continuity by immutable
 project id is on the roadmap (`project_identity.immutable_project_id` is
 already recorded).
 
-## Report rendering (devostasis.render.v1)
+## Report rendering (devostasis.render.v2)
 
 `report.md` is generated only from the machine bundle, in this order:
-identity and comparison header; the seven Vitals in canonical order with
-band, evaluation, semantics and explanation; per-Vital metrics and
-diagnostics; observability (non-available observations, capability notes);
-changes since the previous bundle; activity; provenance.
+identity and comparison header; a monospace status card with the
+presentation-only gauge, value and band per Vital; the seven Vitals in
+canonical order with gauge, band, evaluation, semantics and explanation;
+per-Vital metrics and diagnostics; observability (non-available
+observations, capability notes); changes since the previous bundle;
+activity; provenance.
 
-Renderer rules: no numeric bars or 0-100 values; no colours or icons that
-imply ordering; no evaluative aliases for neutral bands; `UNKNOWN` and
-`DEGRADED` are always visible; no language model anywhere. `devostasis render`
-regenerates the report from a bundle and `verify` checks that the stored
-report is byte-identical.
+Renderer rules: gauges are labelled presentation-only and never enter the
+machine artifacts ([gauges.md](gauges.md)); no colours or icons that imply an
+ordering the contract does not declare; no evaluative aliases for neutral
+bands; `UNKNOWN` and `DEGRADED` are always visible; no language model
+anywhere. `devostasis render` regenerates the report from a bundle and
+`verify` checks that the stored report is byte-identical for the renderer
+version that produced it.
 
 ## Conformance cases implemented
 

@@ -28,7 +28,12 @@ First minimum viable version: useful on real repositories today.
   (`PV-BUNDLE-ID-002`, `PV-EFFECTIVE-CONFIG-001`).
 - Append-only filesystem history store with BASELINE / COMPARABLE /
   HISTORY_GAP / INCOMPARABLE comparison and a fleet overview.
-- CLI: `observe`, `evaluate`, `run`, `build`, `verify`, `render`, `index`.
+- CLI: `observe`, `evaluate`, `run`, `build`, `verify`, `render`, `index`,
+  `gauges`.
+- Presentation-only gauges (`devostasis.gauge.v1`): deterministic 0-100
+  placement of each band on the scale of its phenomenon, rendered as a
+  status card in `report.md` (renderer `devostasis.render.v2`) and in the
+  fleet overview; never part of the snapshot or the bundle identity.
 - 107 conformance and unit tests named after the research cases they
   implement.
 - Released under the MIT license.

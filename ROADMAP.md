@@ -63,8 +63,14 @@ provenance semantics:
 
 - `report.html` as an optional canonical member (already identity-bearing:
   enabling it changes `bundle_id`).
-- Optional clinical renderer theme (PV-RENDER-CLINICAL-001): aliases and
-  humour in a theme layer that cannot alter machine semantics.
+- Optional renderer themes (PV-RENDER-CLINICAL-001): vivid or clinical
+  labels next to the canonical bands in a theme layer that cannot alter
+  machine semantics. Needs an owner-selected vocabulary per band that
+  respects the neutrality rules for Direction FULLY_LINKED and Debt PRESENT;
+  the gauge contract already provides the numeric side.
+- Gauge calibration: the `devostasis.gauge.v1` ranges and within-band
+  drivers are presentation constants chosen by the implementation; the
+  research process may replace them with an accepted normalization contract.
 - Per-Vital history views: transition timelines and observability history.
 - Locales beyond English.
 

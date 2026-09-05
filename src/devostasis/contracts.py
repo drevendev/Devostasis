@@ -24,8 +24,11 @@ BUNDLE_IDENTITY_CONTRACT = "PV-BUNDLE-ID-002"
 EFFECTIVE_CONFIG_CONTRACT = "PV-EFFECTIVE-CONFIG-001"
 EFFECTIVE_CONFIG_SCHEMA = "devostasis.effective-config.v1"
 
-# Deterministic Markdown renderer.
-RENDERER_VERSION = "devostasis.render.v1"
+# Deterministic Markdown renderer (v2 adds non-authoritative gauges).
+RENDERER_VERSION = "devostasis.render.v2"
+
+# Presentation-only 0-100 gauges derived from bands and metrics.
+GAUGE_CONTRACT = "devostasis.gauge.v1"
 
 # Canonical JSON profile used for every digest.
 CANONICAL_SERIALIZATION_VERSION = "devostasis.canon.v1"

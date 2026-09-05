@@ -106,10 +106,24 @@ def cmd_build(args: argparse.Namespace) -> int:
     derive(obs, project)
     store = FilesystemHistoryStore(args.store)
     bundle = build_from_observations(project, obs, store)
-    path = store.commit(bundle, bundle.bands())
+    path = store.commit(bundle, bundle.bands(), bundle.gauges())
     write_fleet_index(store)
     print(f"bundle {bundle.bundle_id[:12]} ({bundle.manifest['comparison_status']}) written to {path}")
     print(_bands_line(bundle.bands()))
+    return 0
+
+
+def cmd_gauges(args: argparse.Namespace) -> int:
+    """Print the presentation-only gauges of a bundle or snapshot as JSON."""
+    from .gauges import gauges_for_snapshot
+
+    path = Path(args.bundle) if args.bundle else Path(args.snapshot)
+    snapshot_path = path / "snapshot.json" if path.is_dir() else path
+    snapshot = canonical.load_file(snapshot_path)
+    payload = {"contract": "devostasis.gauge.v1", "authoritative": False, "observed_at": snapshot.get("observed_at"), "gauges": gauges_for_snapshot(snapshot)}
+    sys.stdout.write(canonical.pretty_json(payload))
+    if args.card:
+        sys.stdout.write("\n" + render.render_status_card(snapshot) + "\n")
     return 0
 
 
@@ -194,10 +208,29 @@ def build_parser() -> argparse.ArgumentParser:
     index_p = sub.add_parser("index", help="regenerate the fleet overview of a store")
     index_p.add_argument("--store", required=True)
     index_p.set_defaults(func=cmd_index)
+
+    gauges_p = sub.add_parser("gauges", help="print presentation-only 0-100 gauges for a bundle or snapshot")
+    group = gauges_p.add_mutually_exclusive_group(required=True)
+    group.add_argument("--bundle", help="bundle directory")
+    group.add_argument("--snapshot", help="snapshot.json path")
+    gauges_p.add_argument("--card", action="store_true", help="also print the text status card")
+    gauges_p.set_defaults(func=cmd_gauges)
     return parser
 
 
+def _utf8_console() -> None:
+    """Reports contain block characters; never let a legacy console encoding crash the CLI."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _utf8_console()
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

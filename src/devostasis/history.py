@@ -121,7 +121,7 @@ class FilesystemHistoryStore:
         staging.rename(latest_dir)
         return latest_dir
 
-    def update_index(self, bundle: Bundle, bands: dict[str, str | None]) -> dict[str, Any]:
+    def update_index(self, bundle: Bundle, bands: dict[str, str | None], gauges: dict[str, int | None] | None = None) -> dict[str, Any]:
         index = self.read_index(bundle.project_key)
         entries = [entry for entry in index["bundles"] if entry.get("bundle_id") != bundle.bundle_id]
         relative = self.history_dir(bundle).relative_to(self.project_dir(bundle.project_key)).as_posix()
@@ -133,6 +133,7 @@ class FilesystemHistoryStore:
                 "previous_bundle_id": bundle.manifest.get("previous_bundle_id"),
                 "path": relative,
                 "bands": dict(sorted(bands.items())),
+                "gauges": dict(sorted((gauges or {}).items())),
             }
         )
         entries.sort(key=lambda entry: (entry["observed_at"], entry["bundle_id"]))
@@ -141,11 +142,11 @@ class FilesystemHistoryStore:
         canonical.write_pretty(self.index_path(bundle.project_key), index)
         return index
 
-    def commit(self, bundle: Bundle, bands: dict[str, str | None]) -> Path:
+    def commit(self, bundle: Bundle, bands: dict[str, str | None], gauges: dict[str, int | None] | None = None) -> Path:
         """Persist immutably, then publish latest and the index."""
         path = self.put_immutable(bundle)
         self.publish_latest(bundle)
-        self.update_index(bundle, bands)
+        self.update_index(bundle, bands, gauges)
         return path
 
     def all_projects(self) -> list[dict[str, Any]]:
@@ -171,6 +172,7 @@ class FilesystemHistoryStore:
                     "observed_at": tail["observed_at"],
                     "comparison_status": tail["comparison_status"],
                     "bands": tail.get("bands") or {},
+                    "gauges": tail.get("gauges") or {},
                     "report_path": (project_dir / "latest" / "report.md").relative_to(projects_root).as_posix(),
                 }
             )

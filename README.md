@@ -66,6 +66,28 @@ Bands describe state, not virtue. A mature project may be temporarily
 time. The exact rules, windows and thresholds are in
 [docs/spec/vitals.md](docs/spec/vitals.md).
 
+Every report opens with a status card that places each band on a 0-100
+gauge of the phenomenon it describes, so gradation inside a band is visible:
+
+```text
+Horizon    ████████░░    84  EXTENDED
+Clutter    █░░░░░░░░░    10  LIGHT
+Direction  █████░░░░░    50  MIXED
+Flow       █░░░░░░░░░    10  MOVING
+Integrity  ██████░░░░    62  FLAKY
+Debt       █░░░░░░░░░    11  PRESENT
+Pulse      ████████░░    82  SURGING
+```
+
+Gauges are presentation only ([docs/spec/gauges.md](docs/spec/gauges.md)):
+they never enter the machine snapshot or the bundle identity, and they are
+not a health score.
+
+Horizon, Direction and Debt read explicit planning metadata only: milestones
+with due dates, milestones set on pull requests, and a configured debt label
+mapping. A repository without those declares nothing and gets `UNDECLARED`
+or `UNINSTRUMENTED`, which is a fact about its metadata, not about its code.
+
 ## What a run produces
 
 One successful run of one project writes one immutable bundle:

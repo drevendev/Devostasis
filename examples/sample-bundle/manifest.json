@@ -6,7 +6,7 @@
     }
   ],
   "artifact_contract_version": "devostasis.bundle.v1",
-  "bundle_id": "f82618b5f40d38d2b73ac34b3688aceb067c2bf358a762f02823aed1012dcbc6",
+  "bundle_id": "c6e34ba1e2e98068f8439bd61f9bbaea461e621ff3d9e3ff5bc7c8afe5834178",
   "bundle_identity_contract": "PV-BUNDLE-ID-002",
   "canonical_member_profile": {
     "activity_json": "ENABLED",
@@ -44,7 +44,7 @@
       "immutable_project_id": "123456",
       "provider": "github"
     },
-    "renderer_version": "devostasis.render.v1",
+    "renderer_version": "devostasis.render.v2",
     "snapshot_digest": "sha256:2397a725c87bb81161cae275aa87f906d8fcc23a7a53ad4b5ca848ff3cc8aeb7",
     "source_receipts_digest": "sha256:7f35306f781930bd5c465b9c1df4599acad0e870d7b7c6551bfacee650c881d8",
     "vitals_contract_version": "PV-VITALS-V1-002"
@@ -54,7 +54,7 @@
     "delta.json": "sha256:676f867bf439661449730559459d3f9291d666b9f6fcc593c37e5ea35818b3b4",
     "effective-config.json": "sha256:35a43d1a9e243a617bc76aba57435486457a04c7eedd9060c9cdfab30d1f7c9b",
     "observations.json": "sha256:61531d2a880e51902e9d0723cc71eaeb495286ac61fe337c9f90480b31015e8e",
-    "report.md": "sha256:85f6a82fe8fc9ab188d0e98f144df9a6cb2f578cd17cef03ff18f79f48a60a4f",
+    "report.md": "sha256:1049bae38fe87ffed4aae1b8696a3cb1b432f3c645b6ae5d6674dd8d936efc41",
     "snapshot.json": "sha256:2397a725c87bb81161cae275aa87f906d8fcc23a7a53ad4b5ca848ff3cc8aeb7"
   },
   "observation_contract_version": "RAW-OBS-V0",
@@ -152,7 +152,7 @@
       "visibility": "public"
     }
   },
-  "renderer_version": "devostasis.render.v1",
+  "renderer_version": "devostasis.render.v2",
   "run_meta": {
     "example": true,
     "tool": {

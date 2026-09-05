@@ -1,14 +1,17 @@
-"""Deterministic Markdown renderer (``devostasis.render.v1``).
+"""Deterministic Markdown renderer (``devostasis.render.v2``).
 
 The renderer is a pure function of the canonical bundle: it adds no health
-semantics, no scores, no colours and no evaluative aliases. Neutral bands such
-as Direction FULLY_LINKED and Debt PRESENT stay neutral.
+semantics, no scores that could be mistaken for machine truth, no evaluative
+aliases. Neutral bands such as Direction FULLY_LINKED and Debt PRESENT stay
+neutral. Version 2 adds the presentation-only gauges of
+``devostasis.gauge.v1`` as text bars next to the canonical bands.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from . import gauges as gauges_mod
 from .canonical import ratio_text
 
 VITAL_TITLES = {
@@ -30,6 +33,8 @@ VITAL_QUESTIONS = {
     "debt": "How much explicitly registered maintenance obligation is unresolved?",
     "pulse": "How intense is recent observable activity?",
 }
+
+CARD_ORDER = ("horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse")
 
 
 def _band(vital: dict[str, Any]) -> str:
@@ -60,8 +65,22 @@ def _metric_rows(derived: dict[str, Any]) -> list[str]:
     return rows
 
 
+def render_status_card(snapshot: dict[str, Any]) -> str:
+    """Monospace status card: gauge bar, value and canonical band per Vital."""
+    gauges = {g["vital_id"]: g for g in gauges_mod.gauges_for_snapshot(snapshot)}
+    vitals = {v["vital_id"]: v for v in snapshot["vitals"]}
+    lines = []
+    for vital_id in CARD_ORDER:
+        gauge = gauges[vital_id]
+        vital = vitals[vital_id]
+        status = "" if vital["evaluation_status"] == "AVAILABLE" else f"  [{vital['evaluation_status']}]"
+        lines.append(f"{VITAL_TITLES[vital_id]:<10} {gauges_mod.bar(gauge['value'])}  {gauges_mod.value_text(gauge):>4}  {_band(vital)}{status}")
+    return "\n".join(lines)
+
+
 def render_report(manifest: dict[str, Any], snapshot: dict[str, Any], delta: dict[str, Any], activity: dict[str, Any] | None) -> str:
     identity = manifest["project_identity"]
+    gauges = {g["vital_id"]: g for g in gauges_mod.gauges_for_snapshot(snapshot)}
     lines: list[str] = []
     lines.append(f"# Devostasis report: {identity['display_locator']}")
     lines.append("")
@@ -70,25 +89,37 @@ def render_report(manifest: dict[str, Any], snapshot: dict[str, Any], delta: dic
     lines.append(f"- Bundle: `{manifest['bundle_id']}`")
     lines.append(f"- Contracts: vitals {manifest['vitals_contract_version']}, observations {manifest['observation_contract_version']}, policy {manifest['policy_version']}")
     lines.append("")
-    lines.append("Bands are descriptive states, not grades, and there is no composite number. UNKNOWN means evidence was insufficient; DEGRADED means the band is a conservative bound.")
+    lines.append("```text")
+    lines.append(render_status_card(snapshot))
+    lines.append("```")
+    lines.append("")
+    lines.append(
+        "Bands are the canonical states. The 0-100 gauges are presentation only "
+        f"({gauges_mod.GAUGE_CONTRACT}): they place a band on the scale of the phenomenon it describes "
+        "(activity, queue pressure, verification stability, residue, declared future work, traceability share, registered debt) "
+        "and are never machine truth. UNKNOWN means evidence was insufficient; DEGRADED means a conservative bound, shown as ≥ or ~."
+    )
     lines.append("")
 
     lines.append("## Vitals")
     lines.append("")
-    lines.append("| Vital | Band | Evaluation | Semantics | Explanation |")
-    lines.append("| --- | --- | --- | --- | --- |")
+    lines.append("| Vital | Gauge | Band | Evaluation | Semantics | Explanation |")
+    lines.append("| --- | --- | --- | --- | --- | --- |")
     for vital in snapshot["vitals"]:
+        gauge = gauges[vital["vital_id"]]
         lines.append(
-            f"| {VITAL_TITLES[vital['vital_id']]} | {_band(vital)} | {vital['evaluation_status']} | {vital.get('band_semantics') or 'n/a'} | {vital.get('explanation', '')} |"
+            f"| {VITAL_TITLES[vital['vital_id']]} | {gauges_mod.value_text(gauge)} | {_band(vital)} | {vital['evaluation_status']} | {vital.get('band_semantics') or 'n/a'} | {vital.get('explanation', '')} |"
         )
     lines.append("")
 
     for vital in snapshot["vitals"]:
+        gauge = gauges[vital["vital_id"]]
         lines.append(f"### {VITAL_TITLES[vital['vital_id']]}: {_band(vital)}")
         lines.append("")
         lines.append(f"_{VITAL_QUESTIONS[vital['vital_id']]}_")
         lines.append("")
         lines.append(f"- Evaluation: {vital['evaluation_status']}; rule `{vital['rule_id']}`")
+        lines.append(f"- Gauge ({gauge['scale']}): {gauges_mod.bar(gauge['value'])} {gauges_mod.value_text(gauge)}")
         if vital.get("possible_bands"):
             lines.append(f"- Possible bands (conservative superset): {', '.join(vital['possible_bands'])}")
         if vital.get("dependency_group_ids"):
@@ -200,7 +231,7 @@ def render_report(manifest: dict[str, Any], snapshot: dict[str, Any], delta: dic
 
     lines.append("## Provenance")
     lines.append("")
-    lines.append(f"- Artifact contract: {manifest['artifact_contract_version']}; bundle identity: {manifest['bundle_identity_contract']}; renderer: {manifest['renderer_version']}")
+    lines.append(f"- Artifact contract: {manifest['artifact_contract_version']}; bundle identity: {manifest['bundle_identity_contract']}; renderer: {manifest['renderer_version']}; gauges: {gauges_mod.GAUGE_CONTRACT} (presentation only)")
     lines.append(f"- Effective config digest: `{manifest['effective_config_digest']}` (config version `{manifest['config_version']}`)")
     lines.append(f"- Adapters: {', '.join(a['provider'] + ' ' + a['adapter_version'] for a in manifest.get('adapters', []))}")
     lines.append(f"- Observations digest: `{snapshot['observations_digest']}`")
@@ -209,18 +240,31 @@ def render_report(manifest: dict[str, Any], snapshot: dict[str, Any], delta: dic
     return "\n".join(lines)
 
 
+def _cell(bands: dict[str, Any], gauges: dict[str, Any], vital_id: str) -> str:
+    band = bands.get(vital_id) or "UNKNOWN"
+    value = gauges.get(vital_id) if isinstance(gauges, dict) else None
+    if value is None:
+        return band
+    return f"{band} {value}"
+
+
 def render_fleet_index(entries: list[dict[str, Any]]) -> str:
     """Convenience overview of the latest bands of every project in a store (non-canonical)."""
-    lines = ["# Devostasis fleet overview", "", "Latest canonical bundle per project. Bands are descriptive, not grades; UNKNOWN is honest, not empty.", ""]
+    lines = [
+        "# Devostasis fleet overview",
+        "",
+        "Latest canonical bundle per project. Bands are descriptive, not grades; UNKNOWN is honest, not empty. "
+        f"The number after a band is the presentation-only gauge ({gauges_mod.GAUGE_CONTRACT}), 0-100 on the scale of the phenomenon the Vital describes.",
+        "",
+    ]
     lines.append("| Project | Observed at | Comparison | Pulse | Flow | Integrity | Clutter | Horizon | Direction | Debt | Report |")
     lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for entry in sorted(entries, key=lambda e: e["locator"]):
         bands = entry["bands"]
+        gauges = entry.get("gauges") or {}
+        cells = [_cell(bands, gauges, v) for v in ("pulse", "flow", "integrity", "clutter", "horizon", "direction", "debt")]
         lines.append(
-            f"| {entry['locator']} | {entry['observed_at']} | {entry['comparison_status']} | "
-            f"{bands.get('pulse') or 'UNKNOWN'} | {bands.get('flow') or 'UNKNOWN'} | {bands.get('integrity') or 'UNKNOWN'} | "
-            f"{bands.get('clutter') or 'UNKNOWN'} | {bands.get('horizon') or 'UNKNOWN'} | {bands.get('direction') or 'UNKNOWN'} | "
-            f"{bands.get('debt') or 'UNKNOWN'} | [report]({entry['report_path']}) |"
+            f"| {entry['locator']} | {entry['observed_at']} | {entry['comparison_status']} | " + " | ".join(cells) + f" | [report]({entry['report_path']}) |"
         )
     lines.append("")
     return "\n".join(lines)
