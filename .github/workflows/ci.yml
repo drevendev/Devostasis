@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: ["master", "release/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: python -m pip install --quiet -e ".[dev]"
+      - name: Conformance and unit tests
+        run: python -m pytest -q
+      - name: Example bundle verifies from its own contents
+        run: devostasis verify --bundle examples/sample-bundle
+      - name: Determinism check on the example observations
+        run: |
+          a=$(devostasis build --observations examples/observations.json --store /tmp/store-a --planning milestones --debt-label type:refactor --debt-mapping-version example-1 | head -n 1 | awk '{print $2}')
+          b=$(devostasis build --observations examples/observations.json --store /tmp/store-b --planning milestones --debt-label type:refactor --debt-mapping-version example-1 | head -n 1 | awk '{print $2}')
+          echo "bundle ids: $a $b"
+          test -n "$a" && test "$a" = "$b"
+          devostasis verify --bundle /tmp/store-a/projects/github.com/acme/widget/latest

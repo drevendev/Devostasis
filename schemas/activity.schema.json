@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/devostasis/schemas/activity.schema.json",
+  "title": "Normalized activity since the previous bundle (devostasis.activity.v1)",
+  "type": "object",
+  "required": ["schema", "interval", "coverage_notes", "truncated", "list_cap", "classes"],
+  "properties": {
+    "schema": { "const": "devostasis.activity.v1" },
+    "interval": {
+      "type": "object",
+      "required": ["start", "end", "basis", "exclusive_start"],
+      "properties": {
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" },
+        "basis": { "enum": ["PREVIOUS_BUNDLE", "OBSERVATION_WINDOW_28D"] },
+        "exclusive_start": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "coverage_notes": { "type": "array", "items": { "type": "string" } },
+    "truncated": { "type": "object", "additionalProperties": { "type": "boolean" } },
+    "list_cap": { "type": "integer", "minimum": 0 },
+    "classes": {
+      "type": "object",
+      "required": ["REVISION", "CHANGE_REQUEST", "WORK_ITEM", "VERIFICATION", "RELEASE", "CAPABILITY_CHANGE"],
+      "properties": {
+        "REVISION": { "type": "object", "required": ["count", "items"] },
+        "CHANGE_REQUEST": { "type": "object", "required": ["opened", "merged", "closed", "items"] },
+        "WORK_ITEM": { "type": "object", "required": ["opened", "closed", "items"] },
+        "VERIFICATION": { "type": "object", "required": ["revisions_verified", "failed", "unresolved", "items"] },
+        "RELEASE": { "type": "object", "required": ["count", "items"] },
+        "CAPABILITY_CHANGE": { "type": "object", "required": ["count", "items"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

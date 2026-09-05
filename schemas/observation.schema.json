@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/devostasis/schemas/observation.schema.json",
+  "title": "Observation envelope (RAW-OBS-V0)",
+  "description": "One typed observation. A value is present only when status is AVAILABLE or PARTIAL; zero, empty and false are always positively observed values.",
+  "type": "object",
+  "required": ["observation_id", "schema_version", "provider", "status", "freshness", "value_type"],
+  "properties": {
+    "observation_id": { "type": "string", "minLength": 1 },
+    "schema_version": { "const": "RAW-OBS-V0" },
+    "provider": { "type": "string" },
+    "collected_at": { "type": ["string", "null"], "format": "date-time" },
+    "source_ref": { "type": ["string", "null"] },
+    "status": { "enum": ["AVAILABLE", "PARTIAL", "UNAVAILABLE", "FORBIDDEN", "UNKNOWN", "ERROR"] },
+    "freshness": { "enum": ["FRESH", "STALE", "UNKNOWN"] },
+    "value_type": { "enum": ["count", "ratio", "duration", "boolean", "enum", "string", "set", "series", "record"] },
+    "value": {},
+    "coverage": { "type": ["object", "null"] },
+    "evidence_ref": {},
+    "adapter_version": { "type": ["string", "null"] },
+    "reason_code": { "type": ["string", "null"] },
+    "notes": { "type": ["string", "null"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "enum": ["UNAVAILABLE", "FORBIDDEN", "UNKNOWN", "ERROR"] } } },
+      "then": { "properties": { "value": { "type": "null" } } }
+    }
+  ],
+  "additionalProperties": false
+}

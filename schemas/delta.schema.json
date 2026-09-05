@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/devostasis/schemas/delta.schema.json",
+  "title": "Previous-vs-current delta (devostasis.delta.v1)",
+  "type": "object",
+  "required": ["schema", "comparison_status", "previous_bundle_id", "previous_observed_at", "current_observed_at", "incomparable_reasons", "vitals"],
+  "properties": {
+    "schema": { "const": "devostasis.delta.v1" },
+    "comparison_status": { "enum": ["BASELINE", "COMPARABLE", "HISTORY_GAP", "INCOMPARABLE"] },
+    "previous_bundle_id": { "type": ["string", "null"] },
+    "previous_observed_at": { "type": ["string", "null"] },
+    "current_observed_at": { "type": "string" },
+    "incomparable_reasons": { "type": "array", "items": { "type": "string" } },
+    "vitals": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["vital_id", "previous_band", "current_band", "previous_evaluation_status", "current_evaluation_status", "transition_class", "metric_deltas", "coverage_delta", "reason_codes"],
+        "properties": {
+          "vital_id": { "type": "string" },
+          "previous_band": { "type": ["string", "null"] },
+          "current_band": { "type": ["string", "null"] },
+          "previous_evaluation_status": { "type": ["string", "null"] },
+          "current_evaluation_status": { "type": ["string", "null"] },
+          "transition_class": { "enum": ["BASELINE", "UNCHANGED", "CHANGED", "OBSERVABILITY_GAINED", "OBSERVABILITY_LOST", "INCOMPARABLE"] },
+          "metric_deltas": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["previous", "current"],
+              "properties": { "previous": {}, "current": {}, "change": { "type": "integer" } },
+              "additionalProperties": false
+            }
+          },
+          "coverage_delta": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["observation_id", "previous", "current"],
+              "additionalProperties": true
+            }
+          },
+          "reason_codes": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

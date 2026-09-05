@@ -1,0 +1,14 @@
+{
+  "schema": "devostasis.config.v1",
+  "config_version": "example-1",
+  "store": { "path": "." },
+  "defaults": {
+    "planning": { "source": "milestones" },
+    "activity": { "enabled": true, "list_cap": 50 },
+    "observations_member": true
+  },
+  "projects": [
+    { "repo": "acme/widget", "debt": { "labels": ["type:refactor"], "mapping_version": "example-1" } },
+    { "repo": "acme/archive", "planning": { "source": "none" }, "activity": { "list_cap": 10 }, "observations_member": false }
+  ]
+}
