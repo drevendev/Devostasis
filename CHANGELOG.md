@@ -3,7 +3,22 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## 0.1.0 (release/0.1.0, unreleased)
+## 0.1.1 (release/0.1.1, unreleased)
+
+- Self-observation: the reusable workflow `.github/workflows/observe-self.yml`
+  lets any repository observe itself with its own `GITHUB_TOKEN`, upload the
+  bundle as an artifact, print the status card and attention order in the job
+  summary and expose `attention`, `attention-order`, `levels`, `bands`,
+  `gauges`, `bundle-id` and `comparison-status` as outputs; optional read-only
+  comparison against a history store.
+- `devostasis run --repo owner/name` observes one repository from flags
+  without a configuration file; `devostasis actions-summary` writes the job
+  summary and step outputs.
+- Devostasis observes itself weekly with the workflow it ships.
+- No contract, policy or bundle change: bundles of 0.1.0 and 0.1.1 are
+  identical for identical evidence.
+
+## 0.1.0 (2026-09-05)
 
 First minimum viable version: useful on real repositories today.
 

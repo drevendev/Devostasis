@@ -178,9 +178,23 @@ A minimal configuration:
 }
 ```
 
+A project can also observe itself from its own GitHub Actions, with no
+secret at all, and branch its next steps on the demand levels:
+
+```yaml
+jobs:
+  vitals:
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.1
+  decide:
+    needs: vitals
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "work on ${{ needs.vitals.outputs.attention }}"
+```
+
 See [docs/configuration.md](docs/configuration.md) for every option and
-[docs/deployment.md](docs/deployment.md) for the daily GitHub Actions setup
-with a companion history repository.
+[docs/deployment.md](docs/deployment.md) for both deployment shapes: the
+fleet observer with a companion history repository, and self-observation.
 
 ## Example
 

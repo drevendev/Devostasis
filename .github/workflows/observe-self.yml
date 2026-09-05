@@ -1,0 +1,152 @@
+# Reusable workflow: a repository observes itself with its own GITHUB_TOKEN.
+#
+# Call it from any repository:
+#
+#   jobs:
+#     vitals:
+#       uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.1
+#       with:
+#         debt-labels: "type:debt"
+#
+# No secret is needed to read the calling repository. The caller must grant
+# read permissions for contents, issues, pull-requests, actions and checks.
+# The bundle is uploaded as an artifact, the status card and the attention
+# order go to the job summary, and the demand levels are exposed as outputs.
+
+name: Devostasis self-observation
+
+on:
+  workflow_call:
+    inputs:
+      devostasis-ref:
+        description: Git ref of Devostasis to install (tag, branch or commit)
+        type: string
+        default: v0.1.1
+      planning-source:
+        description: milestones, file or none
+        type: string
+        default: milestones
+      planning-path:
+        description: repository path of the targets register when planning-source is file
+        type: string
+        default: ""
+      link-marker:
+        description: marker that links a change request to a target id in its text
+        type: string
+        default: "Target:"
+      debt-labels:
+        description: comma-separated issue labels that mark registered debt items
+        type: string
+        default: ""
+      debt-path:
+        description: repository path of the debt register (takes precedence over debt-labels)
+        type: string
+        default: ""
+      debt-mapping-version:
+        description: version label of the debt mapping
+        type: string
+        default: self-1
+      history-repo:
+        description: optional owner/name of a history store to compare against (read-only clone)
+        type: string
+        default: ""
+      python-version:
+        type: string
+        default: "3.12"
+      artifact-name:
+        type: string
+        default: devostasis-bundle
+    secrets:
+      history-token:
+        description: token that can read history-repo when it is private
+        required: false
+    outputs:
+      attention:
+        description: first entry of the attention order, e.g. "integrity CRITICAL"
+        value: ${{ jobs.observe.outputs.attention }}
+      attention-order:
+        description: JSON array of {vital_id, level} in attention order
+        value: ${{ jobs.observe.outputs.attention-order }}
+      levels:
+        description: JSON object vital_id -> demand level
+        value: ${{ jobs.observe.outputs.levels }}
+      bands:
+        description: JSON object vital_id -> band
+        value: ${{ jobs.observe.outputs.bands }}
+      gauges:
+        description: JSON object vital_id -> gauge (0-100 or null)
+        value: ${{ jobs.observe.outputs.gauges }}
+      bundle-id:
+        value: ${{ jobs.observe.outputs.bundle-id }}
+      comparison-status:
+        value: ${{ jobs.observe.outputs.comparison-status }}
+
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      actions: read
+      checks: read
+    outputs:
+      attention: ${{ steps.summary.outputs.attention }}
+      attention-order: ${{ steps.summary.outputs.attention-order }}
+      levels: ${{ steps.summary.outputs.levels }}
+      bands: ${{ steps.summary.outputs.bands }}
+      gauges: ${{ steps.summary.outputs.gauges }}
+      bundle-id: ${{ steps.summary.outputs.bundle-id }}
+      comparison-status: ${{ steps.summary.outputs.comparison-status }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Install Devostasis
+        run: python -m pip install --quiet "git+https://github.com/drevendev/devostasis@${{ inputs.devostasis-ref }}"
+      - name: Fetch the history store for comparison
+        if: inputs.history-repo != ''
+        env:
+          HISTORY_TOKEN: ${{ secrets.history-token }}
+          HISTORY_REPO: ${{ inputs.history-repo }}
+        run: |
+          if [ -n "$HISTORY_TOKEN" ]; then
+            git clone --quiet --depth 1 "https://x-access-token:${HISTORY_TOKEN}@github.com/${HISTORY_REPO}.git" history
+          else
+            git clone --quiet --depth 1 "https://github.com/${HISTORY_REPO}.git" history
+          fi
+      - name: Observe this repository
+        env:
+          DEVOSTASIS_GITHUB_TOKEN: ${{ github.token }}
+          PLANNING_SOURCE: ${{ inputs.planning-source }}
+          PLANNING_PATH: ${{ inputs.planning-path }}
+          LINK_MARKER: ${{ inputs.link-marker }}
+          DEBT_LABELS: ${{ inputs.debt-labels }}
+          DEBT_PATH: ${{ inputs.debt-path }}
+          DEBT_MAPPING_VERSION: ${{ inputs.debt-mapping-version }}
+          DEVOSTASIS_REF: ${{ inputs.devostasis-ref }}
+        run: |
+          set -euo pipefail
+          mkdir -p history
+          args=(--planning "$PLANNING_SOURCE" --link-marker "$LINK_MARKER" --config-version "self-${DEVOSTASIS_REF}")
+          if [ -n "$PLANNING_PATH" ]; then args+=(--planning-path "$PLANNING_PATH"); fi
+          if [ -n "$DEBT_PATH" ]; then
+            args+=(--debt-path "$DEBT_PATH" --debt-mapping-version "$DEBT_MAPPING_VERSION")
+          elif [ -n "$DEBT_LABELS" ]; then
+            IFS=',' read -ra labels <<< "$DEBT_LABELS"
+            for label in "${labels[@]}"; do
+              label="$(echo "$label" | xargs)"
+              if [ -n "$label" ]; then args+=(--debt-label "$label"); fi
+            done
+            args+=(--debt-mapping-version "$DEBT_MAPPING_VERSION")
+          fi
+          devostasis run --repo "${GITHUB_REPOSITORY}" --store history "${args[@]}"
+      - name: Job summary and outputs
+        id: summary
+        run: devostasis actions-summary --bundle "history/projects/github.com/${GITHUB_REPOSITORY}/latest"
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: history/projects/github.com/${{ github.repository }}/latest
+          if-no-files-found: error

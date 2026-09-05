@@ -104,16 +104,24 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     return 0
 
 
+def config_for_repo(args: argparse.Namespace):
+    """A one-project configuration built from CLI flags (``run --repo``)."""
+    from .config import Config
+
+    project = single_project(args.repo, config_version=getattr(args, "config_version", None) or "cli", **_project_overrides(args))
+    return Config(config_version=project.config_version, store_path=args.store or ".", projects=(project,))
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     try:
-        config = load_config(args.config)
+        config = config_for_repo(args) if args.repo else load_config(args.config)
     except (ConfigError, OSError, ValueError) as exc:
         print(f"config error: {exc}", file=sys.stderr)
         return 2
     token, source = resolve_token(args.token, config.token_env)
     print(f"token: {source}", file=sys.stderr)
     store = FilesystemHistoryStore(args.store or config.store_path)
-    outcomes = run_all(config, store, token, _now(args.now), only=args.project or None, user_agent=config.user_agent)
+    outcomes = run_all(config, store, token, _now(args.now), only=(args.project or None) if not args.repo else None, user_agent=config.user_agent)
     failed = 0
     for outcome in outcomes:
         if outcome.ok:
@@ -217,6 +225,64 @@ def cmd_demand(args: argparse.Namespace) -> int:
     return 0
 
 
+def actions_summary_text(parsed: dict[str, Any]) -> tuple[str, dict[str, str]]:
+    """Job-summary Markdown and step outputs for a bundle (GitHub Actions integration)."""
+    manifest = parsed["manifest.json"]
+    snapshot = parsed["snapshot.json"]
+    demand_doc = parsed.get("demand.json") or {}
+    gauges_doc = parsed.get("gauges.json")
+    display = (parsed.get("effective-config.json") or {}).get("display")
+    locator = manifest["project_identity"]["display_locator"]
+    card = render.render_status_card(snapshot, display, gauges_doc)
+    bands = {v["vital_id"]: v["band"] for v in snapshot["vitals"]}
+    gauges = {g["vital_id"]: g["value"] for g in (gauges_doc or {}).get("gauges", [])}
+    levels = {r["vital_id"]: r["level"] for r in demand_doc.get("vitals", [])}
+    order = demand_doc.get("attention_order") or []
+    lines = [f"## Devostasis: {locator}", "", "```text", card, "```", ""]
+    if order:
+        lines.append("| Order | Vital | Level | Band | Gauge |")
+        lines.append("| --- | --- | --- | --- | --- |")
+        for position, entry in enumerate(order, start=1):
+            vital_id = entry["vital_id"]
+            gauge = gauges.get(vital_id)
+            lines.append(f"| {position} | {vital_id} | {entry['level']} | {bands.get(vital_id) or 'UNKNOWN'} | {gauge if gauge is not None else 'n/a'} |")
+        lines.append("")
+    lines.append(f"Bundle `{manifest['bundle_id']}` ({manifest['comparison_status']}), observed {manifest['observed_at']}. Levels come from mapping `{demand_doc.get('mapping_version', 'n/a')}`; there is no aggregate.")
+    lines.append("")
+    top = f"{order[0]['vital_id']} {order[0]['level']}" if order else ""
+    outputs = {
+        "bundle-id": manifest["bundle_id"],
+        "observed-at": manifest["observed_at"],
+        "comparison-status": manifest["comparison_status"],
+        "attention": top,
+        "attention-order": canonical.canonical_bytes([{"vital_id": e["vital_id"], "level": e["level"]} for e in order]).decode("utf-8"),
+        "levels": canonical.canonical_bytes(levels).decode("utf-8"),
+        "bands": canonical.canonical_bytes(bands).decode("utf-8"),
+        "gauges": canonical.canonical_bytes(gauges).decode("utf-8"),
+    }
+    return "\n".join(lines), outputs
+
+
+def cmd_actions_summary(args: argparse.Namespace) -> int:
+    """Write the GitHub Actions job summary and step outputs for a bundle."""
+    parsed = _load_members(args.bundle)
+    summary, outputs = actions_summary_text(parsed)
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    output_path = os.environ.get("GITHUB_OUTPUT")
+    if summary_path:
+        with open(summary_path, "a", encoding="utf-8") as handle:
+            handle.write(summary + "\n")
+    else:
+        sys.stdout.write(summary + "\n")
+    lines = [f"{key}={value}" for key, value in outputs.items()]
+    if output_path:
+        with open(output_path, "a", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+    else:
+        sys.stdout.write("\n".join(lines) + "\n")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="devostasis", description="Deterministic, model-free vital signs for software repositories.")
     parser.add_argument("--version", action="version", version=f"devostasis {__version__}")
@@ -236,12 +302,16 @@ def build_parser() -> argparse.ArgumentParser:
     eval_p.add_argument("--derive", action="store_true", help="derive aggregates from inventories before evaluating")
     eval_p.set_defaults(func=cmd_evaluate)
 
-    run_p = sub.add_parser("run", help="observe, evaluate, compare and persist bundles for every configured project")
-    run_p.add_argument("--config", required=True)
-    run_p.add_argument("--store", help="history store root (defaults to store.path in the config)")
+    run_p = sub.add_parser("run", help="observe, evaluate, compare and persist bundles for every configured project, or for one --repo")
+    target = run_p.add_mutually_exclusive_group(required=True)
+    target.add_argument("--config", help="fleet configuration file")
+    target.add_argument("--repo", help="owner/name: observe one repository with the flags below instead of a config file")
+    run_p.add_argument("--store", help="history store root (defaults to store.path in the config, or '.' with --repo)")
     run_p.add_argument("--token")
     run_p.add_argument("--now")
-    run_p.add_argument("--project", action="append", help="limit to owner/name (repeatable)")
+    run_p.add_argument("--project", action="append", help="limit a --config run to owner/name (repeatable)")
+    run_p.add_argument("--config-version", help="provenance label recorded with --repo runs (default 'cli')")
+    _add_project_flags(run_p)
     run_p.set_defaults(func=cmd_run)
 
     build_p = sub.add_parser("build", help="build and persist a bundle from a saved observation set (offline)")
@@ -275,6 +345,10 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--snapshot", help="snapshot.json path")
     demand_p.add_argument("--order-only", action="store_true", help="print only the attention order")
     demand_p.set_defaults(func=cmd_demand)
+
+    summary_p = sub.add_parser("actions-summary", help="write a GitHub Actions job summary and step outputs (attention, levels, bands, gauges) for a bundle")
+    summary_p.add_argument("--bundle", required=True, help="bundle directory")
+    summary_p.set_defaults(func=cmd_actions_summary)
     return parser
 
 
