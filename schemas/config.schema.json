@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/devostasis/schemas/config.schema.json",
+  "title": "Devostasis run configuration (devostasis.config.v1)",
+  "description": "Every key is classified: A already identity-bearing, B projected into the effective config, C non-canonical. Unknown keys fail closed (CONFIG_IDENTITY_UNCLASSIFIED).",
+  "type": "object",
+  "required": ["config_version", "projects"],
+  "properties": {
+    "schema": { "const": "devostasis.config.v1" },
+    "config_version": { "type": "string", "minLength": 1, "description": "class A: provenance label for this configuration revision" },
+    "store": {
+      "type": "object",
+      "description": "class C: where bundles are persisted; never affects bundle content",
+      "properties": { "path": { "type": "string" } },
+      "additionalProperties": false
+    },
+    "token_env": { "type": "string", "description": "class C: extra environment variable name to read the GitHub token from" },
+    "user_agent": { "type": "string", "description": "class C" },
+    "notes": { "type": "string", "description": "class C" },
+    "defaults": { "$ref": "#/$defs/projected" },
+    "projects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "allOf": [
+          { "$ref": "#/$defs/projected" },
+          {
+            "type": "object",
+            "required": ["repo"],
+            "properties": {
+              "provider": { "const": "github" },
+              "repo": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
+              "display_name": { "type": "string" },
+              "notes": { "type": "string" }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "projected": {
+      "type": "object",
+      "properties": {
+        "planning": {
+          "type": "object",
+          "properties": {
+            "source": { "enum": ["milestones", "file", "none"] },
+            "path": { "type": "string", "description": "repository-relative path of the targets register (source file)" },
+            "link_marker": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "debt": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["labels", "mapping_version"],
+              "properties": {
+                "source": { "const": "labels" },
+                "labels": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+                "mapping_version": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["source", "path", "mapping_version"],
+              "properties": {
+                "source": { "const": "file" },
+                "path": { "type": "string", "minLength": 1 },
+                "mapping_version": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "display": {
+          "type": "object",
+          "properties": {
+            "vitals": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse"] } },
+            "gauge": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["bar", "number", "band"] } },
+            "sections": { "type": "array", "uniqueItems": true, "items": { "enum": ["demand", "details", "observability", "changes", "activity", "provenance"] } }
+          },
+          "additionalProperties": false
+        },
+        "demand": {
+          "type": "object",
+          "properties": {
+            "mapping_version": { "type": "string", "minLength": 1 },
+            "levels": {
+              "type": "object",
+              "propertyNames": { "enum": ["horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse"] },
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": { "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "MINIMAL"] }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "report_html": { "type": "boolean" },
+        "locale": { "enum": ["en"] },
+        "activity": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "list_cap": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "observations_member": { "type": "boolean" }
+      }
+    }
+  }
+}

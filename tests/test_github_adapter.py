@@ -1,0 +1,195 @@
+"""GitHub adapter against a fake transport: status classification, pagination, CI normalization."""
+
+from datetime import datetime, timezone
+
+from devostasis.adapters.github import GitHubAdapter, GitHubClient, classify_http_error
+from devostasis.config import single_project
+from devostasis.normalize import CI_CONFIGURED, CI_REVISIONS, INV_BRANCHES, INV_CRS, INV_ISSUES, INV_TARGETS, derive
+from devostasis.observations import AVAILABLE, ERROR, FORBIDDEN, PARTIAL, UNAVAILABLE
+from devostasis.vitals import evaluate_all
+
+NOW = datetime(2026, 9, 5, 12, 0, 0, tzinfo=timezone.utc)
+BASE = "/repos/acme/widget"
+
+
+class FakeTransport:
+    def __init__(self, routes):
+        self.routes = routes
+        self.calls = []
+
+    def get(self, path, params=None):
+        self.calls.append((path, dict(params or {})))
+        handler = self.routes.get(path)
+        if handler is None:
+            return 404, {}, {"message": "Not Found"}
+        if callable(handler):
+            return handler(params or {})
+        return handler
+
+
+def _repo(has_issues=True):
+    return 200, {}, {"id": 42, "full_name": "acme/widget", "default_branch": "main", "visibility": "private", "has_issues": has_issues, "archived": False, "pushed_at": "2026-09-05T10:00:00Z", "html_url": "https://github.com/acme/widget"}
+
+
+def _commit(sha, when):
+    return {"sha": sha, "commit": {"message": f"commit {sha}\n\nbody", "committer": {"date": when}, "author": {"date": when}}}
+
+
+def _paged(items):
+    def handler(params):
+        page = int(params.get("page", 1))
+        per_page = int(params.get("per_page", 100))
+        return 200, {}, items[(page - 1) * per_page: page * per_page]
+    return handler
+
+
+def _routes(**overrides):
+    commits = [_commit("c1", "2026-09-04T10:00:00Z"), _commit("c2", "2026-09-01T10:00:00Z"), _commit("c3", "2026-08-20T10:00:00Z")]
+    pulls_open = [{"number": 7, "id": 7, "title": "wip", "state": "open", "draft": False, "created_at": "2026-08-25T00:00:00Z", "updated_at": "2026-09-01T00:00:00Z", "merged_at": None, "closed_at": None, "milestone": {"number": 1, "state": "open"}, "user": {"login": "a"}, "html_url": "p7"}]
+    pulls_recent = pulls_open + [{"number": 6, "id": 6, "title": "done", "state": "closed", "draft": False, "created_at": "2026-08-28T00:00:00Z", "updated_at": "2026-08-29T00:00:00Z", "merged_at": "2026-08-29T00:00:00Z", "closed_at": "2026-08-29T00:00:00Z", "milestone": None, "user": {"login": "a"}, "html_url": "p6"}]
+    issues_open = [{"number": 3, "id": 3, "title": "bug", "state": "open", "created_at": "2026-07-01T00:00:00Z", "updated_at": "2026-07-02T00:00:00Z", "closed_at": None, "labels": [{"name": "bug"}], "user": {"login": "b"}, "html_url": "i3"}]
+    runs = [
+        {"id": 100, "run_attempt": 2, "head_sha": "c1", "status": "completed", "conclusion": "success", "name": "CI", "event": "push", "html_url": "r100", "workflow_id": 1},
+        {"id": 101, "run_attempt": 1, "head_sha": "c2", "status": "completed", "conclusion": "success", "name": "CI", "event": "push", "html_url": "r101", "workflow_id": 1},
+        {"id": 102, "run_attempt": 1, "head_sha": "c2", "status": "completed", "conclusion": "skipped", "name": "Docs", "event": "push", "html_url": "r102", "workflow_id": 2},
+    ]
+    routes = {
+        BASE: _repo(),
+        f"{BASE}/commits": _paged(commits),
+        f"{BASE}/pulls": lambda params: _paged(pulls_open if params.get("state") == "open" else pulls_recent)(params),
+        f"{BASE}/issues": lambda params: _paged(issues_open if params.get("state") == "open" else [])(params),
+        f"{BASE}/branches": _paged([{"name": "main", "commit": {"sha": "c1"}, "protected": True}, {"name": "feature", "commit": {"sha": "c3"}, "protected": False}]),
+        f"{BASE}/milestones": _paged([{"number": 1, "id": 1, "title": "v1", "state": "open", "due_on": "2026-10-30T00:00:00Z", "open_issues": 2, "closed_issues": 1, "html_url": "m1"}]),
+        f"{BASE}/releases": (200, {}, []),
+        f"{BASE}/actions/workflows": (200, {}, {"total_count": 2, "workflows": []}),
+        f"{BASE}/actions/runs": lambda params: (200, {}, {"total_count": len(runs), "workflow_runs": runs if int(params.get("page", 1)) == 1 else []}),
+        f"{BASE}/actions/runs/100/attempts/1": (200, {}, {"id": 100, "run_attempt": 1, "status": "completed", "conclusion": "failure"}),
+    }
+    routes.update(overrides)
+    return routes
+
+
+def _collect(routes, **project):
+    transport = FakeTransport(routes)
+    client = GitHubClient(transport)
+    adapter = GitHubAdapter(client, NOW)
+    obs = adapter.collect(single_project("acme/widget", **project))
+    return obs, transport, client
+
+
+def test_full_collection_and_evaluation():
+    obs, transport, client = _collect(_routes())
+    derive(obs, single_project("acme/widget"))
+    assert obs.subject["immutable_project_id"] == "42" and obs.subject["default_branch"] == "main"
+    assert obs.value_of("git.default_branch.commits.count_28d") == 3
+    assert obs.value_of("forge.change_requests.open_count") == 1
+    assert obs.value_of("forge.change_requests.merged_count_28d") == 1
+    assert obs.value_of("forge.issues.open_count") == 1 and obs.value_of("forge.issues.stale_open_count_30d") == 1
+    assert obs.value_of("git.nondefault_branches.stale_count_30d") == 0
+    assert obs.value_of("planning.explicit_targets.capability") == "SUPPORTED"
+    assert obs.value_of("planning.linkage.active_change_requests_linked_to_open_target_count_28d") == 1
+    revisions = obs.value_of(CI_REVISIONS)
+    by_sha = {r["revision"]: r for r in revisions}
+    assert set(by_sha) == {"c1", "c2"}
+    assert by_sha["c1"]["current_verdict"] == "VERIFY_PASS" and by_sha["c1"]["history_state"] == "FAILURE_OBSERVED"
+    assert by_sha["c2"]["current_verdict"] == "VERIFY_PASS" and len(by_sha["c2"]["parents"]) == 2
+    assert obs.value_of(CI_CONFIGURED) is True
+    bands = {r.vital_id: r.band for r in evaluate_all(obs)}
+    assert bands["integrity"] == "SPARSE_MIXED" and bands["pulse"] == "STEADY" and bands["flow"] == "MOVING"
+    assert bands["horizon"] == "EXTENDED" and bands["direction"] == "MIXED" and bands["debt"] == "UNINSTRUMENTED"
+    assert obs.receipt.request_count == client.request_count
+    assert "CHECKS_SURFACE_NOT_COLLECTED" in obs.receipt.capability_notes
+
+
+def test_c2_c3_c7_http_failures_become_explicit_statuses():
+    routes = _routes(**{
+        f"{BASE}/branches": (403, {}, {"message": "Upgrade to GitHub Pro or make this repository public to enable this feature."}),
+        f"{BASE}/milestones": (403, {"x-ratelimit-remaining": "5"}, {"message": "Resource not accessible by integration"}),
+        f"{BASE}/pulls": (503, {}, {"message": "Service Unavailable"}),
+    })
+    obs, _, _ = _collect(routes)
+    assert obs.status_of(INV_BRANCHES) == UNAVAILABLE and obs.get(INV_BRANCHES).reason_code == "TIER_UNAVAILABLE"
+    assert obs.status_of(INV_TARGETS) == FORBIDDEN
+    assert obs.status_of(INV_CRS) == ERROR and obs.get(INV_CRS).reason_code == "PROVIDER_ERROR"
+    assert obs.value_of(INV_CRS) is None
+
+
+def test_issues_disabled_is_unavailable_not_zero():
+    routes = _routes(**{BASE: _repo(has_issues=False)})
+    obs, transport, _ = _collect(routes)
+    assert obs.status_of(INV_ISSUES) == UNAVAILABLE and obs.get(INV_ISSUES).reason_code == "ISSUES_DISABLED"
+    assert not any(path.endswith("/issues") for path, _ in transport.calls)
+
+
+def test_c4_pagination_cap_is_partial(monkeypatch):
+    from devostasis.adapters import github as github_module
+
+    monkeypatch.setattr(github_module, "MAX_COMMIT_PAGES", 2)
+    many = [_commit(f"s{i:03d}", "2026-09-01T10:00:00Z") for i in range(250)]
+    obs, _, _ = _collect(_routes(**{f"{BASE}/commits": _paged(many)}))
+    commits = obs.get("git.default_branch.commits_28d")
+    assert commits.status == PARTIAL and commits.reason_code == "PAGINATION_CAPPED" and len(commits.value) == 200
+    derive(obs, single_project("acme/widget"))
+    assert obs.status_of("git.default_branch.commits.count_28d") == PARTIAL
+    bands = {r.vital_id: r for r in evaluate_all(obs)}
+    assert bands["pulse"].evaluation_status == "DEGRADED" and bands["pulse"].band_semantics == "CONSERVATIVE_LOWER_BOUND"
+    assert bands["integrity"].evaluation_status == "DEGRADED"
+
+
+def test_no_workflows_and_no_check_suites_is_positively_uninstrumented():
+    routes = _routes(**{
+        f"{BASE}/actions/workflows": (200, {}, {"total_count": 0, "workflows": []}),
+        f"{BASE}/commits/c1/check-suites": (200, {}, {"total_count": 0, "check_suites": []}),
+        f"{BASE}/commits/c2/check-suites": (200, {}, {"total_count": 0, "check_suites": []}),
+    })
+    obs, _, _ = _collect(routes)
+    assert obs.value_of(CI_CONFIGURED) is False
+    assert all(not r["parents"] for r in obs.value_of(CI_REVISIONS))
+    assert {r.vital_id: r.band for r in evaluate_all(derive(obs, single_project("acme/widget")))}["integrity"] == "UNINSTRUMENTED"
+
+
+def test_external_check_suites_are_parent_level_provenance():
+    routes = _routes(**{
+        f"{BASE}/actions/workflows": (200, {}, {"total_count": 0, "workflows": []}),
+        f"{BASE}/commits/c1/check-suites": (200, {}, {"total_count": 1, "check_suites": [{"id": 9, "status": "completed", "conclusion": "failure", "app": {"slug": "circleci"}, "url": "s9", "latest_check_runs_count": 3}]}),
+        f"{BASE}/commits/c2/check-suites": (200, {}, {"total_count": 0, "check_suites": []}),
+    })
+    obs, _, _ = _collect(routes)
+    revisions = {r["revision"]: r for r in obs.value_of(CI_REVISIONS)}
+    assert revisions["c1"]["history_provenance"] == "PARENT_LEVEL_ONLY" and revisions["c1"]["current_verdict"] == "VERIFY_FAIL"
+    assert obs.value_of(CI_CONFIGURED) is True
+
+
+def test_classify_http_error_table():
+    assert classify_http_error(401, {"message": "Bad credentials"}, {}) == (FORBIDDEN, "UNAUTHENTICATED", False)
+    assert classify_http_error(403, {"message": "API rate limit exceeded"}, {}) == (ERROR, "RATE_LIMITED", True)
+    assert classify_http_error(403, {"message": "x"}, {"x-ratelimit-remaining": "0"}) == (ERROR, "RATE_LIMITED", True)
+    assert classify_http_error(404, {}, {}) == (UNAVAILABLE, "NOT_FOUND", False)
+    assert classify_http_error(410, {}, {}) == (UNAVAILABLE, "DISABLED", False)
+    assert classify_http_error(500, {}, {}) == (ERROR, "PROVIDER_ERROR", True)
+
+
+def test_planning_source_none_skips_milestone_requests():
+    obs, transport, _ = _collect(_routes(), planning={"source": "none"})
+    assert obs.status_of(INV_TARGETS) == UNAVAILABLE
+    assert not any(path.endswith("/milestones") for path, _ in transport.calls)
+    derive(obs, single_project("acme/widget", planning={"source": "none"}))
+    assert obs.value_of("planning.explicit_targets.capability") == "UNSUPPORTED"
+
+
+def test_collection_error_when_repository_is_unreachable():
+    import pytest
+    from devostasis.adapters.github import CollectionError
+
+    with pytest.raises(CollectionError):
+        _collect({BASE: (404, {}, {"message": "Not Found"})})
+
+
+def test_observation_set_round_trips_through_json(tmp_path):
+    obs, _, _ = _collect(_routes())
+    path = tmp_path / "obs.json"
+    obs.save(path)
+    from devostasis.observations import ObservationSet
+
+    loaded = ObservationSet.load(path)
+    assert loaded.digest() == obs.digest()

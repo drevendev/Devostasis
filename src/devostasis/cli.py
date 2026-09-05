@@ -1,0 +1,302 @@
+"""Command-line interface."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+from . import __version__, canonical, render, timeutil
+from .adapters.github import CollectionError, GitHubClient, UrllibTransport
+from .bundle import load_bundle_dir, verify_dir
+from .config import ConfigError, load_config, single_project
+from .history import FilesystemHistoryStore
+from .observations import ObservationSet
+from .runner import build_from_observations, evaluate, observe, run_all, write_fleet_index
+
+TOKEN_ENVS = ("DEVOSTASIS_GITHUB_TOKEN", "GITHUB_TOKEN", "GH_TOKEN")
+
+
+def resolve_token(explicit: str | None, extra_env: str | None = None) -> tuple[str | None, str]:
+    if explicit:
+        return explicit, "argument"
+    names = ([extra_env] if extra_env else []) + list(TOKEN_ENVS)
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value, f"env:{name}"
+    gh = shutil.which("gh")
+    if gh:
+        try:
+            result = subprocess.run([gh, "auth", "token"], capture_output=True, text=True, timeout=15, check=False)
+            token = result.stdout.strip()
+            if result.returncode == 0 and token:
+                return token, "gh auth token"
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return None, "none (unauthenticated: public repositories only, low rate limit)"
+
+
+def _now(value: str | None):
+    return timeutil.parse_ts(value) if value else timeutil.now_utc()
+
+
+def _bands_line(bands: dict[str, str | None]) -> str:
+    order = ("pulse", "flow", "integrity", "clutter", "horizon", "direction", "debt")
+    return " ".join(f"{name}={bands.get(name) or 'UNKNOWN'}" for name in order)
+
+
+def _project_overrides(args: argparse.Namespace) -> dict[str, Any]:
+    """Planning and debt configuration from CLI flags."""
+    overrides: dict[str, Any] = {}
+    planning: dict[str, Any] = {"source": getattr(args, "planning", "milestones")}
+    if getattr(args, "planning_path", None):
+        planning["path"] = args.planning_path
+    if getattr(args, "link_marker", None):
+        planning["link_marker"] = args.link_marker
+    overrides["planning"] = planning
+    labels = getattr(args, "debt_label", None)
+    debt_path = getattr(args, "debt_path", None)
+    version = getattr(args, "debt_mapping_version", None) or "cli-1"
+    if debt_path:
+        overrides["debt"] = {"source": "file", "path": debt_path, "mapping_version": version}
+    elif labels:
+        overrides["debt"] = {"source": "labels", "labels": list(labels), "mapping_version": version}
+    return overrides
+
+
+def _add_project_flags(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--planning", choices=("milestones", "file", "none"), default="milestones", help="planning target source")
+    parser.add_argument("--planning-path", help="repository path of the targets register when --planning file")
+    parser.add_argument("--link-marker", help="marker that links a change request to a target (default 'Target:')")
+    parser.add_argument("--debt-label", action="append", help="issue label that marks a registered debt item (repeatable)")
+    parser.add_argument("--debt-path", help="repository path of the debt register (source file)")
+    parser.add_argument("--debt-mapping-version")
+
+
+def cmd_observe(args: argparse.Namespace) -> int:
+    token, source = resolve_token(args.token)
+    project = single_project(args.repo, **_project_overrides(args))
+    client = GitHubClient(UrllibTransport(token))
+    print(f"token: {source}", file=sys.stderr)
+    try:
+        obs = observe(project, client, _now(args.now))
+    except CollectionError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    obs.save(args.out)
+    print(f"observations: {args.out} ({len(obs)} keys, {client.request_count} requests)")
+    return 0
+
+
+def cmd_evaluate(args: argparse.Namespace) -> int:
+    obs = ObservationSet.load(args.observations)
+    project = single_project(f"{obs.subject.get('owner', 'unknown')}/{obs.subject.get('repo', 'unknown')}") if args.derive else None
+    snapshot = evaluate(obs, project)
+    canonical.write_pretty(args.out, snapshot)
+    bands = {item["vital_id"]: item["band"] for item in snapshot["vitals"]}
+    print(f"snapshot: {args.out}")
+    print(_bands_line(bands))
+    return 0
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    try:
+        config = load_config(args.config)
+    except (ConfigError, OSError, ValueError) as exc:
+        print(f"config error: {exc}", file=sys.stderr)
+        return 2
+    token, source = resolve_token(args.token, config.token_env)
+    print(f"token: {source}", file=sys.stderr)
+    store = FilesystemHistoryStore(args.store or config.store_path)
+    outcomes = run_all(config, store, token, _now(args.now), only=args.project or None, user_agent=config.user_agent)
+    failed = 0
+    for outcome in outcomes:
+        if outcome.ok:
+            print(f"[ok] {outcome.locator}: {outcome.comparison_status} bundle {outcome.bundle_id[:12]} ({outcome.requests} requests)")
+            print(f"     {_bands_line(outcome.bands)}")
+        else:
+            failed += 1
+            print(f"[failed] {outcome.locator}: {outcome.error}")
+    print(f"store: {store.root}")
+    return 1 if failed else 0
+
+
+def cmd_build(args: argparse.Namespace) -> int:
+    """Build and persist a bundle from a saved observation set (offline)."""
+    from .normalize import derive
+
+    obs = ObservationSet.load(args.observations)
+    project = single_project(f"{obs.subject.get('owner', 'unknown')}/{obs.subject.get('repo', 'unknown')}", **_project_overrides(args))
+    derive(obs, project)
+    store = FilesystemHistoryStore(args.store)
+    bundle = build_from_observations(project, obs, store)
+    path = store.commit(bundle)
+    write_fleet_index(store)
+    print(f"bundle {bundle.bundle_id[:12]} ({bundle.manifest['comparison_status']}) written to {path}")
+    print(_bands_line(bundle.bands()))
+    return 0
+
+
+def cmd_verify(args: argparse.Namespace) -> int:
+    problems = verify_dir(args.bundle)
+    if problems:
+        for problem in problems:
+            print(f"FAIL {problem}")
+        return 1
+    print("verified: digests, identity preimage, persisted effective config and report reproducibility all match")
+    return 0
+
+
+def _load_members(directory: str) -> dict[str, Any]:
+    members = load_bundle_dir(directory)
+    parsed: dict[str, Any] = {}
+    for name, data in members.items():
+        if name.endswith(".json"):
+            parsed[name] = canonical.loads(data.decode("utf-8"))
+    return parsed
+
+
+def cmd_render(args: argparse.Namespace) -> int:
+    parsed = _load_members(args.bundle)
+    display = (parsed.get("effective-config.json") or {}).get("display")
+    sys.stdout.write(
+        render.render_report(
+            parsed["manifest.json"], parsed["snapshot.json"], parsed["delta.json"], parsed.get("activity.json"),
+            parsed.get("gauges.json"), parsed.get("demand.json"), display,
+        )
+    )
+    return 0
+
+
+def cmd_index(args: argparse.Namespace) -> int:
+    path = write_fleet_index(FilesystemHistoryStore(args.store))
+    print(f"fleet overview: {path}" if path else "no projects in store")
+    return 0
+
+
+def _snapshot_from_args(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return (snapshot, parsed members) for --bundle or --snapshot."""
+    if args.bundle:
+        parsed = _load_members(args.bundle)
+        return parsed["snapshot.json"], parsed
+    snapshot = canonical.load_file(args.snapshot)
+    return snapshot, {}
+
+
+def cmd_gauges(args: argparse.Namespace) -> int:
+    """Print the gauges of a bundle (its gauges.json) or compute them from a snapshot."""
+    from .gauges import gauges_member
+
+    snapshot, parsed = _snapshot_from_args(args)
+    payload = parsed.get("gauges.json") or gauges_member(snapshot)
+    sys.stdout.write(canonical.pretty_json(payload))
+    if args.card:
+        display = (parsed.get("effective-config.json") or {}).get("display")
+        sys.stdout.write("\n" + render.render_status_card(snapshot, display, payload) + "\n")
+    return 0
+
+
+def cmd_demand(args: argparse.Namespace) -> int:
+    """Print the demand interface of a bundle (its demand.json) or compute it with default mapping."""
+    from .config import DEFAULTS
+    from .demand import DEFAULT_LEVELS, DEFAULT_MAPPING_VERSION, build_demand
+    from .gauges import gauges_for_snapshot
+
+    snapshot, parsed = _snapshot_from_args(args)
+    payload = parsed.get("demand.json") or build_demand(snapshot, gauges_for_snapshot(snapshot), {"mapping_version": DEFAULT_MAPPING_VERSION, "levels": DEFAULT_LEVELS})
+    if args.order_only:
+        for position, entry in enumerate(payload["attention_order"], start=1):
+            print(f"{position}. {entry['vital_id']} {entry['level']} ({entry['attention_key']})")
+        return 0
+    sys.stdout.write(canonical.pretty_json(payload))
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="devostasis", description="Deterministic, model-free vital signs for software repositories.")
+    parser.add_argument("--version", action="version", version=f"devostasis {__version__}")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    observe_p = sub.add_parser("observe", help="collect a read-only observation set for one repository")
+    observe_p.add_argument("--repo", required=True, help="owner/name")
+    observe_p.add_argument("--out", default="observations.json")
+    observe_p.add_argument("--token")
+    observe_p.add_argument("--now", help="observation timestamp (RFC 3339) for reproducible runs")
+    _add_project_flags(observe_p)
+    observe_p.set_defaults(func=cmd_observe)
+
+    eval_p = sub.add_parser("evaluate", help="evaluate the seven Vitals from a saved observation set")
+    eval_p.add_argument("--observations", required=True)
+    eval_p.add_argument("--out", default="snapshot.json")
+    eval_p.add_argument("--derive", action="store_true", help="derive aggregates from inventories before evaluating")
+    eval_p.set_defaults(func=cmd_evaluate)
+
+    run_p = sub.add_parser("run", help="observe, evaluate, compare and persist bundles for every configured project")
+    run_p.add_argument("--config", required=True)
+    run_p.add_argument("--store", help="history store root (defaults to store.path in the config)")
+    run_p.add_argument("--token")
+    run_p.add_argument("--now")
+    run_p.add_argument("--project", action="append", help="limit to owner/name (repeatable)")
+    run_p.set_defaults(func=cmd_run)
+
+    build_p = sub.add_parser("build", help="build and persist a bundle from a saved observation set (offline)")
+    build_p.add_argument("--observations", required=True)
+    build_p.add_argument("--store", required=True)
+    _add_project_flags(build_p)
+    build_p.set_defaults(func=cmd_build)
+
+    verify_p = sub.add_parser("verify", help="verify digests, identity and report reproducibility of a bundle directory")
+    verify_p.add_argument("--bundle", required=True)
+    verify_p.set_defaults(func=cmd_verify)
+
+    render_p = sub.add_parser("render", help="re-render report.md from a bundle directory to stdout")
+    render_p.add_argument("--bundle", required=True)
+    render_p.set_defaults(func=cmd_render)
+
+    index_p = sub.add_parser("index", help="regenerate the fleet overview of a store")
+    index_p.add_argument("--store", required=True)
+    index_p.set_defaults(func=cmd_index)
+
+    gauges_p = sub.add_parser("gauges", help="print the 0-100 gauges of a bundle or snapshot")
+    group = gauges_p.add_mutually_exclusive_group(required=True)
+    group.add_argument("--bundle", help="bundle directory")
+    group.add_argument("--snapshot", help="snapshot.json path")
+    gauges_p.add_argument("--card", action="store_true", help="also print the text status card")
+    gauges_p.set_defaults(func=cmd_gauges)
+
+    demand_p = sub.add_parser("demand", help="print the demand interface (levels and attention order) of a bundle or snapshot")
+    group = demand_p.add_mutually_exclusive_group(required=True)
+    group.add_argument("--bundle", help="bundle directory")
+    group.add_argument("--snapshot", help="snapshot.json path")
+    demand_p.add_argument("--order-only", action="store_true", help="print only the attention order")
+    demand_p.set_defaults(func=cmd_demand)
+    return parser
+
+
+def _utf8_console() -> None:
+    """Reports contain block characters; never let a legacy console encoding crash the CLI."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
+def main(argv: list[str] | None = None) -> int:
+    _utf8_console()
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        return args.func(args)
+    except ConfigError as exc:
+        print(f"config error: {exc}", file=sys.stderr)
+        return 2
+    except KeyboardInterrupt:
+        return 130

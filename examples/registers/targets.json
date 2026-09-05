@@ -1,0 +1,8 @@
+{
+  "schema": "devostasis.targets.v1",
+  "targets": [
+    { "id": "T-3", "title": "Release 1.2", "state": "open", "due": "2026-10-31" },
+    { "id": "T-4", "title": "Observability instruments", "state": "open" },
+    { "id": "T-2", "title": "Release 1.1", "state": "closed", "due": "2026-08-15" }
+  ]
+}

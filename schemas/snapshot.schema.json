@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/devostasis/schemas/snapshot.schema.json",
+  "title": "Vitals snapshot (devostasis.snapshot.v1)",
+  "description": "The authoritative machine state: exactly seven core Vitals in canonical order. No score, no colour, no evaluative alias is canonical.",
+  "type": "object",
+  "required": ["schema", "vitals_contract_version", "observation_contract_version", "policy_version", "subject", "observed_at", "observations_digest", "vitals"],
+  "properties": {
+    "schema": { "const": "devostasis.snapshot.v1" },
+    "vitals_contract_version": { "const": "PV-VITALS-V1-002" },
+    "observation_contract_version": { "const": "RAW-OBS-V0" },
+    "policy_version": { "type": "string" },
+    "subject": { "type": "object" },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "observations_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "vitals": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/vital" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "ratio": {
+      "type": "object",
+      "required": ["num", "den"],
+      "properties": { "num": { "type": "integer" }, "den": { "type": "integer" } },
+      "additionalProperties": false
+    },
+    "vital": {
+      "type": "object",
+      "required": ["vital_id", "vital_version", "vitals_contract_version", "rule_id", "policy_version", "band", "evaluation_status", "band_semantics", "possible_bands", "inputs", "derived", "shared_signal_groups", "dependency_group_ids", "diagnostics", "explanation"],
+      "properties": {
+        "vital_id": { "enum": ["horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse"] },
+        "vital_version": { "type": "string" },
+        "vitals_contract_version": { "const": "PV-VITALS-V1-002" },
+        "rule_id": { "type": "string" },
+        "policy_version": { "type": "string" },
+        "band": { "type": ["string", "null"] },
+        "evaluation_status": { "enum": ["AVAILABLE", "DEGRADED", "UNKNOWN"] },
+        "band_semantics": { "enum": ["EXACT", "CONSERVATIVE_LOWER_BOUND", "CONSERVATIVE_UPPER_BOUND", "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET", null] },
+        "possible_bands": { "type": ["array", "null"], "items": { "type": "string" } },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["observation_id", "status", "freshness"],
+            "properties": {
+              "observation_id": { "type": "string" },
+              "status": { "type": "string" },
+              "freshness": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "derived": { "type": "object" },
+        "shared_signal_groups": { "type": "array", "items": { "type": "string" } },
+        "dependency_group_ids": { "type": "array", "items": { "type": "string" } },
+        "diagnostics": { "type": "array", "items": { "type": "string" } },
+        "explanation": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "evaluation_status": { "const": "UNKNOWN" } } },
+          "then": { "properties": { "band": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "vital_id": { "const": "direction" } } },
+          "then": { "properties": { "band": { "enum": ["NO_ACTIVE_CHANGE", "UNDECLARED", "SCATTERED", "MIXED", "FULLY_LINKED", null] } } }
+        },
+        {
+          "if": { "properties": { "vital_id": { "const": "debt" } } },
+          "then": { "properties": { "band": { "enum": ["UNINSTRUMENTED", "CLEAR", "PRESENT", null] } } }
+        },
+        {
+          "if": { "properties": { "vital_id": { "const": "horizon" } } },
+          "then": { "properties": { "band": { "enum": ["UNDECLARED", "DECLARED", "VISIBLE", "EXTENDED", null] } } }
+        },
+        {
+          "if": { "properties": { "vital_id": { "const": "flow" } } },
+          "then": { "properties": { "band": { "enum": ["NO_QUEUE", "MOVING", "CONGESTED", "GRIDLOCKED", null] } } }
+        },
+        {
+          "if": { "properties": { "vital_id": { "const": "pulse" } } },
+          "then": { "properties": { "band": { "enum": ["DORMANT", "QUIET", "STEADY", "SURGING", null] } } }
+        },
+        {
+          "if": { "properties": { "vital_id": { "const": "clutter" } } },
+          "then": { "properties": { "band": { "enum": ["CLEAN", "LIGHT", "CLUTTERED", "HEAVY", null] } } }
+        },
+        {
+          "if": { "properties": { "vital_id": { "const": "integrity" } } },
+          "then": { "properties": { "band": { "enum": ["UNINSTRUMENTED", "NO_RECENT_RUNS", "NO_DECISIVE_RUNS", "SPARSE", "SPARSE_MIXED", "FLAKY", "CLEAN", "FAILING", null] } } }
+        }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

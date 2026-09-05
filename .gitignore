@@ -9,3 +9,12 @@ dist/
 history-local/
 *.local.json
 .env
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.env.*
+.DS_Store
+.idea/
+.vscode/
+.claude/
