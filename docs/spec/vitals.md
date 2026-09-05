@@ -51,11 +51,15 @@ Derived: `activity_events_28d` = commits + observed channel updates;
 | QUIET | `activity_events_28d > 0` |
 | DORMANT | `activity_events_28d = 0` |
 
-Degradation: a required input that is not exact yields `UNKNOWN`. An optional
-channel that is not exact is never treated as zero: the band is computed from
-the observed channels as a `CONSERVATIVE_LOWER_BOUND` with `possible_bands`
-listing every band from that bound upward (zero observed activity therefore
-degrades to `DORMANT`, not `QUIET`).
+Degradation: a required input that is missing, forbidden, unknown, errored or
+stale yields `UNKNOWN`. An optional channel that is not exact is never treated
+as zero: the band is computed from the observed channels as a
+`CONSERVATIVE_LOWER_BOUND` with `possible_bands` listing every band from that
+bound upward (zero observed activity therefore degrades to `DORMANT`, not
+`QUIET`). A required input that is `PARTIAL` with a value because a
+newest-first enumeration was capped is treated the same way: the true
+activity can only be higher, so the band is a `DEGRADED` lower bound with the
+diagnostic `REQUIRED_INPUT_PARTIAL` (implementation extension, see ROADMAP).
 
 Groups: `DEFAULT_BRANCH_ACTIVITY`, `CHANGE_REQUEST_ACTIVITY`, `ISSUE_ACTIVITY`;
 dependencies `FLOW_PULSE_ACTIVITY`, `DIRECTION_PULSE_ACTIVITY`.

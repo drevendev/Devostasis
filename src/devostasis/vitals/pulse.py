@@ -2,12 +2,15 @@
 
 Pulse is not productivity and low Pulse is not automatically unhealthy.
 Supported optional channels that are not exactly observed cannot be treated as
-zero: the band is then a conservative lower bound (V0.1/V0.2 repairs).
+zero: the band is then a conservative lower bound (V0.1/V0.2 repairs). A
+required input that is PARTIAL because a newest-first enumeration was capped
+is likewise a lower bound: the true activity can only be higher, so the band
+is emitted as DEGRADED / CONSERVATIVE_LOWER_BOUND instead of UNKNOWN.
 """
 
 from __future__ import annotations
 
-from ..observations import ObservationSet
+from ..observations import FRESH, PARTIAL, ObservationSet
 from ..policy import PULSE
 from .common import (
     EVAL_AVAILABLE,
@@ -18,7 +21,6 @@ from .common import (
     as_int,
     bands_from,
     input_meta,
-    missing_required,
     unknown_result,
 )
 
@@ -50,11 +52,24 @@ def classify(active_days: int, events: int, channel_count: int) -> str:
     return "DORMANT"
 
 
+def _partial_lower_bound(obs: ObservationSet, oid: str) -> bool:
+    item = obs.get(oid)
+    return bool(item is not None and item.status == PARTIAL and item.freshness == FRESH and item.has_value)
+
+
 def evaluate(obs: ObservationSet) -> VitalResult:
     ids = REQUIRED + OPTIONAL
-    missing = missing_required(obs, REQUIRED)
+    missing: list[str] = []
+    partial_required: list[str] = []
+    for oid in REQUIRED:
+        if obs.is_good(oid):
+            continue
+        if _partial_lower_bound(obs, oid):
+            partial_required.append(f"REQUIRED_INPUT_PARTIAL:{oid}:{obs.get(oid).reason_code}")
+        else:
+            missing.append(f"MISSING_REQUIRED:{oid}:{obs.status_of(oid)}/{obs.freshness_of(oid)}")
     if missing:
-        return unknown_result(VITAL_ID, VITAL_VERSION, RULE_ID, obs, ids, missing, SHARED, GROUPS)
+        return unknown_result(VITAL_ID, VITAL_VERSION, RULE_ID, obs, ids, missing + partial_required, SHARED, GROUPS)
 
     commits = as_int(obs.value_of(COMMITS))
     active_days = as_int(obs.value_of(ACTIVE_DAYS))
@@ -77,7 +92,7 @@ def evaluate(obs: ObservationSet) -> VitalResult:
         "channels_observed": dict(sorted(channels.items())),
     }
 
-    if not unobserved:
+    if not unobserved and not partial_required:
         return VitalResult(
             vital_id=VITAL_ID,
             vital_version=VITAL_VERSION,
@@ -98,6 +113,11 @@ def evaluate(obs: ObservationSet) -> VitalResult:
         )
 
     derived["activity_events_28d_semantics"] = "LOWER_BOUND"
+    if partial_required:
+        derived["commits_28d_semantics"] = "LOWER_BOUND"
+        reason = "the commit enumeration was capped"
+    else:
+        reason = "one or more activity channels were not exactly observed"
     return VitalResult(
         vital_id=VITAL_ID,
         vital_version=VITAL_VERSION,
@@ -110,9 +130,9 @@ def evaluate(obs: ObservationSet) -> VitalResult:
         derived=derived,
         shared_signal_groups=SHARED,
         dependency_group_ids=GROUPS,
-        diagnostics=unobserved,
+        diagnostics=unobserved + partial_required,
         explanation=(
             f"At least {events} activity events observed ({commits} commits on {active_days} active days); "
-            "one or more activity channels were not exactly observed, so the band is a lower bound."
+            f"{reason}, so the band is a lower bound."
         ),
     )

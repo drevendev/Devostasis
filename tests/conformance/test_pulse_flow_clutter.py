@@ -49,6 +49,25 @@ def test_v1_10_unavailable_channel_never_becomes_zero_but_lower_bound_still_clas
     assert any(code.startswith("UNOBSERVED_CHANNEL:forge.change_requests.updated_count_28d:PARTIAL") for code in result.diagnostics)
 
 
+def test_capped_commit_enumeration_is_a_lower_bound_not_unknown():
+    obs = obs_set()
+    add(obs, "git.default_branch.commits.count_28d", 3000, status=PARTIAL, reason_code="PAGINATION_CAPPED")
+    add(obs, "git.default_branch.commit_active_days_28d", 14, status=PARTIAL, reason_code="PAGINATION_CAPPED")
+    add(obs, "forge.change_requests.updated_count_28d", 500)
+    add(obs, "forge.issues.updated_count_28d", 100)
+    result = pulse.evaluate(obs)
+    assert result.band == "SURGING" and result.evaluation_status == "DEGRADED"
+    assert result.band_semantics == "CONSERVATIVE_LOWER_BOUND" and result.possible_bands == ["SURGING"]
+    assert any(code.startswith("REQUIRED_INPUT_PARTIAL:git.default_branch.commits.count_28d") for code in result.diagnostics)
+
+
+def test_partial_required_input_without_value_stays_unknown():
+    obs = obs_set()
+    add(obs, "git.default_branch.commits.count_28d", status=PARTIAL, reason_code="PAGINATION_CAPPED")
+    add(obs, "git.default_branch.commit_active_days_28d", 2)
+    assert pulse.evaluate(obs).evaluation_status == "UNKNOWN"
+
+
 def test_flow_no_queue_and_moving():
     obs = obs_set()
     flow_inputs(obs, 0, 0)

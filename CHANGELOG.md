@@ -18,6 +18,10 @@ First minimum viable version: useful on real repositories today.
   greatest-attempt current state, failure-sticky history.
 - Read-only GitHub adapter (REST, stdlib only) with pagination caps reported as
   PARTIAL and tier or permission failures reported as UNAVAILABLE / FORBIDDEN.
+  Caps sized for very active repositories (3000 commits, 2000 change requests
+  or issues, 2000 workflow runs per window); a capped newest-first enumeration
+  is a lower bound, and Pulse degrades to a conservative lower bound instead
+  of UNKNOWN.
 - Immutable bundle (`devostasis.bundle.v1`): manifest, snapshot, delta,
   activity, observations, persisted effective config and a deterministic
   Markdown report; SHA-256 identity over an acyclic preimage

@@ -8,17 +8,20 @@ API version `2022-11-28`, page-based pagination with 100 items per page.
 | Purpose | Endpoint | Cap |
 | --- | --- | --- |
 | identity | `GET /repos/{o}/{r}` | 1 (failure aborts the project: no subject, no bundle) |
-| commits | `GET /repos/{o}/{r}/commits?sha=<default>&since=<28d>` | 10 pages |
-| change requests | `GET /pulls?state=open` and `GET /pulls?state=all&sort=updated&direction=desc` until older than 28 days | 10 pages each |
-| issues | `GET /issues?state=open` and `GET /issues?state=all&since=<28d>` (pull requests filtered out) | 10 pages each; skipped when `has_issues` is false |
+| commits | `GET /repos/{o}/{r}/commits?sha=<default>&since=<28d>` | 30 pages (3000 commits) |
+| change requests | `GET /pulls?state=open` and `GET /pulls?state=all&sort=updated&direction=desc` until older than 28 days | 20 pages each |
+| issues | `GET /issues?state=open` and `GET /issues?state=all&since=<28d>` (pull requests filtered out) | 20 pages each; skipped when `has_issues` is false |
 | branches | `GET /branches`, then `GET /commits/{sha}` for heads not on the default branch | 2 pages, 60 head lookups |
 | targets | `GET /milestones?state=all` | 3 pages; skipped when `planning.source = none` |
 | releases | `GET /releases?per_page=30` | 1 page |
-| verification | `GET /actions/workflows` (count), `GET /actions/runs?branch=<default>&created=>=<14d>`, `GET /actions/runs/{id}/attempts/{n}` for reruns | 10 pages, 5 attempts per run, 60 attempt lookups |
-| fallback verification | `GET /commits/{sha}/check-suites` per revision, only when no Actions runs exist | 30 revisions |
+| verification | `GET /actions/workflows` (count), `GET /actions/runs?branch=<default>&created=>=<14d>`, `GET /actions/runs/{id}/attempts/{n}` for reruns | 20 pages, 5 attempts per run, 60 attempt lookups |
+| fallback verification | `GET /commits/{sha}/check-suites` per revision, only when no Actions runs exist | 100 revisions |
 
-A typical small repository costs 10 to 30 requests; a very active one costs
-under 100.
+A typical small repository costs 10 to 30 requests; a very active one
+(hundreds of merged change requests and more than a thousand default-branch
+commits a month) costs 50 to 150. Enumerations are newest-first, so a capped
+enumeration is a lower bound of the true activity and is reported as
+`PARTIAL`.
 
 ## Failure mapping
 

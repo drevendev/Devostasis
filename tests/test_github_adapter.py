@@ -121,13 +121,19 @@ def test_issues_disabled_is_unavailable_not_zero():
     assert not any(path.endswith("/issues") for path, _ in transport.calls)
 
 
-def test_c4_pagination_cap_is_partial():
-    many = [_commit(f"s{i:03d}", "2026-09-01T10:00:00Z") for i in range(1200)]
+def test_c4_pagination_cap_is_partial(monkeypatch):
+    from devostasis.adapters import github as github_module
+
+    monkeypatch.setattr(github_module, "MAX_COMMIT_PAGES", 2)
+    many = [_commit(f"s{i:03d}", "2026-09-01T10:00:00Z") for i in range(250)]
     obs, _, _ = _collect(_routes(**{f"{BASE}/commits": _paged(many)}))
     commits = obs.get("git.default_branch.commits_28d")
-    assert commits.status == PARTIAL and commits.reason_code == "PAGINATION_CAPPED" and len(commits.value) == 1000
+    assert commits.status == PARTIAL and commits.reason_code == "PAGINATION_CAPPED" and len(commits.value) == 200
     derive(obs, single_project("acme/widget"))
     assert obs.status_of("git.default_branch.commits.count_28d") == PARTIAL
+    bands = {r.vital_id: r for r in evaluate_all(obs)}
+    assert bands["pulse"].evaluation_status == "DEGRADED" and bands["pulse"].band_semantics == "CONSERVATIVE_LOWER_BOUND"
+    assert bands["integrity"].evaluation_status == "DEGRADED"
 
 
 def test_no_workflows_and_no_check_suites_is_positively_uninstrumented():

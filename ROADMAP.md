@@ -104,3 +104,12 @@ in this version.
 5. **`timed_out` is mapped to VERIFY_FAIL** and `startup_failure` to
    UNKNOWN. Both are implementation choices under
    `devostasis.ci-outcomes.github.v1` and need confirmation.
+6. **Pulse on capped enumerations.** A repository with more than 3000
+   default-branch commits in 28 days exceeds the commit pagination cap. The
+   implementation treats the capped, newest-first count as a lower bound and
+   emits `DEGRADED / CONSERVATIVE_LOWER_BOUND` with the diagnostic
+   `REQUIRED_INPUT_PARTIAL` instead of `UNKNOWN`. The contract only defines
+   lower bounds for optional channels; this extension needs confirmation.
+7. **Median time to merge in whole hours** floors sub-hour merges to 0 for
+   repositories where an autonomous loop merges within minutes. A finer unit
+   or a rational value may be more informative.

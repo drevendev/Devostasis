@@ -37,11 +37,15 @@ ADAPTER_VERSION = "devostasis.github.v1"
 API_BASE = "https://api.github.com"
 PER_PAGE = 100
 MAX_PAGES = 10
+MAX_COMMIT_PAGES = 30
+MAX_CHANGE_REQUEST_PAGES = 20
+MAX_ISSUE_PAGES = 20
+MAX_RUN_PAGES = 20
 MAX_BRANCH_PAGES = 2
 MAX_BRANCH_HEAD_LOOKUPS = 60
 MAX_ATTEMPT_LOOKUPS = 60
 MAX_ATTEMPTS_PER_RUN = 5
-MAX_SUITE_REVISIONS = 30
+MAX_SUITE_REVISIONS = 100
 
 
 class CollectionError(Exception):
@@ -266,7 +270,7 @@ class GitHubAdapter:
         path = f"{base}/commits"
         common = self._common(f"{path}?sha={default_branch}&since={timeutil.format_ts(since)}")
         try:
-            raw, complete = self.client.paginate(path, {"sha": default_branch, "since": timeutil.format_ts(since)}, MAX_PAGES)
+            raw, complete = self.client.paginate(path, {"sha": default_branch, "since": timeutil.format_ts(since)}, MAX_COMMIT_PAGES)
         except (ApiFailure, NetworkFailure) as exc:
             obs.add(_failure_observation(INV_COMMITS, "series", exc, common))
             return {}
@@ -297,11 +301,11 @@ class GitHubAdapter:
         path = f"{base}/pulls"
         common = self._common(f"{path}?state=open|updated>={timeutil.format_ts(since)}")
         try:
-            open_raw, open_complete = self.client.paginate(path, {"state": "open", "sort": "created", "direction": "asc"}, MAX_PAGES)
+            open_raw, open_complete = self.client.paginate(path, {"state": "open", "sort": "created", "direction": "asc"}, MAX_CHANGE_REQUEST_PAGES)
             recent_raw, window_complete = self.client.paginate(
                 path,
                 {"state": "all", "sort": "updated", "direction": "desc"},
-                MAX_PAGES,
+                MAX_CHANGE_REQUEST_PAGES,
                 stop=lambda item: timeutil.parse_ts(item["updated_at"]) < since,
             )
         except (ApiFailure, NetworkFailure) as exc:
@@ -354,9 +358,9 @@ class GitHubAdapter:
             obs.add(Observation(observation_id=INV_ISSUES, status=UNAVAILABLE, value_type="series", reason_code="ISSUES_DISABLED", **common))
             return
         try:
-            open_raw, open_complete = self.client.paginate(path, {"state": "open", "sort": "created", "direction": "asc"}, MAX_PAGES)
+            open_raw, open_complete = self.client.paginate(path, {"state": "open", "sort": "created", "direction": "asc"}, MAX_ISSUE_PAGES)
             recent_raw, window_complete = self.client.paginate(
-                path, {"state": "all", "since": timeutil.format_ts(since), "sort": "updated", "direction": "desc"}, MAX_PAGES
+                path, {"state": "all", "since": timeutil.format_ts(since), "sort": "updated", "direction": "desc"}, MAX_ISSUE_PAGES
             )
         except (ApiFailure, NetworkFailure) as exc:
             obs.add(_failure_observation(INV_ISSUES, "series", exc, common))
@@ -537,7 +541,7 @@ class GitHubAdapter:
                 runs, runs_complete = self.client.paginate(
                     f"{base}/actions/runs",
                     {"branch": default_branch, "created": f">={timeutil.utc_day(since)}"},
-                    MAX_PAGES,
+                    MAX_RUN_PAGES,
                     items_key="workflow_runs",
                 )
             except (ApiFailure, NetworkFailure) as exc:
@@ -606,9 +610,12 @@ class GitHubAdapter:
         if runs_failure is not None:
             obs.add(_failure_observation(CI_REVISIONS, "series", runs_failure, common_rev))
             return
-        if suites_failure is not None and not any_parents:
+        if suites_failure is not None and not any_parents and not workflows_total:
             obs.add(_failure_observation(CI_REVISIONS, "series", suites_failure, common_rev))
             return
+        if suites_failure is not None:
+            reason = suites_failure.reason_code if isinstance(suites_failure, ApiFailure) else "NETWORK"
+            self.notes.append(f"CHECK_SUITES_UNAVAILABLE:{reason}")
         records = github_ci.build_revision_records(window_commits, parents_by_sha)
         complete = runs_complete and attempts_complete and (commits_obs.status == AVAILABLE)
         reason = None
