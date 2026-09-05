@@ -175,6 +175,18 @@ def test_verify_members_reports_missing_manifest():
     assert verify_members({}) == ["manifest.json missing"]
 
 
+def test_legacy_semantic_config_shape_stays_comparable():
+    from devostasis.delta import compatibility_reasons
+
+    current = {"vitals_contract_version": "PV-VITALS-V1-002", "observation_contract_version": "RAW-OBS-V0", "policy_version": "devostasis.policy.v1", "semantic_config": _project().semantic_config()}
+    legacy = dict(current, semantic_config={"planning_source": "milestones", "debt_mapping": None})
+    assert compatibility_reasons(current, legacy) == []
+    legacy_debt = dict(current, semantic_config={"planning_source": "milestones", "debt_mapping": {"labels": ["debt"], "mapping_version": "1"}})
+    current_debt = dict(current, semantic_config=_project(debt={"labels": ["debt"], "mapping_version": "1"}).semantic_config())
+    assert compatibility_reasons(current_debt, legacy_debt) == []
+    assert compatibility_reasons(current, legacy_debt) == ["SEMANTIC_CONFIG_CHANGED"]
+
+
 def test_activity_disabled_marker_enters_identity(tmp_path):
     store = FilesystemHistoryStore(tmp_path)
     enabled = build_from_observations(_project(), _obs(), store)

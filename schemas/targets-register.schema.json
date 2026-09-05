@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/devostasis/schemas/targets-register.schema.json",
+  "title": "Targets register (devostasis.targets.v1)",
+  "description": "Explicit planning targets committed to the observed repository; read when planning.source = file.",
+  "type": "object",
+  "required": ["schema", "targets"],
+  "properties": {
+    "schema": { "const": "devostasis.targets.v1" },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$" },
+          "title": { "type": "string" },
+          "state": { "enum": ["open", "closed", "done", "resolved", "cancelled", "canceled"] },
+          "due": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

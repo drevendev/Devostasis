@@ -39,6 +39,8 @@
     "canonical_member_profile": { "type": "object" },
     "adapters": { "type": "array", "items": { "type": "object", "required": ["provider", "adapter_version"] } },
     "receipt": { "type": "object" },
+    "gauge_contract": { "const": "devostasis.gauge.v1" },
+    "demand_contract": { "const": "devostasis.demand.v1" },
     "identity_preimage": {
       "type": "object",
       "required": ["bundle_identity_contract", "artifact_contract_version", "vitals_contract_version", "observation_contract_version", "policy_version", "config_version", "renderer_version", "canonical_serialization_version", "effective_config_contract", "effective_config_digest", "project_identity", "observed_at", "previous_bundle_id", "comparison_status", "snapshot_digest", "delta_digest", "activity_digest", "observations_digest", "source_receipts_digest"],

@@ -1,24 +1,29 @@
-# Gauges (devostasis.gauge.v1, presentation only)
+# Gauges (devostasis.gauge.v1)
 
-The accepted contracts keep named bands canonical and allow 0-100 values only
-as a presentation layer. Gauges are that layer: a deterministic placement of a
-Vital on a 0-100 scale so that a human sees gradation inside a band instead of
-a binary label.
+The accepted contracts keep named bands canonical and reserve 0-100 values
+for a versioned normalization contract. Gauges are that contract in this
+implementation: a deterministic placement of a Vital on a 0-100 scale so that
+gradation inside a band is visible to humans and usable by consumers as an
+ordering inside a level (see [demand.md](demand.md)).
 
 Rules:
 
 - gauges are computed from the authoritative snapshot only (band plus the
   derived metrics the rule used), with integer arithmetic;
-- they are never written into `snapshot.json`, never enter bundle identity,
-  and machine consumers must not read them as truth (`"authoritative": false`);
+- they are persisted as the bundle member `gauges.json` and are
+  identity-bearing through `gauges_digest`; `snapshot.json` stays the
+  semantic authority (`canonical_semantics`);
 - each gauge measures the **intensity of the phenomenon the Vital
   describes**, not virtue: Clutter 90 is a lot of residue, Flow 90 is a lot of
   queue pressure, Integrity 90 is stable verification, Debt 90 is a lot of
   registered debt;
 - inside a band the value is monotone in the metrics that define the band;
   bands never overlap on the scale;
-- `UNKNOWN` Vitals and states where the phenomenon is not applicable render
-  as `n/a`; a `DEGRADED` bound renders with `≥`, `≤` or `~`.
+- `UNKNOWN` Vitals and states where the phenomenon is not applicable have
+  value `null` and render as `n/a`; a `DEGRADED` bound renders with `≥`, `≤`
+  or `~`;
+- the ranges and drivers below are implementation constants submitted to the
+  research process for independent review (`contract_status` in the member).
 
 ## Scales and band ranges
 
@@ -32,7 +37,7 @@ Rules:
 | Direction | traceability share | SCATTERED 0-49; MIXED 50-99; FULLY_LINKED 100; UNDECLARED 0 | linked / active change requests |
 | Debt | registered debt | CLEAR 0; PRESENT 10-100 | open items (saturates at 50), stale items (saturates at 20) |
 
-Not applicable (`n/a`): Integrity UNINSTRUMENTED, NO_RECENT_RUNS and
+Not applicable (`null`): Integrity UNINSTRUMENTED, NO_RECENT_RUNS and
 NO_DECISIVE_RUNS; Debt UNINSTRUMENTED; Direction NO_ACTIVE_CHANGE; Horizon and
 Direction when planning is declared unsupported by configuration.
 
@@ -48,16 +53,30 @@ Direction when planning is declared unsupported by configuration.
 - Direction: `100 * linked / active`.
 - Debt: PRESENT `10 + part(open, 50, 70) + part(stale, 20, 20)`.
 
+## Member
+
+```json
+{
+  "schema": "devostasis.gauges.v1",
+  "contract": "devostasis.gauge.v1",
+  "observed_at": "2026-09-05T12:00:00Z",
+  "canonical_semantics": "snapshot.json",
+  "contract_status": "implementation-defined ranges; submitted for independent review",
+  "gauges": [{"vital_id": "pulse", "band": "STEADY", "value": 52, "qualifier": "exact", "scale": "activity intensity", "contract": "devostasis.gauge.v1", "canonical_semantics": "snapshot.json"}]
+}
+```
+
 ## Rendering
 
-`report.md` opens with a monospace status card (bar, value, band per Vital)
-and repeats the gauge in each Vital section. The fleet overview prints the
-value after the band. `devostasis gauges --bundle <dir>` prints the gauges as
-JSON, `--card` adds the text card.
+`report.md` opens with a monospace status card whose components (bar,
+number, band) and Vital selection follow the `display` configuration; each
+Vital section repeats the gauge; the fleet overview prints the value after
+the band. `devostasis gauges --bundle <dir>` prints the member, `--card` adds
+the text card.
 
 ## What gauges are not
 
 They are not a health score, they are not comparable across Vitals, they are
-not summed, and a theme that renames bands (for example clinical or playful
-labels) is a separate, optional layer that cannot change machine semantics and
-is not part of this version.
+never summed, and a theme that renames bands (clinical or playful labels) is a
+separate, optional layer that cannot change machine semantics and is not part
+of this version.

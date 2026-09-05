@@ -367,7 +367,7 @@
           "type:refactor"
         ],
         "mapping_version": "example-1",
-        "source": "issue_labels"
+        "source": "labels"
       },
       "value_type": "record"
     },
@@ -1427,6 +1427,33 @@
         "3": 5
       },
       "value_type": "record"
+    },
+    {
+      "adapter_version": "devostasis.github.v1",
+      "collected_at": "2026-09-05T12:00:00Z",
+      "coverage": {
+        "complete": true,
+        "source_coverage": {
+          "open_complete": true,
+          "window_complete": true,
+          "window_start": "2026-08-08T12:00:00Z"
+        }
+      },
+      "evidence_ref": {
+        "derived_from": [
+          "forge.change_requests.inventory"
+        ]
+      },
+      "freshness": "FRESH",
+      "notes": null,
+      "observation_id": "planning.linkage.unknown_target_reference_count_28d",
+      "provider": "github",
+      "reason_code": null,
+      "schema_version": "RAW-OBS-V0",
+      "source_ref": "derived:forge.change_requests.inventory",
+      "status": "AVAILABLE",
+      "value": 0,
+      "value_type": "count"
     }
   ],
   "observed_at": "2026-09-05T12:00:00Z",

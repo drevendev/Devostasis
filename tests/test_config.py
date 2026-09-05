@@ -12,8 +12,9 @@ def _config(**project):
 def test_defaults_resolve_to_a_stable_effective_config():
     project = _config().projects[0]
     effective = project.effective_bundle_config()
-    assert effective["planning_source"] == "milestones" and effective["debt_mapping"] is None
+    assert effective["planning"]["source"] == "milestones" and effective["debt_mapping"] is None
     assert effective["report_html"] == "DISABLED" and effective["activity"] == "ENABLED"
+    assert effective["display"]["gauge"] == ["bar", "number", "band"] and effective["demand"]["levels"]["flow"]["GRIDLOCKED"] == "CRITICAL"
 
 
 def test_art_19_omitted_default_and_explicit_default_canonicalize_identically():
@@ -53,7 +54,7 @@ def test_debt_mapping_validation():
     with pytest.raises(ConfigError):
         _config(debt={"labels": ["x"]})
     project = _config(debt={"labels": ["x", "x", "y"], "mapping_version": "v"}).projects[0]
-    assert project.debt_mapping == {"labels": ["x", "y"], "mapping_version": "v"}
+    assert project.debt_mapping == {"source": "labels", "labels": ["x", "y"], "mapping_version": "v"}
 
 
 def test_semantic_config_ignores_presentation_options():

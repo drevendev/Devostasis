@@ -5,12 +5,14 @@
       "provider": "github"
     }
   ],
-  "artifact_contract_version": "devostasis.bundle.v1",
-  "bundle_id": "c6e34ba1e2e98068f8439bd61f9bbaea461e621ff3d9e3ff5bc7c8afe5834178",
+  "artifact_contract_version": "devostasis.bundle.v2",
+  "bundle_id": "9e3e372d010f7ded7e9af6733141149c5c1b323b559fbf05fd00b099fc520f57",
   "bundle_identity_contract": "PV-BUNDLE-ID-002",
   "canonical_member_profile": {
     "activity_json": "ENABLED",
+    "demand_json": "REQUIRED",
     "effective_config_json": "REQUIRED",
+    "gauges_json": "REQUIRED",
     "observations_json": "ENABLED",
     "report_html": "DISABLED",
     "report_md": "REQUIRED"
@@ -19,21 +21,27 @@
   "ci_unit_contract_version": "PV-CI-UNIT-004",
   "comparison_status": "BASELINE",
   "config_version": "example-1",
+  "demand_contract": "devostasis.demand.v1",
   "effective_config_contract": "PV-EFFECTIVE-CONFIG-001",
-  "effective_config_digest": "sha256:35a43d1a9e243a617bc76aba57435486457a04c7eedd9060c9cdfab30d1f7c9b",
+  "effective_config_digest": "sha256:cc472c9ad93f6721ecc9a3fc14f3067ccc85af33c2acceb4489982a44eb370ac",
+  "gauge_contract": "devostasis.gauge.v1",
   "identity_preimage": {
     "activity_digest": "sha256:d80fa63f29071d59425dad060211db5fbf6d165248c23b18169b06c37a1a0595",
-    "artifact_contract_version": "devostasis.bundle.v1",
+    "artifact_contract_version": "devostasis.bundle.v2",
     "bundle_identity_contract": "PV-BUNDLE-ID-002",
     "canonical_serialization_version": "devostasis.canon.v1",
     "ci_unit_contract_version": "PV-CI-UNIT-004",
     "comparison_status": "BASELINE",
     "config_version": "example-1",
     "delta_digest": "sha256:676f867bf439661449730559459d3f9291d666b9f6fcc593c37e5ea35818b3b4",
+    "demand_contract": "devostasis.demand.v1",
+    "demand_digest": "sha256:dfaece48452e7532ed8617901745888ef712df027657d85692dc47039d5eb634",
     "effective_config_contract": "PV-EFFECTIVE-CONFIG-001",
-    "effective_config_digest": "sha256:35a43d1a9e243a617bc76aba57435486457a04c7eedd9060c9cdfab30d1f7c9b",
+    "effective_config_digest": "sha256:cc472c9ad93f6721ecc9a3fc14f3067ccc85af33c2acceb4489982a44eb370ac",
+    "gauge_contract": "devostasis.gauge.v1",
+    "gauges_digest": "sha256:9625ff34cc358d9343d865f6900a20c357b400f47be23a414775c21261bbc628",
     "observation_contract_version": "RAW-OBS-V0",
-    "observations_digest": "sha256:61531d2a880e51902e9d0723cc71eaeb495286ac61fe337c9f90480b31015e8e",
+    "observations_digest": "sha256:07ece09ccfc69520692f655da0a884afe27c29d995d0e254ccec34e7dc1c661d",
     "observed_at": "2026-09-05T12:00:00Z",
     "policy_version": "devostasis.policy.v1",
     "previous_bundle_id": null,
@@ -44,18 +52,20 @@
       "immutable_project_id": "123456",
       "provider": "github"
     },
-    "renderer_version": "devostasis.render.v2",
-    "snapshot_digest": "sha256:2397a725c87bb81161cae275aa87f906d8fcc23a7a53ad4b5ca848ff3cc8aeb7",
+    "renderer_version": "devostasis.render.v3",
+    "snapshot_digest": "sha256:158751fab86c927d61d82f67a58d89c7df0d304cb777fd5619ab0bfaf75297f4",
     "source_receipts_digest": "sha256:7f35306f781930bd5c465b9c1df4599acad0e870d7b7c6551bfacee650c881d8",
     "vitals_contract_version": "PV-VITALS-V1-002"
   },
   "members": {
     "activity.json": "sha256:d80fa63f29071d59425dad060211db5fbf6d165248c23b18169b06c37a1a0595",
     "delta.json": "sha256:676f867bf439661449730559459d3f9291d666b9f6fcc593c37e5ea35818b3b4",
-    "effective-config.json": "sha256:35a43d1a9e243a617bc76aba57435486457a04c7eedd9060c9cdfab30d1f7c9b",
-    "observations.json": "sha256:61531d2a880e51902e9d0723cc71eaeb495286ac61fe337c9f90480b31015e8e",
-    "report.md": "sha256:1049bae38fe87ffed4aae1b8696a3cb1b432f3c645b6ae5d6674dd8d936efc41",
-    "snapshot.json": "sha256:2397a725c87bb81161cae275aa87f906d8fcc23a7a53ad4b5ca848ff3cc8aeb7"
+    "demand.json": "sha256:dfaece48452e7532ed8617901745888ef712df027657d85692dc47039d5eb634",
+    "effective-config.json": "sha256:cc472c9ad93f6721ecc9a3fc14f3067ccc85af33c2acceb4489982a44eb370ac",
+    "gauges.json": "sha256:9625ff34cc358d9343d865f6900a20c357b400f47be23a414775c21261bbc628",
+    "observations.json": "sha256:07ece09ccfc69520692f655da0a884afe27c29d995d0e254ccec34e7dc1c661d",
+    "report.md": "sha256:a9393584a2965fc27e263b4d8440f412250698ee8e030ac21793948d2698bfad",
+    "snapshot.json": "sha256:158751fab86c927d61d82f67a58d89c7df0d304cb777fd5619ab0bfaf75297f4"
   },
   "observation_contract_version": "RAW-OBS-V0",
   "observed_at": "2026-09-05T12:00:00Z",
@@ -152,7 +162,7 @@
       "visibility": "public"
     }
   },
-  "renderer_version": "devostasis.render.v2",
+  "renderer_version": "devostasis.render.v3",
   "run_meta": {
     "example": true,
     "tool": {
@@ -166,9 +176,14 @@
       "labels": [
         "type:refactor"
       ],
-      "mapping_version": "example-1"
+      "mapping_version": "example-1",
+      "source": "labels"
     },
-    "planning_source": "milestones"
+    "planning": {
+      "link_marker": "Target:",
+      "path": null,
+      "source": "milestones"
+    }
   },
   "supersedes_bundle_id": null,
   "vitals_contract_version": "PV-VITALS-V1-002"

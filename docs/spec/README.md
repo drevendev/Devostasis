@@ -12,7 +12,9 @@ conformance tests.
 | [integrity-ci.md](integrity-ci.md) | Verification normalization, parent identity, revision verdicts, failure-sticky history |
 | [bundle.md](bundle.md) | Bundle members, canonical serialization, identity preimage, effective config, verification |
 | [history-and-reports.md](history-and-reports.md) | Comparison states, delta semantics, activity interval, history store layout, report rendering |
-| [gauges.md](gauges.md) | Presentation-only 0-100 gauges: scales, band ranges, formulas, what they are not |
+| [gauges.md](gauges.md) | 0-100 gauges: scales, band ranges, formulas, the `gauges.json` member |
+| [demand.md](demand.md) | Demand levels per Vital, the attention order, the `demand.json` member |
+| [registers.md](registers.md) | Targets and debt register files, the change-request link marker |
 | [github-adapter.md](github-adapter.md) | What the GitHub adapter collects, how it maps failures and caps, what it does not collect |
 | [conformance.md](conformance.md) | Conformance case identifiers and where each is implemented |
 | [PROVENANCE.md](PROVENANCE.md) | Contract identifiers and the research units they come from |

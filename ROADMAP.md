@@ -33,18 +33,20 @@ unit that owns them when one exists.
   Actions, legacy commit statuses, branch protection and rulesets as an
   *enforcement* observation, pull request to issue to milestone linkage,
   GitHub Projects fields as planning targets.
+- **Register generators.** Small scripts that derive `targets.json` from a
+  project's own roadmap format, owned by the project, so the register never
+  drifts from the roadmap.
 - **Rename and transfer continuity (RPT-7):** key history by immutable
   project id rather than by owner/name directories.
 
 ## Consumers
 
-- **Consumer demand interface (PV-ROLE-001).** A versioned mapping from
-  snapshot bands to generic demand levels, consumed opaquely by autonomous
-  development systems; the reference consumer is SNAP, whose role semantics
-  never enter this repository.
-- **Fleet consumers.** A machine-readable fleet index next to the Markdown
-  overview, so control planes such as Whipstack can route attention by Flow
-  and Clutter without parsing reports.
+- **Consumer demand interface (PV-ROLE-001), next steps.** The minimal
+  interface ships as `demand.json`; still open: independent review of the
+  default table, per-consumer role projections (SNAP's S/N/A/P stay outside
+  this repository), and a machine-readable fleet index next to the Markdown
+  overview so control planes such as Whipstack can route attention without
+  parsing reports.
 
 ## Instruments (PV-INSTR-001 and children)
 
@@ -61,6 +63,10 @@ provenance semantics:
 
 ## Presentation
 
+- **Custom report templates.** A user-supplied template persisted in the
+  bundle and hashed into its identity, so re-rendering stays reproducible;
+  deferred because the `display` configuration covers selection and layout
+  of the built-in report without a template engine.
 - `report.html` as an optional canonical member (already identity-bearing:
   enabling it changes `bundle_id`).
 - Optional renderer themes (PV-RENDER-CLINICAL-001): vivid or clinical

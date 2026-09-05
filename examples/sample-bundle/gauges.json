@@ -1,0 +1,72 @@
+{
+  "canonical_semantics": "snapshot.json",
+  "contract": "devostasis.gauge.v1",
+  "contract_status": "implementation-defined ranges; submitted for independent review",
+  "gauges": [
+    {
+      "band": "EXTENDED",
+      "canonical_semantics": "snapshot.json",
+      "contract": "devostasis.gauge.v1",
+      "qualifier": "exact",
+      "scale": "declared future work",
+      "value": 84,
+      "vital_id": "horizon"
+    },
+    {
+      "band": "LIGHT",
+      "canonical_semantics": "snapshot.json",
+      "contract": "devostasis.gauge.v1",
+      "qualifier": "exact",
+      "scale": "stale residue",
+      "value": 10,
+      "vital_id": "clutter"
+    },
+    {
+      "band": "MIXED",
+      "canonical_semantics": "snapshot.json",
+      "contract": "devostasis.gauge.v1",
+      "qualifier": "exact",
+      "scale": "traceability share",
+      "value": 50,
+      "vital_id": "direction"
+    },
+    {
+      "band": "MOVING",
+      "canonical_semantics": "snapshot.json",
+      "contract": "devostasis.gauge.v1",
+      "qualifier": "exact",
+      "scale": "queue pressure",
+      "value": 10,
+      "vital_id": "flow"
+    },
+    {
+      "band": "FLAKY",
+      "canonical_semantics": "snapshot.json",
+      "contract": "devostasis.gauge.v1",
+      "qualifier": "exact",
+      "scale": "verification stability",
+      "value": 62,
+      "vital_id": "integrity"
+    },
+    {
+      "band": "PRESENT",
+      "canonical_semantics": "snapshot.json",
+      "contract": "devostasis.gauge.v1",
+      "qualifier": "exact",
+      "scale": "registered debt",
+      "value": 11,
+      "vital_id": "debt"
+    },
+    {
+      "band": "SURGING",
+      "canonical_semantics": "snapshot.json",
+      "contract": "devostasis.gauge.v1",
+      "qualifier": "exact",
+      "scale": "activity intensity",
+      "value": 82,
+      "vital_id": "pulse"
+    }
+  ],
+  "observed_at": "2026-09-05T12:00:00Z",
+  "schema": "devostasis.gauges.v1"
+}

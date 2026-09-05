@@ -23,6 +23,11 @@ def test_build_verify_render_and_index(tmp_path, capsys):
     assert main(["index", "--store", str(store)]) == 0
     index = json.loads((latest.parent / "index.json").read_text("utf-8"))
     assert len(index["bundles"]) == 1
+    assert main(["gauges", "--bundle", str(latest), "--card"]) == 0
+    gauges_out = capsys.readouterr().out
+    assert '"contract": "devostasis.gauge.v1"' in gauges_out and "Horizon" in gauges_out
+    assert main(["demand", "--bundle", str(latest), "--order-only"]) == 0
+    assert capsys.readouterr().out.startswith("1. ")
 
 
 def test_evaluate_command(tmp_path, capsys):

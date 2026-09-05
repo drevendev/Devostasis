@@ -1,0 +1,8 @@
+{
+  "schema": "devostasis.debt.v1",
+  "items": [
+    { "id": "D-1", "title": "Replace the legacy parser", "state": "open", "opened": "2026-06-01", "updated": "2026-07-01" },
+    { "id": "D-2", "title": "Split the settings module", "state": "open", "opened": "2026-08-28", "updated": "2026-09-03" },
+    { "id": "D-3", "title": "Remove dead configuration flags", "state": "closed", "opened": "2026-08-01", "closed": "2026-08-20" }
+  ]
+}

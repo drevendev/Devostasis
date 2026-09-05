@@ -4,15 +4,22 @@ Every endpoint failure becomes an explicit observation status instead of a
 value: tier limitations are UNAVAILABLE, authorization denials are FORBIDDEN,
 transient failures are ERROR, and a capped pagination is PARTIAL. The adapter
 performs no mutation of any kind.
+
+Planning targets come from GitHub milestones or from a structured register
+file in the repository; debt items come from a configured label mapping or
+from a register file. Change requests are linked to targets either by their
+milestone or by an explicit marker line (``Target: <id>``) in their text.
 """
 
 from __future__ import annotations
 
+import base64
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Callable
 
@@ -24,13 +31,14 @@ from ..normalize import (
     INV_BRANCHES,
     INV_COMMITS,
     INV_CRS,
+    INV_DEBT_REGISTER,
     INV_ISSUES,
     INV_RELEASES,
     INV_REPO,
     INV_TARGETS,
 )
 from ..observations import AVAILABLE, ERROR, FORBIDDEN, PARTIAL, UNAVAILABLE, UNKNOWN, Observation, ObservationSet, Receipt
-from ..policy import CLUTTER, FLOW, INTEGRITY, PULSE
+from ..policy import FLOW, INTEGRITY, PULSE
 from . import github_ci
 
 ADAPTER_VERSION = "devostasis.github.v1"
@@ -46,6 +54,10 @@ MAX_BRANCH_HEAD_LOOKUPS = 60
 MAX_ATTEMPT_LOOKUPS = 60
 MAX_ATTEMPTS_PER_RUN = 5
 MAX_SUITE_REVISIONS = 100
+MAX_REGISTER_BYTES = 1_000_000
+
+TARGETS_REGISTER_SCHEMA = "devostasis.targets.v1"
+DEBT_REGISTER_SCHEMA = "devostasis.debt.v1"
 
 
 class CollectionError(Exception):
@@ -70,6 +82,10 @@ class NetworkFailure(Exception):
 
     def __str__(self) -> str:
         return self.message
+
+
+class RegisterError(Exception):
+    """A register file exists but is not a valid register."""
 
 
 def classify_http_error(status: int, body: Any, headers: dict[str, str]) -> tuple[str, str, bool]:
@@ -183,6 +199,8 @@ def _failure_observation(observation_id: str, value_type: str, exc: Exception, c
             notes=f"HTTP {exc.status_code}: {exc.message}"[:300],
             **common,
         )
+    if isinstance(exc, RegisterError):
+        return Observation(observation_id=observation_id, status=ERROR, value_type=value_type, reason_code="INVALID_REGISTER", notes=str(exc)[:300], **common)
     return Observation(observation_id=observation_id, status=ERROR, value_type=value_type, reason_code="NETWORK", notes=str(exc)[:300], **common)
 
 
@@ -190,6 +208,103 @@ def _title(text: str | None) -> str:
     if not text:
         return ""
     return text.strip().splitlines()[0][:160]
+
+
+def _normalize_date(value: Any) -> str | None:
+    """Accept YYYY-MM-DD or RFC 3339; a bare date means midnight UTC."""
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str):
+        raise RegisterError(f"date must be a string, got {value!r}")
+    text = value.strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        text += "T00:00:00Z"
+    try:
+        return timeutil.normalize_ts(text)
+    except ValueError as exc:
+        raise RegisterError(f"invalid date {value!r}") from exc
+
+
+def marker_target_ids(text: str | None, marker: str) -> list[str]:
+    """Explicit target references: every ``<marker> <id>`` occurrence, in order, without duplicates."""
+    if not text or not marker:
+        return []
+    pattern = re.compile(re.escape(marker) + r"[ \t]*([A-Za-z0-9][A-Za-z0-9._/-]*)")
+    seen: list[str] = []
+    for match in pattern.finditer(text):
+        target_id = match.group(1).rstrip(".,;:")
+        if target_id and target_id not in seen:
+            seen.append(target_id)
+    return seen
+
+
+def _register_state(value: Any) -> str:
+    text = str(value or "open").strip().lower()
+    return "CLOSED" if text in ("closed", "done", "resolved", "cancelled", "canceled") else "OPEN"
+
+
+def parse_targets_register(document: Any) -> list[dict[str, Any]]:
+    if not isinstance(document, dict) or document.get("schema") != TARGETS_REGISTER_SCHEMA:
+        raise RegisterError(f"targets register must be an object with schema {TARGETS_REGISTER_SCHEMA}")
+    targets = document.get("targets")
+    if not isinstance(targets, list):
+        raise RegisterError("targets register requires a targets list")
+    items = []
+    seen: set[str] = set()
+    for entry in targets:
+        if not isinstance(entry, dict) or not isinstance(entry.get("id"), str) or not entry["id"].strip():
+            raise RegisterError("every target needs a string id")
+        target_id = entry["id"].strip()
+        if target_id in seen:
+            raise RegisterError(f"duplicate target id {target_id}")
+        seen.add(target_id)
+        items.append(
+            {
+                "target_id": target_id,
+                "id": target_id,
+                "title": _title(entry.get("title")),
+                "state": _register_state(entry.get("state")),
+                "due_at": _normalize_date(entry.get("due")),
+                "open_items": 0,
+                "closed_items": 0,
+                "url": None,
+            }
+        )
+    items.sort(key=lambda m: m["target_id"])
+    return items
+
+
+def parse_debt_register(document: Any) -> list[dict[str, Any]]:
+    if not isinstance(document, dict) or document.get("schema") != DEBT_REGISTER_SCHEMA:
+        raise RegisterError(f"debt register must be an object with schema {DEBT_REGISTER_SCHEMA}")
+    entries = document.get("items")
+    if not isinstance(entries, list):
+        raise RegisterError("debt register requires an items list")
+    items = []
+    seen: set[str] = set()
+    for entry in entries:
+        if not isinstance(entry, dict) or not isinstance(entry.get("id"), str) or not entry["id"].strip():
+            raise RegisterError("every debt item needs a string id")
+        item_id = entry["id"].strip()
+        if item_id in seen:
+            raise RegisterError(f"duplicate debt item id {item_id}")
+        seen.add(item_id)
+        opened = _normalize_date(entry.get("opened"))
+        updated = _normalize_date(entry.get("updated")) or opened
+        if updated is None:
+            raise RegisterError(f"debt item {item_id} needs an opened or updated date")
+        items.append(
+            {
+                "id": item_id,
+                "title": _title(entry.get("title")),
+                "state": _register_state(entry.get("state")),
+                "opened_at": opened,
+                "updated_at": updated,
+                "closed_at": _normalize_date(entry.get("closed")),
+            }
+        )
+    items.sort(key=lambda i: i["id"])
+    return items
 
 
 class GitHubAdapter:
@@ -245,10 +360,11 @@ class GitHubAdapter:
         )
 
         commits_by_sha = self._collect_commits(obs, base, default_branch)
-        self._collect_change_requests(obs, base)
+        target_states = self._collect_targets(obs, base, project, default_branch)
+        self._collect_change_requests(obs, base, project, target_states)
         self._collect_issues(obs, base, bool(meta.get("has_issues")))
         self._collect_branches(obs, base, default_branch, commits_by_sha)
-        self._collect_targets(obs, base, project)
+        self._collect_debt_register(obs, base, project, default_branch)
         self._collect_releases(obs, base)
         self._collect_ci(obs, base, default_branch, commits_by_sha)
 
@@ -264,6 +380,22 @@ class GitHubAdapter:
         )
         obs.finalize_receipt(receipt)
         return obs
+
+    def _fetch_json_register(self, base: str, path: str, ref: str) -> Any:
+        """Read a JSON file of the repository through the contents API."""
+        encoded = "/".join(urllib.parse.quote(part) for part in path.split("/"))
+        body = self.client.get(f"{base}/contents/{encoded}", {"ref": ref})
+        if not isinstance(body, dict) or body.get("type") != "file":
+            raise RegisterError(f"{path} is not a file")
+        if int(body.get("size") or 0) > MAX_REGISTER_BYTES:
+            raise RegisterError(f"{path} exceeds {MAX_REGISTER_BYTES} bytes")
+        if body.get("encoding") != "base64" or not body.get("content"):
+            raise RegisterError(f"{path} has no base64 content")
+        try:
+            text = base64.b64decode(body["content"]).decode("utf-8")
+            return json.loads(text)
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise RegisterError(f"{path} is not valid JSON: {exc}") from exc
 
     def _collect_commits(self, obs: ObservationSet, base: str, default_branch: str) -> dict[str, dict[str, Any]]:
         since = timeutil.minus_days(self.now, PULSE["window_days"])
@@ -296,7 +428,22 @@ class GitHubAdapter:
         )
         return {item["sha"]: item for item in items}
 
-    def _collect_change_requests(self, obs: ObservationSet, base: str) -> None:
+    def _target_refs(self, pull: dict[str, Any], project: ResolvedProject, target_states: dict[str, str] | None) -> list[dict[str, str]]:
+        source = project.planning["source"]
+        if source == "milestones":
+            milestone = pull.get("milestone") or None
+            if not milestone:
+                return []
+            state = "CLOSED" if (milestone.get("state") or "").lower() == "closed" else "OPEN"
+            return [{"target_id": str(milestone["number"]), "state": state}]
+        if source == "file":
+            marker = project.planning.get("link_marker") or "Target:"
+            text = "\n".join(part for part in (pull.get("title"), pull.get("body")) if part)
+            states = target_states or {}
+            return [{"target_id": tid, "state": states.get(tid, "UNKNOWN")} for tid in marker_target_ids(text, marker)]
+        return []
+
+    def _collect_change_requests(self, obs: ObservationSet, base: str, project: ResolvedProject, target_states: dict[str, str] | None) -> None:
         since = timeutil.minus_days(self.now, FLOW["window_days"])
         path = f"{base}/pulls"
         common = self._common(f"{path}?state=open|updated>={timeutil.format_ts(since)}")
@@ -319,7 +466,7 @@ class GitHubAdapter:
                 state = "CLOSED"
             else:
                 state = "OPEN"
-            milestone = pull.get("milestone") or None
+            refs = self._target_refs(pull, project, target_states)
             merged[int(pull["number"])] = {
                 "number": int(pull["number"]),
                 "id": pull.get("id"),
@@ -330,8 +477,9 @@ class GitHubAdapter:
                 "updated_at": timeutil.normalize_ts(pull.get("updated_at")),
                 "merged_at": timeutil.normalize_ts(pull.get("merged_at")),
                 "closed_at": timeutil.normalize_ts(pull.get("closed_at")),
-                "target_id": str(milestone["number"]) if milestone else None,
-                "target_state": (milestone.get("state") or "").upper() or None if milestone else None,
+                "target_id": refs[0]["target_id"] if refs else None,
+                "target_state": refs[0]["state"] if refs else None,
+                "target_refs": refs,
                 "author": (pull.get("user") or {}).get("login"),
                 "url": pull.get("html_url"),
             }
@@ -343,7 +491,13 @@ class GitHubAdapter:
                 status=AVAILABLE if complete else PARTIAL,
                 value_type="series",
                 value=items,
-                coverage={"open_complete": open_complete, "window_complete": window_complete, "window_start": timeutil.format_ts(since)},
+                coverage={
+                    "open_complete": open_complete,
+                    "window_complete": window_complete,
+                    "window_start": timeutil.format_ts(since),
+                    "linkage": project.planning["source"],
+                    "link_marker": project.planning.get("link_marker") if project.planning["source"] == "file" else None,
+                },
                 reason_code=None if complete else "PAGINATION_CAPPED",
                 evidence_ref={"endpoint": path},
                 **common,
@@ -443,17 +597,45 @@ class GitHubAdapter:
             )
         )
 
-    def _collect_targets(self, obs: ObservationSet, base: str, project: ResolvedProject) -> None:
+    def _collect_targets(self, obs: ObservationSet, base: str, project: ResolvedProject, default_branch: str) -> dict[str, str] | None:
+        """Planning targets from milestones or a register file; returns id -> state for file sources."""
+        source = project.planning["source"]
+        if source == "none":
+            common = self._common("config:planning")
+            obs.add(Observation(observation_id=INV_TARGETS, status=UNAVAILABLE, value_type="series", reason_code="PLANNING_SOURCE_NONE", **common))
+            return None
+        if source == "file":
+            path = project.planning["path"]
+            common = self._common(f"{base}/contents/{path}?ref={default_branch}")
+            try:
+                items = parse_targets_register(self._fetch_json_register(base, path, default_branch))
+            except (ApiFailure, NetworkFailure, RegisterError) as exc:
+                if isinstance(exc, ApiFailure) and exc.reason_code == "NOT_FOUND":
+                    exc = ApiFailure(exc.status_code, UNAVAILABLE, "REGISTER_NOT_FOUND", f"{path} not found on {default_branch}")
+                obs.add(_failure_observation(INV_TARGETS, "series", exc, common))
+                return None
+            for item in items:
+                item["url"] = f"https://github.com/{project.owner}/{project.repo}/blob/{default_branch}/{path}"
+            obs.add(
+                Observation(
+                    observation_id=INV_TARGETS,
+                    status=AVAILABLE,
+                    value_type="series",
+                    value=items,
+                    coverage={"complete": True, "source": "file", "path": path, "schema": TARGETS_REGISTER_SCHEMA},
+                    evidence_ref={"endpoint": f"{base}/contents/{path}", "ref": default_branch},
+                    **common,
+                )
+            )
+            return {item["target_id"]: item["state"] for item in items}
+
         path = f"{base}/milestones"
         common = self._common(f"{path}?state=all")
-        if project.planning_source == "none":
-            obs.add(Observation(observation_id=INV_TARGETS, status=UNAVAILABLE, value_type="series", reason_code="PLANNING_SOURCE_NONE", **common))
-            return
         try:
             raw, complete = self.client.paginate(path, {"state": "all", "sort": "due_on", "direction": "asc"}, 3)
         except (ApiFailure, NetworkFailure) as exc:
             obs.add(_failure_observation(INV_TARGETS, "series", exc, common))
-            return
+            return None
         items = [
             {
                 "target_id": str(m["number"]),
@@ -477,6 +659,32 @@ class GitHubAdapter:
                 coverage={"complete": complete, "source": "milestones"},
                 reason_code=None if complete else "PAGINATION_CAPPED",
                 evidence_ref={"endpoint": path},
+                **common,
+            )
+        )
+        return None
+
+    def _collect_debt_register(self, obs: ObservationSet, base: str, project: ResolvedProject, default_branch: str) -> None:
+        mapping = project.debt_mapping
+        if not mapping or mapping.get("source") != "file":
+            return
+        path = mapping["path"]
+        common = self._common(f"{base}/contents/{path}?ref={default_branch}")
+        try:
+            items = parse_debt_register(self._fetch_json_register(base, path, default_branch))
+        except (ApiFailure, NetworkFailure, RegisterError) as exc:
+            if isinstance(exc, ApiFailure) and exc.reason_code == "NOT_FOUND":
+                exc = ApiFailure(exc.status_code, UNAVAILABLE, "REGISTER_NOT_FOUND", f"{path} not found on {default_branch}")
+            obs.add(_failure_observation(INV_DEBT_REGISTER, "series", exc, common))
+            return
+        obs.add(
+            Observation(
+                observation_id=INV_DEBT_REGISTER,
+                status=AVAILABLE,
+                value_type="series",
+                value=items,
+                coverage={"complete": True, "source": "file", "path": path, "schema": DEBT_REGISTER_SCHEMA, "mapping_version": mapping["mapping_version"]},
+                evidence_ref={"endpoint": f"{base}/contents/{path}", "ref": default_branch},
                 **common,
             )
         )

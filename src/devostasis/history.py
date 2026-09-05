@@ -121,7 +121,7 @@ class FilesystemHistoryStore:
         staging.rename(latest_dir)
         return latest_dir
 
-    def update_index(self, bundle: Bundle, bands: dict[str, str | None], gauges: dict[str, int | None] | None = None) -> dict[str, Any]:
+    def update_index(self, bundle: Bundle, bands: dict[str, str | None], gauges: dict[str, int | None] | None = None, top_attention: str | None = None) -> dict[str, Any]:
         index = self.read_index(bundle.project_key)
         entries = [entry for entry in index["bundles"] if entry.get("bundle_id") != bundle.bundle_id]
         relative = self.history_dir(bundle).relative_to(self.project_dir(bundle.project_key)).as_posix()
@@ -134,6 +134,7 @@ class FilesystemHistoryStore:
                 "path": relative,
                 "bands": dict(sorted(bands.items())),
                 "gauges": dict(sorted((gauges or {}).items())),
+                "top_attention": top_attention,
             }
         )
         entries.sort(key=lambda entry: (entry["observed_at"], entry["bundle_id"]))
@@ -142,11 +143,20 @@ class FilesystemHistoryStore:
         canonical.write_pretty(self.index_path(bundle.project_key), index)
         return index
 
-    def commit(self, bundle: Bundle, bands: dict[str, str | None], gauges: dict[str, int | None] | None = None) -> Path:
+    def commit(self, bundle: Bundle, bands: dict[str, str | None] | None = None, gauges: dict[str, int | None] | None = None, top_attention: str | None = None) -> Path:
         """Persist immutably, then publish latest and the index."""
+        from .demand import top_attention as _top
+
         path = self.put_immutable(bundle)
         self.publish_latest(bundle)
-        self.update_index(bundle, bands, gauges)
+        bands = bands if bands is not None else bundle.bands()
+        gauges = gauges if gauges is not None else bundle.gauges()
+        if top_attention is None:
+            try:
+                top_attention = _top(bundle.demand())
+            except KeyError:
+                top_attention = None
+        self.update_index(bundle, bands, gauges, top_attention)
         return path
 
     def all_projects(self) -> list[dict[str, Any]]:
@@ -173,6 +183,7 @@ class FilesystemHistoryStore:
                     "comparison_status": tail["comparison_status"],
                     "bands": tail.get("bands") or {},
                     "gauges": tail.get("gauges") or {},
+                    "top_attention": tail.get("top_attention"),
                     "report_path": (project_dir / "latest" / "report.md").relative_to(projects_root).as_posix(),
                 }
             )

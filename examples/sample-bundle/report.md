@@ -2,20 +2,34 @@
 
 - Observed at: 2026-09-05T12:00:00Z
 - Comparison: BASELINE
-- Bundle: `c6e34ba1e2e98068f8439bd61f9bbaea461e621ff3d9e3ff5bc7c8afe5834178`
+- Bundle: `9e3e372d010f7ded7e9af6733141149c5c1b323b559fbf05fd00b099fc520f57`
 - Contracts: vitals PV-VITALS-V1-002, observations RAW-OBS-V0, policy devostasis.policy.v1
 
 ```text
-Horizon    ████████░░    84  EXTENDED
-Clutter    █░░░░░░░░░    10  LIGHT
-Direction  █████░░░░░    50  MIXED
-Flow       █░░░░░░░░░    10  MOVING
-Integrity  ██████░░░░    62  FLAKY
-Debt       █░░░░░░░░░    11  PRESENT
-Pulse      ████████░░    82  SURGING
+Horizon     ████████░░    84  EXTENDED
+Clutter     █░░░░░░░░░    10  LIGHT
+Direction   █████░░░░░    50  MIXED
+Flow        █░░░░░░░░░    10  MOVING
+Integrity   ██████░░░░    62  FLAKY
+Debt        █░░░░░░░░░    11  PRESENT
+Pulse       ████████░░    82  SURGING
 ```
 
-Bands are the canonical states. The 0-100 gauges are presentation only (devostasis.gauge.v1): they place a band on the scale of the phenomenon it describes (activity, queue pressure, verification stability, residue, declared future work, traceability share, registered debt) and are never machine truth. UNKNOWN means evidence was insufficient; DEGRADED means a conservative bound, shown as ≥ or ~.
+Bands are the canonical states. Gauges are the versioned 0-100 normalization (devostasis.gauge.v1) of each band on the scale of the phenomenon it describes (activity, queue pressure, verification stability, residue, declared future work, traceability share, registered debt). UNKNOWN means evidence was insufficient; DEGRADED means a conservative bound, shown as ≥ or ~.
+
+## Attention
+
+Demand levels come from mapping `devostasis-default-1` (devostasis.demand.v1); the order inside a level follows the gauge. There is no aggregate.
+
+| Order | Vital | Level | Band | Gauge |
+| --- | --- | --- | --- | --- |
+| 1 | Integrity | HIGH | FLAKY | 62 |
+| 2 | Direction | MEDIUM | MIXED | 50 |
+| 3 | Debt | MEDIUM | PRESENT | 11 |
+| 4 | Clutter | LOW | LIGHT | 10 |
+| 5 | Flow | LOW | MOVING | 10 |
+| 6 | Pulse | MINIMAL | SURGING | 82 |
+| 7 | Horizon | MINIMAL | EXTENDED | 84 |
 
 ## Vitals
 
@@ -197,8 +211,8 @@ Releases:
 
 ## Provenance
 
-- Artifact contract: devostasis.bundle.v1; bundle identity: PV-BUNDLE-ID-002; renderer: devostasis.render.v2; gauges: devostasis.gauge.v1 (presentation only)
-- Effective config digest: `sha256:35a43d1a9e243a617bc76aba57435486457a04c7eedd9060c9cdfab30d1f7c9b` (config version `example-1`)
+- Artifact contract: devostasis.bundle.v2; bundle identity: PV-BUNDLE-ID-002; renderer: devostasis.render.v3; gauges: devostasis.gauge.v1; demand: devostasis.demand.v1
+- Effective config digest: `sha256:cc472c9ad93f6721ecc9a3fc14f3067ccc85af33c2acceb4489982a44eb370ac` (config version `example-1`)
 - Adapters: github devostasis.github.v1
-- Observations digest: `sha256:61531d2a880e51902e9d0723cc71eaeb495286ac61fe337c9f90480b31015e8e`
+- Observations digest: `sha256:07ece09ccfc69520692f655da0a884afe27c29d995d0e254ccec34e7dc1c661d`
 - Generated deterministically from the machine bundle without any language model.

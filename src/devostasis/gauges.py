@@ -208,7 +208,7 @@ def gauge_for(vital: dict[str, Any]) -> dict[str, Any]:
         "qualifier": qualifier,
         "scale": SCALES[vital_id],
         "contract": GAUGE_CONTRACT,
-        "authoritative": False,
+        "canonical_semantics": "snapshot.json",
     }
 
 
@@ -218,6 +218,18 @@ def gauges_for_snapshot(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
 
 def gauge_values(snapshot: dict[str, Any]) -> dict[str, int | None]:
     return {g["vital_id"]: g["value"] for g in gauges_for_snapshot(snapshot)}
+
+
+def gauges_member(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """The ``gauges.json`` bundle member: a versioned normalization of the snapshot."""
+    return {
+        "schema": "devostasis.gauges.v1",
+        "contract": GAUGE_CONTRACT,
+        "observed_at": snapshot.get("observed_at"),
+        "canonical_semantics": "snapshot.json",
+        "contract_status": "implementation-defined ranges; submitted for independent review",
+        "gauges": gauges_for_snapshot(snapshot),
+    }
 
 
 def bar(value: int | None, width: int = 10) -> str:

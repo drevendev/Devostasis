@@ -13,7 +13,7 @@ from typing import Any, Callable
 from . import timeutil
 from .config import ResolvedProject
 from .observations import AVAILABLE, PARTIAL, UNAVAILABLE, VALUE_BEARING, Observation, ObservationSet
-from .policy import CLUTTER, FLOW, INTEGRITY, PLANNING, PULSE
+from .policy import CLUTTER, FLOW, PLANNING, PULSE
 
 INV_REPO = "forge.repository.metadata"
 INV_COMMITS = "git.default_branch.commits_28d"
@@ -22,10 +22,11 @@ INV_ISSUES = "forge.issues.inventory"
 INV_BRANCHES = "git.nondefault_branches.inventory"
 INV_TARGETS = "planning.explicit_targets.inventory"
 INV_RELEASES = "forge.releases.inventory"
+INV_DEBT_REGISTER = "debt.register.inventory"
 CI_CONFIGURED = "ci.configured"
 CI_REVISIONS = "ci.revision_verdicts_14d"
 
-INVENTORY_IDS = [INV_REPO, INV_COMMITS, INV_CRS, INV_ISSUES, INV_BRANCHES, INV_TARGETS, INV_RELEASES, CI_CONFIGURED, CI_REVISIONS]
+INVENTORY_IDS = [INV_REPO, INV_COMMITS, INV_CRS, INV_ISSUES, INV_BRANCHES, INV_TARGETS, INV_RELEASES, INV_DEBT_REGISTER, CI_CONFIGURED, CI_REVISIONS]
 
 
 def _derived(
@@ -81,10 +82,6 @@ def _flag(source: Observation, key: str) -> bool:
     return bool(coverage.get(key, True))
 
 
-def _ts(value: str | None):
-    return timeutil.parse_ts(value) if value else None
-
-
 def _median(values: list[int]) -> int:
     ordered = sorted(values)
     count = len(ordered)
@@ -92,6 +89,16 @@ def _median(values: list[int]) -> int:
     if count % 2:
         return ordered[middle]
     return (ordered[middle - 1] + ordered[middle]) // 2
+
+
+def target_refs(item: dict[str, Any]) -> list[dict[str, Any]]:
+    """Explicit target references of a change request, in either record shape."""
+    refs = item.get("target_refs")
+    if isinstance(refs, list):
+        return [ref for ref in refs if isinstance(ref, dict) and ref.get("target_id")]
+    if item.get("target_id"):
+        return [{"target_id": str(item["target_id"]), "state": item.get("target_state")}]
+    return []
 
 
 def derive(obs: ObservationSet, project: ResolvedProject) -> ObservationSet:
@@ -156,18 +163,26 @@ def derive(obs: ObservationSet, project: ResolvedProject) -> ObservationSet:
         def _active(items):
             return [item for item in items if item.get("updated_at") and timeutil.parse_ts(item["updated_at"]) >= since_planning]
 
+        def _open_refs(item):
+            return [ref for ref in target_refs(item) if ref.get("state") == "OPEN"]
+
         def _linked(items):
-            return [item for item in _active(items) if item.get("target_id") and item.get("target_state") == "OPEN"]
+            return [item for item in _active(items) if _open_refs(item)]
 
         def _links_per_target(items):
             counts: dict[str, int] = {}
-            for item in _linked(items):
-                counts[str(item["target_id"])] = counts.get(str(item["target_id"]), 0) + 1
+            for item in _active(items):
+                for ref in _open_refs(item):
+                    counts[str(ref["target_id"])] = counts.get(str(ref["target_id"]), 0) + 1
             return dict(sorted(counts.items()))
+
+        def _unknown_refs(items):
+            return len([ref for item in _active(items) for ref in target_refs(item) if ref.get("state") == "UNKNOWN"])
 
         _derived(obs, "planning.linkage.active_change_requests_count_28d", "count", crs, lambda items: len(_active(items)), complete=window_ok)
         _derived(obs, "planning.linkage.active_change_requests_linked_to_open_target_count_28d", "count", crs, lambda items: len(_linked(items)), complete=window_ok)
         _derived(obs, "planning.linkage.links_per_target_28d", "record", crs, _links_per_target, complete=window_ok)
+        _derived(obs, "planning.linkage.unknown_target_reference_count_28d", "count", crs, _unknown_refs, complete=window_ok)
 
     issues = obs.get(INV_ISSUES)
     if issues is not None:
@@ -189,7 +204,7 @@ def derive(obs: ObservationSet, project: ResolvedProject) -> ObservationSet:
             complete=window_ok,
         )
 
-    _derive_debt(obs, project, issues, observed_at, stale_issue, since_planning)
+    _derive_debt(obs, project, issues, stale_issue, since_planning)
 
     branches = obs.get(INV_BRANCHES)
     if branches is not None:
@@ -203,21 +218,44 @@ def derive(obs: ObservationSet, project: ResolvedProject) -> ObservationSet:
             reason_override=None if heads_ok else "BRANCH_HEADS_UNRESOLVED",
         )
 
-    _derive_planning(obs, project, observed_at, since_planning)
+    _derive_planning(obs, project, observed_at)
     return obs
 
 
-def _derive_debt(obs, project, issues, observed_at, stale_issue, since_planning) -> None:
+def _derive_debt(obs: ObservationSet, project: ResolvedProject, issues: Observation | None, stale_issue, since_planning) -> None:
     if "debt.registry.capability" in obs:
         return
     base = {"provider": "config", "collected_at": obs.observed_at, "source_ref": "config:debt", "adapter_version": "config"}
-    if project.debt_mapping is None:
+    mapping = project.debt_mapping
+    if mapping is None:
         obs.add(Observation(observation_id="debt.registry.capability", status=AVAILABLE, value_type="enum", value="UNCONFIGURED", **base))
         return
-    labels = set(project.debt_mapping["labels"])
-    mapping_value = {"labels": sorted(labels), "mapping_version": project.debt_mapping["mapping_version"], "source": "issue_labels"}
     obs.add(Observation(observation_id="debt.registry.capability", status=AVAILABLE, value_type="enum", value="CONFIGURED", **base))
-    obs.add(Observation(observation_id="debt.mapping", status=AVAILABLE, value_type="record", value=mapping_value, **base))
+    obs.add(Observation(observation_id="debt.mapping", status=AVAILABLE, value_type="record", value=dict(mapping), **base))
+
+    if mapping["source"] == "file":
+        register = obs.get(INV_DEBT_REGISTER)
+        if register is None:
+            obs.add(Observation(observation_id="debt.items.open_count", status="UNKNOWN", value_type="count", reason_code="REGISTER_NOT_COLLECTED", **base))
+            return
+
+        def _open_items(items):
+            return [i for i in items if i.get("state") == "OPEN"]
+
+        _derived(obs, "debt.items.open_count", "count", register, lambda items: len(_open_items(items)), extra_sources=["debt.mapping"])
+        _derived(
+            obs, "debt.items.open_stale_count_30d", "count", register,
+            lambda items: len([i for i in _open_items(items) if timeutil.parse_ts(i["updated_at"]) < stale_issue]),
+            extra_sources=["debt.mapping"],
+        )
+        _derived(
+            obs, "debt.items.closed_count_28d", "count", register,
+            lambda items: len([i for i in items if i.get("state") == "CLOSED" and i.get("closed_at") and timeutil.parse_ts(i["closed_at"]) >= since_planning]),
+            extra_sources=["debt.mapping"],
+        )
+        return
+
+    labels = set(mapping.get("labels") or [])
     if issues is None:
         obs.add(Observation(observation_id="debt.items.open_count", status="UNKNOWN", value_type="count", reason_code="ISSUES_NOT_COLLECTED", **base))
         return
@@ -246,7 +284,7 @@ def _derive_debt(obs, project, issues, observed_at, stale_issue, since_planning)
     )
 
 
-def _derive_planning(obs, project, observed_at, since_planning) -> None:
+def _derive_planning(obs: ObservationSet, project: ResolvedProject, observed_at) -> None:
     if "planning.explicit_targets.capability" in obs:
         return
     horizon_edge = timeutil.minus_days(observed_at, -PLANNING["frame_days"])

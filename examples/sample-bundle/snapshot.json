@@ -1,6 +1,6 @@
 {
   "observation_contract_version": "RAW-OBS-V0",
-  "observations_digest": "sha256:61531d2a880e51902e9d0723cc71eaeb495286ac61fe337c9f90480b31015e8e",
+  "observations_digest": "sha256:07ece09ccfc69520692f655da0a884afe27c29d995d0e254ccec34e7dc1c661d",
   "observed_at": "2026-09-05T12:00:00Z",
   "policy_version": "devostasis.policy.v1",
   "schema": "devostasis.snapshot.v1",
@@ -304,7 +304,7 @@
             "type:refactor"
           ],
           "mapping_version": "example-1",
-          "source": "issue_labels"
+          "source": "labels"
         },
         "open_count": 1,
         "open_stale_count_30d": 0

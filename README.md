@@ -79,14 +79,32 @@ Debt       █░░░░░░░░░    11  PRESENT
 Pulse      ████████░░    82  SURGING
 ```
 
-Gauges are presentation only ([docs/spec/gauges.md](docs/spec/gauges.md)):
-they never enter the machine snapshot or the bundle identity, and they are
-not a health score.
+Gauges are a versioned normalization ([docs/spec/gauges.md](docs/spec/gauges.md))
+persisted as `gauges.json`; the band stays the semantic truth, the gauge is
+the position inside it, and nothing is ever summed into a health score.
 
-Horizon, Direction and Debt read explicit planning metadata only: milestones
-with due dates, milestones set on pull requests, and a configured debt label
-mapping. A repository without those declares nothing and gets `UNDECLARED`
-or `UNINSTRUMENTED`, which is a fact about its metadata, not about its code.
+## Where to focus
+
+Every bundle also carries `demand.json`
+([docs/spec/demand.md](docs/spec/demand.md)): one level per Vital from
+CRITICAL, HIGH, MEDIUM, LOW, MINIMAL or UNRESOLVED, taken from a versioned
+band-to-level table you can override, plus an attention order that ranks the
+Vitals by level and then by gauge. Autonomous development systems consume it
+to decide what to work on; the report shows it as the "Attention" section.
+UNRESOLVED means evidence was missing and must never be read as "nothing to
+do".
+
+Horizon, Direction and Debt read explicit planning metadata only: GitHub
+milestones with due dates and milestones set on pull requests, or two small
+register files committed to the repository, `targets.json` and `debt.json`
+([docs/spec/registers.md](docs/spec/registers.md)), with pull requests linked
+to targets by a `Target: <id>` line. A repository without any of those
+declares nothing and gets `UNDECLARED` or `UNINSTRUMENTED`, which is a fact
+about its metadata, not about its code.
+
+The `display` configuration chooses which Vitals appear, whether the card
+shows bars, numbers or band names, and which report sections are rendered
+([docs/configuration.md](docs/configuration.md)).
 
 ## What a run produces
 
@@ -95,6 +113,8 @@ One successful run of one project writes one immutable bundle:
 | Member | Content |
 | --- | --- |
 | `snapshot.json` | The authoritative machine state: seven Vitals with band, evaluation status, inputs, derived metrics, diagnostics. |
+| `gauges.json` | The 0-100 position of every band on the scale of its phenomenon, under a versioned normalization contract. |
+| `demand.json` | One demand level per Vital and the attention order, for consumers that decide where to work. |
 | `delta.json` | Deterministic comparison with the previous bundle: `BASELINE`, `COMPARABLE`, `HISTORY_GAP` or `INCOMPARABLE`, plus per-Vital transitions. |
 | `activity.json` | Normalized activity since the previous successful bundle: revisions, change requests, work items, verification, releases, capability changes. |
 | `observations.json` | Every raw observation with its status, coverage and evidence references, so the snapshot can be recomputed. |

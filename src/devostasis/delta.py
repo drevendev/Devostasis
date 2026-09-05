@@ -142,12 +142,31 @@ def compare(
     }
 
 
+def normalize_semantic_config(config: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Bring the semantic config of an older bundle to the current shape without changing its meaning.
+
+    Bundles written by devostasis.bundle.v1 recorded ``planning_source`` and a
+    debt mapping without ``source``; those are the same semantics as the
+    current ``planning`` object with default path and marker and a ``labels``
+    debt source.
+    """
+    if not isinstance(config, dict):
+        return config
+    result = dict(config)
+    if "planning" not in result and "planning_source" in result:
+        result["planning"] = {"source": result.pop("planning_source"), "path": None, "link_marker": "Target:"}
+    debt = result.get("debt_mapping")
+    if isinstance(debt, dict) and "source" not in debt:
+        result["debt_mapping"] = {"source": "labels", "labels": sorted(debt.get("labels") or []), "mapping_version": debt.get("mapping_version")}
+    return result
+
+
 def compatibility_reasons(current_manifest_fields: dict[str, Any], previous_manifest: dict[str, Any]) -> list[str]:
     """Reasons two bundles cannot be compared: semantic version or semantic config boundaries."""
     reasons = []
     for key in ("vitals_contract_version", "observation_contract_version", "policy_version"):
         if previous_manifest.get(key) != current_manifest_fields.get(key):
             reasons.append(f"VERSION_BOUNDARY:{key}:{previous_manifest.get(key)}->{current_manifest_fields.get(key)}")
-    if previous_manifest.get("semantic_config") != current_manifest_fields.get("semantic_config"):
+    if normalize_semantic_config(previous_manifest.get("semantic_config")) != normalize_semantic_config(current_manifest_fields.get("semantic_config")):
         reasons.append("SEMANTIC_CONFIG_CHANGED")
     return reasons

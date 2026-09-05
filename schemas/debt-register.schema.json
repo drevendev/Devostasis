@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/devostasis/schemas/debt-register.schema.json",
+  "title": "Debt register (devostasis.debt.v1)",
+  "description": "Explicitly registered maintenance obligations committed to the observed repository; read when debt.source = file.",
+  "type": "object",
+  "required": ["schema", "items"],
+  "properties": {
+    "schema": { "const": "devostasis.debt.v1" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "anyOf": [{ "required": ["opened"] }, { "required": ["updated"] }],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string" },
+          "state": { "enum": ["open", "closed", "done", "resolved", "cancelled", "canceled"] },
+          "opened": { "type": ["string", "null"] },
+          "updated": { "type": ["string", "null"] },
+          "closed": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

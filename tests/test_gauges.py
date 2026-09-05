@@ -43,7 +43,7 @@ def test_every_band_lands_inside_its_declared_range():
         gauge = gauges.gauge_for(_vital(vital_id, band, **derived))
         low, high = gauges.BAND_RANGES[vital_id][band]
         assert gauge["value"] is not None and low <= gauge["value"] <= high, (vital_id, band, gauge["value"])
-        assert gauge["authoritative"] is False and gauge["qualifier"] == "exact"
+        assert gauge["canonical_semantics"] == "snapshot.json" and gauge["qualifier"] == "exact"
 
 
 def test_unknown_and_not_applicable_states_have_no_value():

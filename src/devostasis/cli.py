@@ -8,15 +8,15 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
-from . import __version__, canonical, timeutil
+from . import __version__, canonical, render, timeutil
 from .adapters.github import CollectionError, GitHubClient, UrllibTransport
-from .bundle import verify_dir, load_bundle_dir
+from .bundle import load_bundle_dir, verify_dir
 from .config import ConfigError, load_config, single_project
 from .history import FilesystemHistoryStore
 from .observations import ObservationSet
 from .runner import build_from_observations, evaluate, observe, run_all, write_fleet_index
-from . import render
 
 TOKEN_ENVS = ("DEVOSTASIS_GITHUB_TOKEN", "GITHUB_TOKEN", "GH_TOKEN")
 
@@ -50,9 +50,37 @@ def _bands_line(bands: dict[str, str | None]) -> str:
     return " ".join(f"{name}={bands.get(name) or 'UNKNOWN'}" for name in order)
 
 
+def _project_overrides(args: argparse.Namespace) -> dict[str, Any]:
+    """Planning and debt configuration from CLI flags."""
+    overrides: dict[str, Any] = {}
+    planning: dict[str, Any] = {"source": getattr(args, "planning", "milestones")}
+    if getattr(args, "planning_path", None):
+        planning["path"] = args.planning_path
+    if getattr(args, "link_marker", None):
+        planning["link_marker"] = args.link_marker
+    overrides["planning"] = planning
+    labels = getattr(args, "debt_label", None)
+    debt_path = getattr(args, "debt_path", None)
+    version = getattr(args, "debt_mapping_version", None) or "cli-1"
+    if debt_path:
+        overrides["debt"] = {"source": "file", "path": debt_path, "mapping_version": version}
+    elif labels:
+        overrides["debt"] = {"source": "labels", "labels": list(labels), "mapping_version": version}
+    return overrides
+
+
+def _add_project_flags(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--planning", choices=("milestones", "file", "none"), default="milestones", help="planning target source")
+    parser.add_argument("--planning-path", help="repository path of the targets register when --planning file")
+    parser.add_argument("--link-marker", help="marker that links a change request to a target (default 'Target:')")
+    parser.add_argument("--debt-label", action="append", help="issue label that marks a registered debt item (repeatable)")
+    parser.add_argument("--debt-path", help="repository path of the debt register (source file)")
+    parser.add_argument("--debt-mapping-version")
+
+
 def cmd_observe(args: argparse.Namespace) -> int:
     token, source = resolve_token(args.token)
-    project = single_project(args.repo, planning={"source": args.planning}, debt=_debt_from_args(args))
+    project = single_project(args.repo, **_project_overrides(args))
     client = GitHubClient(UrllibTransport(token))
     print(f"token: {source}", file=sys.stderr)
     try:
@@ -100,30 +128,17 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def cmd_build(args: argparse.Namespace) -> int:
     """Build and persist a bundle from a saved observation set (offline)."""
-    obs = ObservationSet.load(args.observations)
-    project = single_project(f"{obs.subject.get('owner', 'unknown')}/{obs.subject.get('repo', 'unknown')}", planning={"source": args.planning}, debt=_debt_from_args(args))
     from .normalize import derive
+
+    obs = ObservationSet.load(args.observations)
+    project = single_project(f"{obs.subject.get('owner', 'unknown')}/{obs.subject.get('repo', 'unknown')}", **_project_overrides(args))
     derive(obs, project)
     store = FilesystemHistoryStore(args.store)
     bundle = build_from_observations(project, obs, store)
-    path = store.commit(bundle, bundle.bands(), bundle.gauges())
+    path = store.commit(bundle)
     write_fleet_index(store)
     print(f"bundle {bundle.bundle_id[:12]} ({bundle.manifest['comparison_status']}) written to {path}")
     print(_bands_line(bundle.bands()))
-    return 0
-
-
-def cmd_gauges(args: argparse.Namespace) -> int:
-    """Print the presentation-only gauges of a bundle or snapshot as JSON."""
-    from .gauges import gauges_for_snapshot
-
-    path = Path(args.bundle) if args.bundle else Path(args.snapshot)
-    snapshot_path = path / "snapshot.json" if path.is_dir() else path
-    snapshot = canonical.load_file(snapshot_path)
-    payload = {"contract": "devostasis.gauge.v1", "authoritative": False, "observed_at": snapshot.get("observed_at"), "gauges": gauges_for_snapshot(snapshot)}
-    sys.stdout.write(canonical.pretty_json(payload))
-    if args.card:
-        sys.stdout.write("\n" + render.render_status_card(snapshot) + "\n")
     return 0
 
 
@@ -137,13 +152,24 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load_members(directory: str) -> dict[str, Any]:
+    members = load_bundle_dir(directory)
+    parsed: dict[str, Any] = {}
+    for name, data in members.items():
+        if name.endswith(".json"):
+            parsed[name] = canonical.loads(data.decode("utf-8"))
+    return parsed
+
+
 def cmd_render(args: argparse.Namespace) -> int:
-    members = load_bundle_dir(args.bundle)
-    manifest = canonical.loads(members["manifest.json"].decode("utf-8"))
-    snapshot = canonical.loads(members["snapshot.json"].decode("utf-8"))
-    delta = canonical.loads(members["delta.json"].decode("utf-8"))
-    activity = canonical.loads(members["activity.json"].decode("utf-8")) if "activity.json" in members else None
-    sys.stdout.write(render.render_report(manifest, snapshot, delta, activity))
+    parsed = _load_members(args.bundle)
+    display = (parsed.get("effective-config.json") or {}).get("display")
+    sys.stdout.write(
+        render.render_report(
+            parsed["manifest.json"], parsed["snapshot.json"], parsed["delta.json"], parsed.get("activity.json"),
+            parsed.get("gauges.json"), parsed.get("demand.json"), display,
+        )
+    )
     return 0
 
 
@@ -153,11 +179,42 @@ def cmd_index(args: argparse.Namespace) -> int:
     return 0
 
 
-def _debt_from_args(args: argparse.Namespace):
-    labels = getattr(args, "debt_label", None)
-    if not labels:
-        return None
-    return {"labels": list(labels), "mapping_version": getattr(args, "debt_mapping_version", None) or "cli-1"}
+def _snapshot_from_args(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return (snapshot, parsed members) for --bundle or --snapshot."""
+    if args.bundle:
+        parsed = _load_members(args.bundle)
+        return parsed["snapshot.json"], parsed
+    snapshot = canonical.load_file(args.snapshot)
+    return snapshot, {}
+
+
+def cmd_gauges(args: argparse.Namespace) -> int:
+    """Print the gauges of a bundle (its gauges.json) or compute them from a snapshot."""
+    from .gauges import gauges_member
+
+    snapshot, parsed = _snapshot_from_args(args)
+    payload = parsed.get("gauges.json") or gauges_member(snapshot)
+    sys.stdout.write(canonical.pretty_json(payload))
+    if args.card:
+        display = (parsed.get("effective-config.json") or {}).get("display")
+        sys.stdout.write("\n" + render.render_status_card(snapshot, display, payload) + "\n")
+    return 0
+
+
+def cmd_demand(args: argparse.Namespace) -> int:
+    """Print the demand interface of a bundle (its demand.json) or compute it with default mapping."""
+    from .config import DEFAULTS
+    from .demand import DEFAULT_LEVELS, DEFAULT_MAPPING_VERSION, build_demand
+    from .gauges import gauges_for_snapshot
+
+    snapshot, parsed = _snapshot_from_args(args)
+    payload = parsed.get("demand.json") or build_demand(snapshot, gauges_for_snapshot(snapshot), {"mapping_version": DEFAULT_MAPPING_VERSION, "levels": DEFAULT_LEVELS})
+    if args.order_only:
+        for position, entry in enumerate(payload["attention_order"], start=1):
+            print(f"{position}. {entry['vital_id']} {entry['level']} ({entry['attention_key']})")
+        return 0
+    sys.stdout.write(canonical.pretty_json(payload))
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -170,9 +227,7 @@ def build_parser() -> argparse.ArgumentParser:
     observe_p.add_argument("--out", default="observations.json")
     observe_p.add_argument("--token")
     observe_p.add_argument("--now", help="observation timestamp (RFC 3339) for reproducible runs")
-    observe_p.add_argument("--planning", choices=("milestones", "none"), default="milestones")
-    observe_p.add_argument("--debt-label", action="append", help="issue label that marks a registered debt item (repeatable)")
-    observe_p.add_argument("--debt-mapping-version")
+    _add_project_flags(observe_p)
     observe_p.set_defaults(func=cmd_observe)
 
     eval_p = sub.add_parser("evaluate", help="evaluate the seven Vitals from a saved observation set")
@@ -192,9 +247,7 @@ def build_parser() -> argparse.ArgumentParser:
     build_p = sub.add_parser("build", help="build and persist a bundle from a saved observation set (offline)")
     build_p.add_argument("--observations", required=True)
     build_p.add_argument("--store", required=True)
-    build_p.add_argument("--planning", choices=("milestones", "none"), default="milestones")
-    build_p.add_argument("--debt-label", action="append")
-    build_p.add_argument("--debt-mapping-version")
+    _add_project_flags(build_p)
     build_p.set_defaults(func=cmd_build)
 
     verify_p = sub.add_parser("verify", help="verify digests, identity and report reproducibility of a bundle directory")
@@ -209,12 +262,19 @@ def build_parser() -> argparse.ArgumentParser:
     index_p.add_argument("--store", required=True)
     index_p.set_defaults(func=cmd_index)
 
-    gauges_p = sub.add_parser("gauges", help="print presentation-only 0-100 gauges for a bundle or snapshot")
+    gauges_p = sub.add_parser("gauges", help="print the 0-100 gauges of a bundle or snapshot")
     group = gauges_p.add_mutually_exclusive_group(required=True)
     group.add_argument("--bundle", help="bundle directory")
     group.add_argument("--snapshot", help="snapshot.json path")
     gauges_p.add_argument("--card", action="store_true", help="also print the text status card")
     gauges_p.set_defaults(func=cmd_gauges)
+
+    demand_p = sub.add_parser("demand", help="print the demand interface (levels and attention order) of a bundle or snapshot")
+    group = demand_p.add_mutually_exclusive_group(required=True)
+    group.add_argument("--bundle", help="bundle directory")
+    group.add_argument("--snapshot", help="snapshot.json path")
+    demand_p.add_argument("--order-only", action="store_true", help="print only the attention order")
+    demand_p.set_defaults(func=cmd_demand)
     return parser
 
 

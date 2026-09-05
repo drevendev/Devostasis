@@ -8,7 +8,8 @@ report and output digests are post-identity, so the graph is acyclic.
 The exact canonical effective config preimage is persisted as the member
 ``effective-config.json`` (B3 repair): a historical bundle can recompute its
 own ``effective_config_digest`` and re-render itself without any external
-configuration.
+configuration. ``gauges.json`` and ``demand.json`` are derived from the
+snapshot under versioned contracts and are identity-bearing members.
 """
 
 from __future__ import annotations
@@ -24,17 +25,31 @@ from .contracts import (
     BUNDLE_IDENTITY_CONTRACT,
     CANONICAL_SERIALIZATION_VERSION,
     CI_UNIT_CONTRACT_VERSION,
+    DEMAND_CONTRACT,
     EFFECTIVE_CONFIG_CONTRACT,
+    GAUGE_CONTRACT,
     MANIFEST_SCHEMA,
     OBSERVATION_CONTRACT_VERSION,
     RENDERER_VERSION,
     VITALS_CONTRACT_VERSION,
 )
+from .demand import build_demand
+from .gauges import gauges_member
 from .observations import ObservationSet
 from .policy import POLICY_VERSION
 
 ACTIVITY_DISABLED = "ACTIVITY_DISABLED"
-JSON_MEMBERS = ("manifest.json", "snapshot.json", "delta.json", "activity.json", "observations.json")
+MEMBER_NAMES = (
+    "manifest.json",
+    "snapshot.json",
+    "delta.json",
+    "activity.json",
+    "observations.json",
+    "gauges.json",
+    "demand.json",
+    "effective-config.json",
+    "report.md",
+)
 
 
 @dataclass
@@ -45,17 +60,21 @@ class Bundle:
     manifest: dict[str, Any]
     members: dict[str, bytes] = field(default_factory=dict)
 
+    def _json(self, name: str) -> dict[str, Any]:
+        return canonical.loads(self.members[name].decode("utf-8"))
+
     @property
     def snapshot(self) -> dict[str, Any]:
-        return canonical.loads(self.members["snapshot.json"].decode("utf-8"))
+        return self._json("snapshot.json")
 
     def bands(self) -> dict[str, str | None]:
         return {item["vital_id"]: item["band"] for item in self.snapshot["vitals"]}
 
     def gauges(self) -> dict[str, int | None]:
-        from .gauges import gauge_values
+        return {g["vital_id"]: g["value"] for g in self._json("gauges.json")["gauges"]}
 
-        return gauge_values(self.snapshot)
+    def demand(self) -> dict[str, Any]:
+        return self._json("demand.json")
 
 
 class BundleError(Exception):
@@ -94,9 +113,14 @@ def build_bundle(
     receipt_dict = obs.receipt.to_dict()
     identity = project_identity(obs, project)
 
+    gauges_doc = gauges_member(snapshot)
+    demand_doc = build_demand(snapshot, gauges_doc["gauges"], project.demand)
+
     snapshot_digest = canonical.digest(snapshot)
     delta_digest = canonical.digest(delta)
     activity_digest = canonical.digest(activity) if activity is not None else ACTIVITY_DISABLED
+    gauges_digest = canonical.digest(gauges_doc)
+    demand_digest = canonical.digest(demand_doc)
     observations_dict = obs.to_dict()
     observations_digest = canonical.digest(observations_dict)
     receipt_digest = canonical.digest(receipt_dict)
@@ -107,6 +131,8 @@ def build_bundle(
         "vitals_contract_version": VITALS_CONTRACT_VERSION,
         "observation_contract_version": OBSERVATION_CONTRACT_VERSION,
         "ci_unit_contract_version": CI_UNIT_CONTRACT_VERSION,
+        "gauge_contract": GAUGE_CONTRACT,
+        "demand_contract": DEMAND_CONTRACT,
         "policy_version": POLICY_VERSION,
         "config_version": project.config_version,
         "renderer_version": RENDERER_VERSION,
@@ -120,6 +146,8 @@ def build_bundle(
         "snapshot_digest": snapshot_digest,
         "delta_digest": delta_digest,
         "activity_digest": activity_digest,
+        "gauges_digest": gauges_digest,
+        "demand_digest": demand_digest,
         "observations_digest": observations_digest if project.observations_member else "OBSERVATIONS_MEMBER_DISABLED",
         "source_receipts_digest": receipt_digest,
     }
@@ -139,6 +167,8 @@ def build_bundle(
         "vitals_contract_version": VITALS_CONTRACT_VERSION,
         "observation_contract_version": OBSERVATION_CONTRACT_VERSION,
         "ci_unit_contract_version": CI_UNIT_CONTRACT_VERSION,
+        "gauge_contract": GAUGE_CONTRACT,
+        "demand_contract": DEMAND_CONTRACT,
         "policy_version": POLICY_VERSION,
         "config_version": project.config_version,
         "renderer_version": RENDERER_VERSION,
@@ -151,6 +181,8 @@ def build_bundle(
             "report_html": "DISABLED",
             "activity_json": "ENABLED" if activity is not None else "DISABLED",
             "observations_json": "ENABLED" if project.observations_member else "DISABLED",
+            "gauges_json": "REQUIRED",
+            "demand_json": "REQUIRED",
             "effective_config_json": "REQUIRED",
         },
         "adapters": [{"provider": "github", "adapter_version": obs.receipt.collector_version}],
@@ -158,12 +190,14 @@ def build_bundle(
         "identity_preimage": preimage,
     }
 
-    report_text = render.render_report(manifest_core, snapshot, delta, activity)
+    report_text = render.render_report(manifest_core, snapshot, delta, activity, gauges_doc, demand_doc, effective_config.get("display"))
     report_bytes = report_text.encode("utf-8")
 
     members: dict[str, bytes] = {
         "snapshot.json": canonical.pretty_json(snapshot).encode("utf-8"),
         "delta.json": canonical.pretty_json(delta).encode("utf-8"),
+        "gauges.json": canonical.pretty_json(gauges_doc).encode("utf-8"),
+        "demand.json": canonical.pretty_json(demand_doc).encode("utf-8"),
         "effective-config.json": effective_bytes,
         "report.md": report_bytes,
     }
@@ -176,6 +210,8 @@ def build_bundle(
     manifest["members"] = {
         "snapshot.json": snapshot_digest,
         "delta.json": delta_digest,
+        "gauges.json": gauges_digest,
+        "demand.json": demand_digest,
         "effective-config.json": effective_digest,
         "report.md": canonical.digest_bytes(report_bytes),
     }
@@ -191,11 +227,21 @@ def build_bundle(
 def load_bundle_dir(directory: str | Path) -> dict[str, bytes]:
     directory = Path(directory)
     members: dict[str, bytes] = {}
-    for name in ("manifest.json", "snapshot.json", "delta.json", "activity.json", "observations.json", "effective-config.json", "report.md"):
+    for name in MEMBER_NAMES:
         path = directory / name
         if path.exists():
             members[name] = path.read_bytes()
     return members
+
+
+PREIMAGE_MEMBER_DIGESTS = (
+    ("snapshot.json", "snapshot_digest"),
+    ("delta.json", "delta_digest"),
+    ("activity.json", "activity_digest"),
+    ("observations.json", "observations_digest"),
+    ("gauges.json", "gauges_digest"),
+    ("demand.json", "demand_digest"),
+)
 
 
 def verify_members(members: dict[str, bytes]) -> list[str]:
@@ -244,8 +290,8 @@ def verify_members(members: dict[str, bytes]) -> list[str]:
             problems.append("effective_config_digest differs between preimage and manifest")
         if "effective-config.json" in members and preimage.get("effective_config_digest") != canonical.digest_bytes(members["effective-config.json"]):
             problems.append("persisted effective config does not hash to effective_config_digest (ART-20/ART-21)")
-        for member, key in (("snapshot.json", "snapshot_digest"), ("delta.json", "delta_digest"), ("activity.json", "activity_digest"), ("observations.json", "observations_digest")):
-            if member in declared and preimage.get(key) != declared[member]:
+        for member, key in PREIMAGE_MEMBER_DIGESTS:
+            if member in declared and key in preimage and preimage.get(key) != declared[member]:
                 problems.append(f"{member} digest differs between preimage and manifest members")
         for key in ("bundle_id", "members", "run_meta"):
             if key in preimage:
@@ -256,9 +302,15 @@ def verify_members(members: dict[str, bytes]) -> list[str]:
             snapshot = canonical.loads(members["snapshot.json"].decode("utf-8"))
             delta = canonical.loads(members["delta.json"].decode("utf-8"))
             activity = canonical.loads(members["activity.json"].decode("utf-8")) if "activity.json" in members else None
-            rendered = render.render_report(manifest, snapshot, delta, activity).encode("utf-8")
-            if manifest.get("renderer_version") == RENDERER_VERSION and rendered != members["report.md"]:
-                problems.append("report.md is not reproducible from the machine bundle with the current renderer (ART-12)")
+            gauges_doc = canonical.loads(members["gauges.json"].decode("utf-8")) if "gauges.json" in members else None
+            demand_doc = canonical.loads(members["demand.json"].decode("utf-8")) if "demand.json" in members else None
+            display = None
+            if "effective-config.json" in members:
+                display = canonical.loads(members["effective-config.json"].decode("utf-8")).get("display")
+            if manifest.get("renderer_version") == RENDERER_VERSION:
+                rendered = render.render_report(manifest, snapshot, delta, activity, gauges_doc, demand_doc, display).encode("utf-8")
+                if rendered != members["report.md"]:
+                    problems.append("report.md is not reproducible from the machine bundle with the current renderer (ART-12)")
         except Exception as exc:  # noqa: BLE001
             problems.append(f"report re-rendering failed: {exc}")
     return problems

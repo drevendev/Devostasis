@@ -45,7 +45,11 @@
       "properties": {
         "planning": {
           "type": "object",
-          "properties": { "source": { "enum": ["milestones", "none"] } },
+          "properties": {
+            "source": { "enum": ["milestones", "file", "none"] },
+            "path": { "type": "string", "description": "repository-relative path of the targets register (source file)" },
+            "link_marker": { "type": "string", "minLength": 1 }
+          },
           "additionalProperties": false
         },
         "debt": {
@@ -55,12 +59,47 @@
               "type": "object",
               "required": ["labels", "mapping_version"],
               "properties": {
+                "source": { "const": "labels" },
                 "labels": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+                "mapping_version": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["source", "path", "mapping_version"],
+              "properties": {
+                "source": { "const": "file" },
+                "path": { "type": "string", "minLength": 1 },
                 "mapping_version": { "type": "string", "minLength": 1 }
               },
               "additionalProperties": false
             }
           ]
+        },
+        "display": {
+          "type": "object",
+          "properties": {
+            "vitals": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse"] } },
+            "gauge": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["bar", "number", "band"] } },
+            "sections": { "type": "array", "uniqueItems": true, "items": { "enum": ["demand", "details", "observability", "changes", "activity", "provenance"] } }
+          },
+          "additionalProperties": false
+        },
+        "demand": {
+          "type": "object",
+          "properties": {
+            "mapping_version": { "type": "string", "minLength": 1 },
+            "levels": {
+              "type": "object",
+              "propertyNames": { "enum": ["horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse"] },
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": { "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "MINIMAL"] }
+              }
+            }
+          },
+          "additionalProperties": false
         },
         "report_html": { "type": "boolean" },
         "locale": { "enum": ["en"] },

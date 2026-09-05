@@ -30,10 +30,22 @@ First minimum viable version: useful on real repositories today.
   HISTORY_GAP / INCOMPARABLE comparison and a fleet overview.
 - CLI: `observe`, `evaluate`, `run`, `build`, `verify`, `render`, `index`,
   `gauges`.
-- Presentation-only gauges (`devostasis.gauge.v1`): deterministic 0-100
-  placement of each band on the scale of its phenomenon, rendered as a
-  status card in `report.md` (renderer `devostasis.render.v2`) and in the
-  fleet overview; never part of the snapshot or the bundle identity.
+- Gauges (`devostasis.gauge.v1`): deterministic 0-100 placement of each
+  band on the scale of its phenomenon, persisted as the identity-bearing
+  member `gauges.json`, rendered as a status card in `report.md` and in the
+  fleet overview; the band stays the semantic authority.
+- Demand interface (`devostasis.demand.v1`, member `demand.json`): one level
+  per Vital from a versioned, overridable band-to-level table plus an
+  attention order; `UNRESOLVED` for missing evidence; no aggregate.
+- Register files: planning targets from `targets.json` and debt items from
+  `debt.json` committed to the observed repository, change requests linked
+  to targets with a `Target: <id>` marker; label-based debt mapping kept.
+- Display configuration: which Vitals, which card components (bar, number,
+  band) and which report sections are rendered; part of the effective config
+  and therefore of the bundle identity (renderer `devostasis.render.v3`,
+  bundle `devostasis.bundle.v2`, effective config `v2`).
+- `demand` CLI command; older `bundle.v1` history stays verifiable and
+  comparable.
 - 107 conformance and unit tests named after the research cases they
   implement.
 - Released under the MIT license.

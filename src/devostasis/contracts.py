@@ -18,17 +18,22 @@ CI_UNIT_CONTRACT_VERSION = "PV-CI-UNIT-004"
 # Numeric thresholds and windows frozen in V0 and preserved by V1.1.
 POLICY_VERSION = "devostasis.policy.v1"
 
-# Bundle layout: PV-ARTIFACT-V1-003 plus the B3 repair (persisted effective config).
-ARTIFACT_CONTRACT_VERSION = "devostasis.bundle.v1"
+# Bundle layout: PV-ARTIFACT-V1-003 plus the B3 repair (persisted effective config);
+# v2 adds the gauges.json and demand.json members to the identity preimage.
+ARTIFACT_CONTRACT_VERSION = "devostasis.bundle.v2"
 BUNDLE_IDENTITY_CONTRACT = "PV-BUNDLE-ID-002"
 EFFECTIVE_CONFIG_CONTRACT = "PV-EFFECTIVE-CONFIG-001"
-EFFECTIVE_CONFIG_SCHEMA = "devostasis.effective-config.v1"
+EFFECTIVE_CONFIG_SCHEMA = "devostasis.effective-config.v2"
 
-# Deterministic Markdown renderer (v2 adds non-authoritative gauges).
-RENDERER_VERSION = "devostasis.render.v2"
+# Deterministic Markdown renderer (v3 honours display configuration and renders demand).
+RENDERER_VERSION = "devostasis.render.v3"
 
-# Presentation-only 0-100 gauges derived from bands and metrics.
+# 0-100 gauges: a versioned normalization of bands and metrics for consumers and humans.
 GAUGE_CONTRACT = "devostasis.gauge.v1"
+GAUGES_SCHEMA = "devostasis.gauges.v1"
+
+# Generic consumer demand interface: band -> level plus an attention order, no aggregate.
+DEMAND_CONTRACT = "devostasis.demand.v1"
 
 # Canonical JSON profile used for every digest.
 CANONICAL_SERIALIZATION_VERSION = "devostasis.canon.v1"

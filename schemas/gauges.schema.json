@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/devostasis/schemas/gauges.schema.json",
+  "title": "Gauges member (devostasis.gauges.v1)",
+  "description": "0-100 placement of every band on the scale of its phenomenon under devostasis.gauge.v1. snapshot.json stays the semantic authority.",
+  "type": "object",
+  "required": ["schema", "contract", "observed_at", "canonical_semantics", "gauges"],
+  "properties": {
+    "schema": { "const": "devostasis.gauges.v1" },
+    "contract": { "const": "devostasis.gauge.v1" },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "canonical_semantics": { "const": "snapshot.json" },
+    "contract_status": { "type": "string" },
+    "gauges": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["vital_id", "band", "value", "qualifier", "scale", "contract", "canonical_semantics"],
+        "properties": {
+          "vital_id": { "enum": ["horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse"] },
+          "band": { "type": ["string", "null"] },
+          "value": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+          "qualifier": { "enum": ["exact", "at_least", "at_most", "approximate", null] },
+          "scale": { "type": "string" },
+          "contract": { "const": "devostasis.gauge.v1" },
+          "canonical_semantics": { "const": "snapshot.json" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
