@@ -30,6 +30,41 @@ def test_build_verify_render_and_index(tmp_path, capsys):
     assert capsys.readouterr().out.startswith("1. ")
 
 
+def test_actions_summary_writes_step_summary_and_outputs(tmp_path, capsys, monkeypatch):
+    obs_path = tmp_path / "observations.json"
+    full_inputs(obs_set()).save(obs_path)
+    store = tmp_path / "store"
+    assert main(["build", "--observations", str(obs_path), "--store", str(store)]) == 0
+    capsys.readouterr()
+    latest = store / "projects" / "github.com" / "acme" / "widget" / "latest"
+    summary = tmp_path / "summary.md"
+    outputs = tmp_path / "outputs.txt"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    monkeypatch.setenv("GITHUB_OUTPUT", str(outputs))
+    assert main(["actions-summary", "--bundle", str(latest)]) == 0
+    text = summary.read_text("utf-8")
+    assert text.startswith("## Devostasis: acme/widget") and "| Order | Vital | Level | Band | Gauge |" in text
+    lines = dict(line.split("=", 1) for line in outputs.read_text("utf-8").splitlines() if "=" in line)
+    assert lines["comparison-status"] == "BASELINE" and lines["attention"].split(" ")[1] in ("CRITICAL", "HIGH", "MEDIUM", "LOW", "MINIMAL", "UNRESOLVED")
+    assert json.loads(lines["levels"])["integrity"] == "MINIMAL" and json.loads(lines["bands"])["pulse"] == "STEADY"
+    assert json.loads(lines["attention-order"])[0]["vital_id"] == lines["attention"].split(" ")[0]
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY")
+    monkeypatch.delenv("GITHUB_OUTPUT")
+    assert main(["actions-summary", "--bundle", str(latest)]) == 0
+    assert "attention=" in capsys.readouterr().out
+
+
+def test_run_repo_mode_builds_a_single_project_config():
+    from devostasis.cli import build_parser, config_for_repo
+
+    args = build_parser().parse_args(["run", "--repo", "acme/widget", "--store", "s", "--planning", "file", "--planning-path", "plans/targets.json", "--debt-label", "type:debt", "--config-version", "self-v0.1.1"])
+    config = config_for_repo(args)
+    assert len(config.projects) == 1 and config.store_path == "s" and config.config_version == "self-v0.1.1"
+    project = config.projects[0]
+    assert project.planning == {"source": "file", "path": "plans/targets.json", "link_marker": "Target:"}
+    assert project.debt_mapping == {"source": "labels", "labels": ["type:debt"], "mapping_version": "cli-1"}
+
+
 def test_evaluate_command(tmp_path, capsys):
     obs_path = tmp_path / "observations.json"
     full_inputs(obs_set()).save(obs_path)

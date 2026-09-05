@@ -1,10 +1,69 @@
 # Deployment
 
-The recommended production setup is a **companion history repository**: a
-separate, private Git repository that holds the configuration, runs
-Devostasis once a day in GitHub Actions, and commits the bundles to itself.
-The observed repositories are never written to, and the history repository is
-never observed, so storage activity cannot leak into project telemetry.
+There are two ways to run Devostasis, and they complement each other:
+
+| | Fleet observer | Self-observation |
+| --- | --- | --- |
+| Who reads whom | one history repository reads many projects | a project reads itself |
+| Token | one read-only personal access token | none: the workflow's own `GITHUB_TOKEN` |
+| History and deltas | full, in one place | only when a history store is given for comparison |
+| Meant for | the human overview across projects and cross-project routing | the project's own autonomous loop deciding what to work on |
+| Change in the project | none | one job in a workflow |
+
+## Self-observation from a project (no secrets)
+
+Add a job that calls the reusable workflow shipped in this repository:
+
+```yaml
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  actions: read
+  checks: read
+
+jobs:
+  vitals:
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.1
+    with:
+      debt-labels: "type:debt"          # optional: issue labels that mark debt items
+      # planning-source: file             # optional: targets register instead of milestones
+      # planning-path: devostasis/targets.json
+      # history-repo: owner/history       # optional: compare with the latest bundle there
+    # secrets:
+    #   history-token: ${{ secrets.HISTORY_READ_TOKEN }}   # only if history-repo is private
+
+  decide:
+    needs: vitals
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "work on ${{ needs.vitals.outputs.attention }}"
+      - if: contains(fromJSON(needs.vitals.outputs.levels).integrity, 'CRITICAL')
+        run: echo "verification first"
+```
+
+What the job does: installs Devostasis at the given ref, observes the calling
+repository with the workflow's own token, writes the status card and the
+attention order to the job summary, uploads the bundle as the artifact
+`devostasis-bundle`, and exposes outputs: `attention` (first attention entry,
+e.g. `integrity CRITICAL`), `attention-order`, `levels`, `bands` and `gauges`
+as JSON, `bundle-id`, `comparison-status`. Without `history-repo` every run
+is a `BASELINE` bundle, which is enough to decide the current focus; with it
+the run compares against the latest bundle of that store without writing to
+it.
+
+The caller's `permissions` block must grant the five read scopes above, or
+the token cannot see issues, pull requests and workflow runs and the
+corresponding Vitals come back FORBIDDEN.
+
+## Fleet observer with a companion history repository
+
+The recommended production setup for history is a **companion history
+repository**: a separate, private Git repository that holds the
+configuration, runs Devostasis once a day in GitHub Actions, and commits the
+bundles to itself. The observed repositories are never written to, and the
+history repository is never observed, so storage activity cannot leak into
+project telemetry.
 
 ## 1. Create the history repository
 
@@ -25,7 +84,10 @@ commit subjects and branch names.
 Create a fine-grained personal access token with read-only access to the
 repositories you want to observe: Contents, Issues, Pull requests, Actions
 and Metadata. Store it as the repository secret `DEVOSTASIS_TOKEN` in the
-history repository. Devostasis never persists the token.
+history repository. Devostasis never persists the token. A fine-grained token
+is bound to one resource owner (a user or one organization); repositories of
+other owners need their own token and configuration file, or use
+self-observation instead.
 
 ## 3. The workflow
 

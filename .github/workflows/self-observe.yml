@@ -1,0 +1,40 @@
+# Devostasis observes its own repository with the reusable workflow it ships.
+# This is the live test of observe-self.yml: it runs on the commit that
+# changed it, weekly, and on demand.
+
+name: Self-observation
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 6 * * 1"
+  push:
+    branches: ["release/**"]
+    paths: [".github/workflows/observe-self.yml", ".github/workflows/self-observe.yml", "src/devostasis/cli.py"]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  actions: read
+  checks: read
+
+jobs:
+  observe:
+    uses: ./.github/workflows/observe-self.yml
+    with:
+      devostasis-ref: ${{ github.sha }}
+      debt-labels: "type:debt"
+  react:
+    needs: observe
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show what a consumer would see
+        env:
+          ATTENTION: ${{ needs.observe.outputs.attention }}
+          LEVELS: ${{ needs.observe.outputs.levels }}
+          BANDS: ${{ needs.observe.outputs.bands }}
+        run: |
+          echo "attention: $ATTENTION"
+          echo "levels: $LEVELS"
+          echo "bands: $BANDS"
