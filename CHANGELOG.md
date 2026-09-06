@@ -24,7 +24,10 @@ something a consumer can act on. No rule, threshold, window or gauge changed.
   branch is `REGISTER_NOT_FOUND` until it merges.
 - The reusable workflow's default `devostasis-ref` is `v0.1.3`, so a caller
   that pins the workflow at this tag and passes no ref installs this engine
-  rather than the previous one (debt item D-5).
+  rather than the previous one (debt item D-5). Every documented pin in the
+  README and the deployment guide names the same tag, and
+  `tests/test_release_pins.py` fails the build when one of them, the package
+  version or the changelog section falls behind.
 
 This is the first real-repository evidence for `planning.source = file` and
 `debt.source = file`; until now both contracts existed only in synthetic

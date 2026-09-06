@@ -36,7 +36,8 @@
       "title": "The reusable workflow's default install ref is bumped by hand at every release",
       "state": "open",
       "opened": "2026-09-05",
-      "cost": "observe-self.yml carries a default devostasis-ref. A release that forgets it installs an older engine for every caller that does not pass a ref, and nothing fails when it is forgotten."
+      "updated": "2026-09-06",
+      "cost": "observe-self.yml carries a default devostasis-ref, and the README and deployment guide carry the tag an adopter is told to pin. A release that forgets one installs an older engine for every caller that passes no ref. Since 0.1.3 tests/test_release_pins.py turns forgetting into a red build, so the interest is paid, but the bump is still manual and the obligation stays open until the version is generated rather than written."
     }
   ]
 }
