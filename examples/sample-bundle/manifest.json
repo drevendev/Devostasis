@@ -6,7 +6,7 @@
     }
   ],
   "artifact_contract_version": "devostasis.bundle.v2",
-  "bundle_id": "cb851ed5b6f0d6f1b5b2fecaae1571b54bcaf2c66ef04fa32c645f0d73c3e1f0",
+  "bundle_id": "a8b3a828c1b8e4bdc3de588b758f901d18faaaef3844559bf7d0f567abacf912",
   "bundle_identity_contract": "PV-BUNDLE-ID-002",
   "canonical_member_profile": {
     "activity_json": "ENABLED",
@@ -42,7 +42,7 @@
     "gauge_contract": "devostasis.gauge.v1",
     "gauges_digest": "sha256:9625ff34cc358d9343d865f6900a20c357b400f47be23a414775c21261bbc628",
     "observation_contract_version": "RAW-OBS-V0",
-    "observations_digest": "sha256:e3670fe2668494cdcdf2148fd6e43301845a5d7e6cd47aacddb108e06057a0b9",
+    "observations_digest": "sha256:63fbe9fe9a4b6a7a0ac80e278595e0f2c7bd0932ac717a29727614e1cf1641db",
     "observed_at": "2026-09-05T12:00:00Z",
     "policy_version": "devostasis.policy.v1",
     "previous_bundle_id": null,
@@ -54,8 +54,8 @@
       "provider": "github"
     },
     "renderer_version": "devostasis.render.v4",
-    "snapshot_digest": "sha256:f0bee250ab10bab25f9654cdcfebe8ed0fa3b371473ed92b7a8b2e3e0f152a3b",
-    "source_receipts_digest": "sha256:7f35306f781930bd5c465b9c1df4599acad0e870d7b7c6551bfacee650c881d8",
+    "snapshot_digest": "sha256:6465bd47270e12727cebe8205ed154b282d32f8ee987c49257c83e4fa0abcce8",
+    "source_receipts_digest": "sha256:fda4a9bc9f4f74739ecd59c85eed55a83e95a7085ae22fa7d82d9c98f36ecde3",
     "vitals_contract_version": "PV-VITALS-V1-002"
   },
   "members": {
@@ -64,9 +64,9 @@
     "demand.json": "sha256:615dbc00bee70964a95bded568a13b56d8a77d18cf5db1f6e6a54ddba4b6acca",
     "effective-config.json": "sha256:cc472c9ad93f6721ecc9a3fc14f3067ccc85af33c2acceb4489982a44eb370ac",
     "gauges.json": "sha256:9625ff34cc358d9343d865f6900a20c357b400f47be23a414775c21261bbc628",
-    "observations.json": "sha256:e3670fe2668494cdcdf2148fd6e43301845a5d7e6cd47aacddb108e06057a0b9",
-    "report.md": "sha256:082b5c58c6dc971eec69822db8cfb926757650d9f2f58b285f9eacbb43e36c2a",
-    "snapshot.json": "sha256:f0bee250ab10bab25f9654cdcfebe8ed0fa3b371473ed92b7a8b2e3e0f152a3b"
+    "observations.json": "sha256:63fbe9fe9a4b6a7a0ac80e278595e0f2c7bd0932ac717a29727614e1cf1641db",
+    "report.md": "sha256:f0a68acc84a8f39c1b4531dd454e8ec1b474515b7230aa5fc4a262edd66cdeca",
+    "snapshot.json": "sha256:6465bd47270e12727cebe8205ed154b282d32f8ee987c49257c83e4fa0abcce8"
   },
   "observation_contract_version": "RAW-OBS-V0",
   "observed_at": "2026-09-05T12:00:00Z",
@@ -126,7 +126,6 @@
         "status": "AVAILABLE"
       }
     },
-    "request_count": 23,
     "requested_keys": [
       "ci.configured",
       "ci.revision_verdicts_14d",
@@ -150,7 +149,7 @@
       "planning.explicit_targets.inventory"
     ],
     "run_id": "run-20260905T120000Z-acme-widget",
-    "schema": "devostasis.receipt.v1",
+    "schema": "devostasis.receipt.v2",
     "started_at": "2026-09-05T12:00:00Z",
     "target": {
       "default_branch": "master",
@@ -168,7 +167,7 @@
     "example": true,
     "tool": {
       "name": "devostasis",
-      "version": "0.1.2"
+      "version": "0.1.5"
     }
   },
   "schema": "devostasis.manifest.v1",

@@ -129,7 +129,6 @@ def build_observation_set() -> ObservationSet:
             ended_at=OBSERVED_AT,
             capability_notes=["CI_SURFACE:GITHUB_ACTIONS_ONLY", "CHECKS_SURFACE_NOT_COLLECTED"],
             config_hash="example",
-            request_count=23,
         )
     )
     return result

@@ -13,9 +13,11 @@
     {
       "id": "D-2",
       "title": "The GitHub adapter makes unconditional requests and never backs off",
-      "state": "open",
+      "state": "closed",
       "opened": "2026-09-05",
-      "cost": "Every fleet run spends full API quota on evidence that mostly did not change, and a rate-limited day degrades bands to UNKNOWN instead of reusing the previous answer. Paid down by target B4."
+      "cost": "Every fleet run spent full API quota on evidence that mostly had not changed, and a rate-limited day degraded bands to UNKNOWN instead of reusing the previous answer. Closed in 0.1.6 by target B4: conditional requests replay unchanged bodies without spending quota, retryable failures wait only as long as the provider asked and only within a bounded waiting budget, and a per-project request budget truncates honestly instead of silently.",
+      "updated": "2026-09-06",
+      "closed": "2026-09-06"
     },
     {
       "id": "D-3",

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__, canonical, render, timeutil
+from .adapters.cache import ConditionalCache
 from .adapters.github import CollectionError, GitHubClient, UrllibTransport
 from .bundle import load_bundle_dir, verify_dir
 from .config import ConfigError, load_config, single_project
@@ -78,10 +79,41 @@ def _add_project_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--debt-mapping-version")
 
 
+def _add_rate_flags(parser: argparse.ArgumentParser) -> None:
+    """Operational limits. They shape how evidence is fetched, never what it means."""
+    parser.add_argument(
+        "--request-budget",
+        type=int,
+        default=None,
+        help="stop collecting after this many rate-limited requests per project; a truncated enumeration becomes PARTIAL",
+    )
+    parser.add_argument(
+        "--cache",
+        default=None,
+        help="directory holding entity tags of previous runs; unchanged answers cost a round trip but no rate-limit quota",
+    )
+
+
+def _cache_for(args: argparse.Namespace) -> ConditionalCache | None:
+    directory = getattr(args, "cache", None)
+    return ConditionalCache(Path(directory) / "github-etags.json") if directory else None
+
+
+def _requests_line(client: GitHubClient) -> str:
+    parts = [f"{client.request_count} requests"]
+    if client.conditional_hits:
+        parts.append(f"{client.conditional_hits} unchanged")
+    if client.retries:
+        parts.append(f"{client.retries} retries")
+    if client.budget_exhausted:
+        parts.append("budget exhausted")
+    return ", ".join(parts)
+
+
 def cmd_observe(args: argparse.Namespace) -> int:
     token, source = resolve_token(args.token)
     project = single_project(args.repo, **_project_overrides(args))
-    client = GitHubClient(UrllibTransport(token))
+    client = GitHubClient(UrllibTransport(token), budget=args.request_budget, cache=_cache_for(args))
     print(f"token: {source}", file=sys.stderr)
     try:
         obs = observe(project, client, _now(args.now))
@@ -89,7 +121,9 @@ def cmd_observe(args: argparse.Namespace) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     obs.save(args.out)
-    print(f"observations: {args.out} ({len(obs)} keys, {client.request_count} requests)")
+    print(f"observations: {args.out} ({len(obs)} keys, {_requests_line(client)})")
+    if client.cache is not None:
+        client.cache.save()
     return 0
 
 
@@ -121,11 +155,21 @@ def cmd_run(args: argparse.Namespace) -> int:
     token, source = resolve_token(args.token, config.token_env)
     print(f"token: {source}", file=sys.stderr)
     store = FilesystemHistoryStore(args.store or config.store_path)
-    outcomes = run_all(config, store, token, _now(args.now), only=(args.project or None) if not args.repo else None, user_agent=config.user_agent)
+    outcomes = run_all(
+        config,
+        store,
+        token,
+        _now(args.now),
+        only=(args.project or None) if not args.repo else None,
+        user_agent=config.user_agent,
+        request_budget=args.request_budget,
+        cache_dir=args.cache,
+    )
     failed = 0
     for outcome in outcomes:
         if outcome.ok:
-            print(f"[ok] {outcome.locator}: {outcome.comparison_status} bundle {outcome.bundle_id[:12]} ({outcome.requests} requests)")
+            cached = f", {outcome.conditional_hits} unchanged" if outcome.conditional_hits else ""
+            print(f"[ok] {outcome.locator}: {outcome.comparison_status} bundle {outcome.bundle_id[:12]} ({outcome.requests} requests{cached})")
             print(f"     {_bands_line(outcome.bands)}")
         else:
             failed += 1
@@ -297,6 +341,7 @@ def build_parser() -> argparse.ArgumentParser:
     observe_p.add_argument("--out", default="observations.json")
     observe_p.add_argument("--token")
     observe_p.add_argument("--now", help="observation timestamp (RFC 3339) for reproducible runs")
+    _add_rate_flags(observe_p)
     _add_project_flags(observe_p)
     observe_p.set_defaults(func=cmd_observe)
 
@@ -315,6 +360,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_p.add_argument("--now")
     run_p.add_argument("--project", action="append", help="limit a --config run to owner/name (repeatable)")
     run_p.add_argument("--config-version", help="provenance label recorded with --repo runs (default 'cli')")
+    _add_rate_flags(run_p)
     _add_project_flags(run_p)
     run_p.set_defaults(func=cmd_run)
 

@@ -56,7 +56,7 @@ DELTA_SCHEMA = "devostasis.delta.v1"
 ACTIVITY_SCHEMA = "devostasis.activity.v1"
 MANIFEST_SCHEMA = "devostasis.manifest.v1"
 OBSERVATIONS_SCHEMA = "devostasis.observations.v1"
-RECEIPT_SCHEMA = "devostasis.receipt.v1"
+RECEIPT_SCHEMA = "devostasis.receipt.v2"
 
 # Canonical order of the seven core Vitals inside every snapshot.
 CORE_VITAL_IDS = ("horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse")

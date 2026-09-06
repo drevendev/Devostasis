@@ -108,9 +108,11 @@ standing obligation asked for it.
   surfaces cannot prove earlier failures. Persisting `revision_history_state`
   per revision across bundles closes that, with policy provenance and
   replay-or-INCOMPARABLE on semantic changes.
-- **B4. Rate limits and caching.** ETag and conditional requests, backoff on
-  `RATE_LIMITED`, a request budget per run. Today a large fleet is one API
-  quota away from a run of `UNKNOWN` bands.
+- **B4. Rate limits and caching.** *Delivered in 0.1.6.* Conditional requests
+  with a persisted entity-tag cache, retries bounded by what the provider asks
+  and by a total waiting budget, and a per-project request budget that
+  truncates honestly. The receipt stopped recording the request count in the
+  same change, so enabling the cache cannot move a bundle identity.
 - **B5. Band ordering contract (PV-ORDER-001).** No Vital declares a
   normative ordering, so deltas never say IMPROVED or WORSENED. An
   independently accepted ordering unlocks those transition classes where they

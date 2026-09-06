@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -40,6 +41,7 @@ from ..normalize import (
 from ..observations import AVAILABLE, ERROR, FORBIDDEN, PARTIAL, UNAVAILABLE, UNKNOWN, Observation, ObservationSet, Receipt
 from ..policy import FLOW, INTEGRITY, PULSE
 from . import github_ci
+from .cache import ConditionalCache
 
 ADAPTER_VERSION = "devostasis.github.v1"
 API_BASE = "https://api.github.com"
@@ -122,7 +124,7 @@ class UrllibTransport:
         self.user_agent = user_agent
         self.timeout = timeout
 
-    def get(self, path: str, params: dict[str, Any] | None = None) -> tuple[int, dict[str, str], Any]:
+    def get(self, path: str, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> tuple[int, dict[str, str], Any]:
         url = self.api_base + path
         if params:
             url += "?" + urllib.parse.urlencode(params)
@@ -132,6 +134,8 @@ class UrllibTransport:
         request.add_header("User-Agent", self.user_agent)
         if self.token:
             request.add_header("Authorization", f"Bearer {self.token}")
+        for name, value in (headers or {}).items():
+            request.add_header(name, value)
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 raw = response.read()
@@ -149,19 +153,161 @@ class UrllibTransport:
             raise NetworkFailure(f"network failure for {path}: {exc}") from exc
 
 
+PAGINATION_CAPPED = "PAGINATION_CAPPED"
+BUDGET_EXHAUSTED = "REQUEST_BUDGET_EXHAUSTED"
+NOT_MODIFIED = 304
+
+
+@dataclass(frozen=True)
+class RetryPolicy:
+    """When to wait for a provider and when to stop waiting.
+
+    A primary rate limit resets on the hour, so waiting it out inside a run is
+    not patience, it is a hang. Short waits, which is what a secondary limit or
+    a transient error asks for, are worth taking; anything longer becomes an
+    explicit RATE_LIMITED observation and the run moves on.
+    """
+
+    attempts: int = 3
+    max_single_wait_seconds: int = 30
+    total_wait_budget_seconds: int = 120
+    backoff_seconds: tuple[int, ...] = (1, 2, 4)
+
+
+def retry_after_seconds(headers: dict[str, str], now: float | None = None) -> int | None:
+    """What the provider asked us to wait, from Retry-After or the rate-limit reset."""
+    raw = headers.get("retry-after")
+    if raw:
+        try:
+            return max(int(float(raw)), 0)
+        except ValueError:
+            return None
+    if headers.get("x-ratelimit-remaining") == "0" and headers.get("x-ratelimit-reset"):
+        try:
+            reset = int(float(headers["x-ratelimit-reset"]))
+        except ValueError:
+            return None
+        return max(reset - int(now if now is not None else time.time()), 0)
+    return None
+
+
+class RequestBudgetExhausted(ApiFailure):
+    """The run reached its request budget; the evidence it would have fetched is UNKNOWN.
+
+    It is an ApiFailure so that every collector already turns it into an
+    explicit observation instead of aborting the run: nothing failed and
+    nothing is forbidden, we simply chose not to look, and a value we did not
+    look for cannot be proven.
+    """
+
+    def __init__(self, budget: int) -> None:
+        super().__init__(0, UNKNOWN, BUDGET_EXHAUSTED, f"request budget of {budget} reached", False)
+
+
 class GitHubClient:
-    def __init__(self, transport: Any) -> None:
+    """Read-only client with conditional requests, bounded retries and a request budget.
+
+    Three limits, all optional and all honest when they bite:
+
+    * a conditional cache replays a body the provider says has not changed; a
+      304 costs a round trip but no rate-limit quota, and the observations it
+      produces are identical to a fresh fetch;
+    * a retryable failure waits only as long as the provider asked and only
+      while a total waiting budget lasts, then becomes an explicit status;
+    * a request budget stops collection rather than silently truncating: a
+      partially enumerated list is PARTIAL with the reason
+      ``REQUEST_BUDGET_EXHAUSTED``, and a value never collected keeps the
+      explicit status its caller assigns.
+    """
+
+    def __init__(
+        self,
+        transport: Any,
+        budget: int | None = None,
+        retry: RetryPolicy | None = None,
+        cache: ConditionalCache | None = None,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
         self.transport = transport
+        self.budget = budget
+        self.retry = retry or RetryPolicy()
+        self.cache = cache
+        self._sleep = sleep
         self.request_count = 0
+        self.billed_count = 0
+        self.conditional_hits = 0
+        self.retries = 0
+        self.waited_seconds = 0
+        self.budget_exhausted = False
+
+    @property
+    def budget_remaining(self) -> int | None:
+        return None if self.budget is None else max(self.budget - self.billed_count, 0)
+
+    def _claim_request(self) -> None:
+        if self.budget is not None and self.billed_count >= self.budget:
+            self.budget_exhausted = True
+            raise RequestBudgetExhausted(self.budget)
+
+    def incomplete_reason(self) -> str:
+        """Why an enumeration stopped short: the budget if it bit, otherwise the page cap."""
+        return BUDGET_EXHAUSTED if self.budget_exhausted else PAGINATION_CAPPED
+
+    def notes(self) -> list[str]:
+        """Capability notes worth recording in the collection receipt."""
+        return [f"{BUDGET_EXHAUSTED}:{self.budget}"] if self.budget_exhausted else []
+
+    def _transport_get(self, path: str, params: dict[str, Any] | None, headers: dict[str, str] | None) -> tuple[int, dict[str, str], Any]:
+        self.request_count += 1
+        if headers:
+            return self.transport.get(path, params, headers)
+        return self.transport.get(path, params)
+
+    def _wait_before_retry(self, headers: dict[str, str], attempt: int) -> bool:
+        """Sleep if the provider's asking price is affordable; otherwise give up now."""
+        asked = retry_after_seconds(headers)
+        backoff = self.retry.backoff_seconds[min(attempt - 1, len(self.retry.backoff_seconds) - 1)]
+        wait = asked if asked is not None else backoff
+        if wait > self.retry.max_single_wait_seconds:
+            return False
+        if self.waited_seconds + wait > self.retry.total_wait_budget_seconds:
+            return False
+        self._sleep(wait)
+        self.waited_seconds += wait
+        self.retries += 1
+        return True
 
     def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
-        self.request_count += 1
-        status, headers, body = self.transport.get(path, params)
-        if status >= 400:
-            obs_status, reason, retryable = classify_http_error(status, body, headers)
+        key = ConditionalCache.key(path, params) if self.cache is not None else None
+        headers: dict[str, str] | None = None
+        if key is not None:
+            etag = self.cache.etag_for(key)
+            if etag:
+                headers = {"If-None-Match": etag}
+
+        for attempt in range(1, max(self.retry.attempts, 1) + 1):
+            self._claim_request()
+            status, response_headers, body = self._transport_get(path, params, headers)
+            if status == NOT_MODIFIED and key is not None:
+                cached = self.cache.body_for(key)
+                if cached is not None:
+                    self.conditional_hits += 1
+                    return cached
+                headers = None
+                continue
+            if status < 400:
+                self.billed_count += 1
+                if key is not None:
+                    self.cache.store(key, response_headers.get("etag"), body)
+                return body
+
+            self.billed_count += 1
+            obs_status, reason, retryable = classify_http_error(status, body, response_headers)
             message = body.get("message", "") if isinstance(body, dict) else ""
+            if retryable and attempt < self.retry.attempts and self._wait_before_retry(response_headers, attempt):
+                continue
             raise ApiFailure(status, obs_status, reason, message, retryable)
-        return body
+        raise ApiFailure(0, ERROR, "RETRIES_EXHAUSTED", f"no usable response for {path}", True)
 
     def paginate(
         self,
@@ -177,7 +323,10 @@ class GitHubClient:
         params["per_page"] = PER_PAGE
         for page in range(1, max_pages + 1):
             params["page"] = page
-            body = self.get(path, params)
+            try:
+                body = self.get(path, params)
+            except RequestBudgetExhausted:
+                return items, False
             batch = body.get(items_key, []) if items_key else body
             if not isinstance(batch, list):
                 raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected a list from {path}")
@@ -374,9 +523,8 @@ class GitHubAdapter:
             target=subject,
             started_at=started,
             ended_at=timeutil.format_ts(timeutil.now_utc()),
-            capability_notes=list(self.notes),
+            capability_notes=list(self.notes) + self.client.notes(),
             config_hash=project.effective_config_digest(),
-            request_count=self.client.request_count,
         )
         obs.finalize_receipt(receipt)
         return obs
@@ -421,7 +569,7 @@ class GitHubAdapter:
                 value_type="series",
                 value=items,
                 coverage={"window_start": timeutil.format_ts(since), "window_end": self.observed_at, "complete": complete, "branch": default_branch},
-                reason_code=None if complete else "PAGINATION_CAPPED",
+                reason_code=None if complete else self.client.incomplete_reason(),
                 evidence_ref={"endpoint": path, "branch": default_branch},
                 **common,
             )
@@ -498,7 +646,7 @@ class GitHubAdapter:
                     "linkage": project.planning["source"],
                     "link_marker": project.planning.get("link_marker") if project.planning["source"] == "file" else None,
                 },
-                reason_code=None if complete else "PAGINATION_CAPPED",
+                reason_code=None if complete else self.client.incomplete_reason(),
                 evidence_ref={"endpoint": path},
                 **common,
             )
@@ -546,7 +694,7 @@ class GitHubAdapter:
                 value_type="series",
                 value=items,
                 coverage={"open_complete": open_complete, "window_complete": window_complete, "window_start": timeutil.format_ts(since)},
-                reason_code=None if complete else "PAGINATION_CAPPED",
+                reason_code=None if complete else self.client.incomplete_reason(),
                 evidence_ref={"endpoint": path},
                 **common,
             )
@@ -591,7 +739,7 @@ class GitHubAdapter:
                 value_type="series",
                 value=items,
                 coverage={"complete": complete, "heads_resolved": heads_resolved, "head_lookups": lookups},
-                reason_code=None if status == AVAILABLE else ("PAGINATION_CAPPED" if not complete else "BRANCH_HEADS_UNRESOLVED"),
+                reason_code=None if status == AVAILABLE else (self.client.incomplete_reason() if not complete else "BRANCH_HEADS_UNRESOLVED"),
                 evidence_ref={"endpoint": path},
                 **common,
             )
@@ -657,7 +805,7 @@ class GitHubAdapter:
                 value_type="series",
                 value=items,
                 coverage={"complete": complete, "source": "milestones"},
-                reason_code=None if complete else "PAGINATION_CAPPED",
+                reason_code=None if complete else self.client.incomplete_reason(),
                 evidence_ref={"endpoint": path},
                 **common,
             )
@@ -828,7 +976,7 @@ class GitHubAdapter:
         complete = runs_complete and attempts_complete and (commits_obs.status == AVAILABLE)
         reason = None
         if not runs_complete:
-            reason = "PAGINATION_CAPPED"
+            reason = self.client.incomplete_reason()
         elif not attempts_complete:
             reason = "ATTEMPT_HISTORY_INCOMPLETE"
         elif commits_obs.status != AVAILABLE:

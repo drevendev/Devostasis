@@ -97,7 +97,7 @@ def test_full_collection_and_evaluation():
     bands = {r.vital_id: r.band for r in evaluate_all(obs)}
     assert bands["integrity"] == "SPARSE_MIXED" and bands["pulse"] == "STEADY" and bands["flow"] == "MOVING"
     assert bands["horizon"] == "EXTENDED" and bands["direction"] == "MIXED" and bands["debt"] == "UNINSTRUMENTED"
-    assert obs.receipt.request_count == client.request_count
+    assert client.request_count > 0 and not hasattr(obs.receipt, "request_count"), "how evidence was fetched is not part of the receipt (v2)"
     assert "CHECKS_SURFACE_NOT_COLLECTED" in obs.receipt.capability_notes
 
 

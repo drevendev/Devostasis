@@ -88,3 +88,12 @@ computed from that timestamp.
 `observe` and `build` accept the same project options as flags:
 `--planning {milestones,file,none}`, `--planning-path`, `--link-marker`,
 `--debt-label` (repeatable), `--debt-path`, `--debt-mapping-version`.
+
+`observe` and `run` also take two operational flags that shape how evidence is
+fetched but never what it means, so they are not part of the effective
+configuration and do not change a bundle identity:
+
+| Flag | Effect |
+| --- | --- |
+| `--cache <dir>` | keep entity tags between runs; an unchanged answer costs a round trip and no rate-limit quota |
+| `--request-budget <n>` | stop collecting after `n` rate-limited requests **per project**, so one very active repository cannot starve the rest of a fleet; a truncated enumeration becomes `PARTIAL` with the reason `REQUEST_BUDGET_EXHAUSTED` |

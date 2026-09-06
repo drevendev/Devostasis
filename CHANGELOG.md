@@ -3,7 +3,42 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## 0.1.5 (release/0.1.5, unreleased)
+## 0.1.6 (release/0.1.6, unreleased)
+
+Roadmap target B4: spend provider quota on what actually changed, wait only
+when waiting helps, and truncate honestly when a budget runs out. No rule,
+threshold, window or gauge changed.
+
+- **Conditional requests.** `--cache <dir>` keeps the entity tags of previous
+  runs (`devostasis.http-cache.v1`); an unchanged answer comes back as
+  `304 Not Modified`, replays the stored body, and costs a round trip but no
+  rate-limit quota. A missing or corrupt cache costs requests, never
+  correctness.
+- **Bounded retries.** A retryable failure waits only as long as the provider
+  asked, through `Retry-After` or the rate-limit reset, and only while a
+  single wait and a total waiting budget allow it. A primary rate limit resets
+  on the hour, so waiting it out would be a hang: that becomes an explicit
+  `ERROR / RATE_LIMITED` observation and the run moves on.
+- **A request budget** per project, `--request-budget <n>`, so one very active
+  repository cannot starve the rest of a fleet. When it bites, a partially
+  enumerated inventory is `PARTIAL` and one that never started is `UNKNOWN`,
+  both with the reason `REQUEST_BUDGET_EXHAUSTED`, and the receipt carries a
+  matching capability note. A short list is never reported as complete.
+- **Receipt `devostasis.receipt.v2`** no longer records the request count.
+  How evidence was fetched is a property of the client and its cache, not of
+  the evidence, and the receipt is identity-bearing: without this change,
+  turning the cache on would have silently moved every `bundle_id`. The counts
+  moved to the bundle's post-identity `run_meta`, which now also carries
+  `billed_requests`, `conditional_hits` and `retries`. Bundles written under
+  `devostasis.receipt.v1` remain verifiable, and their identities are
+  unaffected because verification uses each bundle's stored preimage.
+- Debt item D-2 is closed by this change; target B2 is closed as delivered.
+
+Bundle identities change once for identical evidence, because the receipt
+shape changed. Comparability is unaffected: the receipt is not part of the
+semantic configuration.
+
+## 0.1.5 (2026-09-06)
 
 Roadmap target B2 and conformance case RPT-7: a project is its immutable id,
 not its path. No rule, threshold, window or gauge changed.

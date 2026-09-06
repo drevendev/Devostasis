@@ -46,7 +46,8 @@ requested" from "requested but unknown" from "observed zero":
 
 `run_id`, `collector_version`, `target`, `started_at`, `ended_at`,
 `requested_keys`, `returned_keys`, `per_key` status and freshness,
-`capability_notes`, `config_hash`, `request_count`.
+`capability_notes`, `config_hash`. Since `devostasis.receipt.v2` it records
+what was asked for, never how it was fetched: see "Fetching evidence" below.
 
 ## Aggregation rule
 
@@ -94,6 +95,38 @@ rounded through binary floats), the "median" over an odd sample is the middle
 duration and over an even sample the exact arithmetic mean of the two middle
 durations, reduced to lowest terms (PV-FLOW-MERGE-LATENCY-001); the whole-hour
 value is the floor of that median and never a classifier input.
+
+## Fetching evidence
+
+How evidence is fetched is provenance, never meaning. Three operational
+limits shape a collection run and none of them may change what an observation
+says:
+
+- **Conditional requests.** With a cache directory the adapter sends the
+  entity tag of the previous answer; a `304 Not Modified` replays the stored
+  body, costs a round trip and no rate-limit quota, and yields exactly the
+  observations a fresh fetch would. A missing or corrupt cache costs requests,
+  never correctness.
+- **Bounded retries.** A retryable failure waits only as long as the provider
+  asked, through `Retry-After` or the rate-limit reset, and only while a
+  single wait and a total waiting budget allow it. A primary rate limit resets
+  on the hour, so waiting it out inside a run would be a hang: that case
+  becomes an explicit `ERROR / RATE_LIMITED` observation and the run moves on.
+- **A request budget** per project. When it is reached, a partially
+  enumerated inventory is `PARTIAL` with the reason
+  `REQUEST_BUDGET_EXHAUSTED`, an inventory never started is `UNKNOWN` with the
+  same reason, and the receipt carries the capability note
+  `REQUEST_BUDGET_EXHAUSTED:<budget>`. A short list is never reported as
+  complete.
+
+The collection receipt (`devostasis.receipt.v2`) records what was requested
+and what came back: requested and returned keys, per-key status and freshness,
+capability notes and the effective configuration hash. It deliberately does
+**not** record how many HTTP calls that took, because the number of requests
+is a property of the client and its cache rather than of the evidence, and the
+receipt is identity-bearing. Enabling a cache therefore never moves a
+`bundle_id`. The counts live in the bundle's post-identity `run_meta`:
+`requests`, `billed_requests`, `conditional_hits` and `retries`.
 
 ## Conformance cases
 
