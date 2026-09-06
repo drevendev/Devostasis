@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.2
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.3
     with:
       debt-labels: "type:debt"          # optional: issue labels that mark debt items
       # planning-source: file             # optional: targets register instead of milestones
@@ -151,7 +151,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Devostasis
-        run: python -m pip install --quiet "git+https://github.com/drevendev/devostasis@release/0.1.0"
+        run: python -m pip install --quiet "git+https://github.com/drevendev/devostasis@v0.1.3"
       - name: Observe every configured project
         id: run
         continue-on-error: true
@@ -170,7 +170,8 @@ jobs:
         run: exit 1
 ```
 
-Pin the installed version to a release tag once one exists. `cancel-in-progress`
+Pin the installed version to a release tag and bump it deliberately, so an
+engine change never arrives unannounced in a nightly run. `cancel-in-progress`
 is false so that two overlapping runs never race on the store; the store
 itself refuses to overwrite an existing bundle.
 

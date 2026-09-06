@@ -22,7 +22,9 @@ something a consumer can act on. No rule, threshold, window or gauge changed.
 - `docs/deployment.md` names this repository as the worked example and states
   that registers are read from the default branch, so a register on a working
   branch is `REGISTER_NOT_FOUND` until it merges.
-- The reusable workflow's default `devostasis-ref` is `v0.1.2`.
+- The reusable workflow's default `devostasis-ref` is `v0.1.3`, so a caller
+  that pins the workflow at this tag and passes no ref installs this engine
+  rather than the previous one (debt item D-5).
 
 This is the first real-repository evidence for `planning.source = file` and
 `debt.source = file`; until now both contracts existed only in synthetic
