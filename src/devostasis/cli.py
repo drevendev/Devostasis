@@ -183,7 +183,11 @@ def cmd_render(args: argparse.Namespace) -> int:
 
 def cmd_index(args: argparse.Namespace) -> int:
     path = write_fleet_index(FilesystemHistoryStore(args.store))
-    print(f"fleet overview: {path}" if path else "no projects in store")
+    if path is None:
+        print("no projects in store")
+        return 0
+    print(f"fleet overview: {path}")
+    print(f"fleet index:    {path.with_name('index.json')}")
     return 0
 
 

@@ -160,12 +160,14 @@ class FilesystemHistoryStore:
         return path
 
     def all_projects(self) -> list[dict[str, Any]]:
-        """Latest index entry of every project in the store, for the fleet overview."""
+        """Latest index entry of every project in the store, for the fleet overview and index."""
         entries = []
         projects_root = self.root / "projects"
         if not projects_root.exists():
             return entries
         for index_path in sorted(projects_root.rglob("index.json")):
+            if index_path.parent == projects_root:
+                continue  # the fleet index itself, not a project
             try:
                 index = canonical.load_file(index_path)
             except Exception:  # noqa: BLE001
@@ -179,12 +181,49 @@ class FilesystemHistoryStore:
                 {
                     "project_key": index.get("project_key"),
                     "locator": identity.get("display_locator") or index.get("project_key"),
+                    "immutable_project_id": identity.get("immutable_project_id"),
                     "observed_at": tail["observed_at"],
+                    "bundle_id": tail.get("bundle_id"),
+                    "previous_bundle_id": tail.get("previous_bundle_id"),
                     "comparison_status": tail["comparison_status"],
                     "bands": tail.get("bands") or {},
                     "gauges": tail.get("gauges") or {},
                     "top_attention": tail.get("top_attention"),
+                    "demand_rows": self._demand_rows(project_dir),
+                    "attention_order": self._attention_order(project_dir),
                     "report_path": (project_dir / "latest" / "report.md").relative_to(projects_root).as_posix(),
+                    "bundle_path": (project_dir / tail["path"]).relative_to(projects_root).as_posix() if tail.get("path") else None,
                 }
             )
         return entries
+
+    def _latest_demand(self, project_dir: Path) -> dict[str, Any] | None:
+        """The demand member of the latest bundle, or None when it is absent or unreadable.
+
+        Bundles written before the demand interface existed have no such
+        member; their rows carry null levels rather than invented ones.
+        """
+        path = project_dir / "latest" / "demand.json"
+        if not path.exists():
+            return None
+        try:
+            document = canonical.load_file(path)
+        except Exception:  # noqa: BLE001
+            return None
+        return document if isinstance(document, dict) else None
+
+    def _demand_rows(self, project_dir: Path) -> list[dict[str, Any]]:
+        demand = self._latest_demand(project_dir)
+        rows = (demand or {}).get("vitals")
+        return [row for row in rows if isinstance(row, dict) and row.get("vital_id")] if isinstance(rows, list) else []
+
+    def _attention_order(self, project_dir: Path) -> list[dict[str, Any]]:
+        demand = self._latest_demand(project_dir)
+        order = (demand or {}).get("attention_order")
+        if not isinstance(order, list):
+            return []
+        return [
+            {"vital_id": item["vital_id"], "level": item.get("level")}
+            for item in order
+            if isinstance(item, dict) and item.get("vital_id")
+        ]

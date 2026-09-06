@@ -76,12 +76,16 @@ These are the only surfaces an outside consumer touches:
 | --- | --- |
 | `demand.json` levels and attention order | `devostasis.demand.v2`, changed in 0.1.2 |
 | `observe-self.yml` inputs and outputs | unchanged since 0.1.1 |
-| `delta.json` transition classes | will gain IMPROVED and WORSENED with B5 |
-| machine-readable fleet index | does not exist yet, arrives with B6 |
+| `delta.json` transition classes | still moving: B5 decides whether IMPROVED and WORSENED exist |
+| machine-readable fleet index | `devostasis.fleet.v1`, added in 0.1.4 |
 | `snapshot.json` bands and evaluation states | stable since 0.1.0 |
 
 "The base is implemented" is therefore an observable condition, not a feeling:
 every row above is either stable or deliberately frozen for a release.
+
+One row is still moving, and it is not ours. B5 is the research unit
+PV-ORDER-001; until it reports, the surface cannot be declared frozen and B7
+cannot start. Everything else the implementation owns has landed.
 
 ## Phase B: make it trustworthy over time
 
@@ -111,9 +115,10 @@ standing obligation asked for it.
   independently accepted ordering unlocks those transition classes where they
   are meaningful, and must respect the neutrality of Direction
   `FULLY_LINKED` and Debt `PRESENT`.
-- **B6. Machine-readable fleet index.** A JSON sibling of
-  `projects/README.md` so a control plane routes attention without parsing
-  Markdown.
+- **B6. Machine-readable fleet index.** *Delivered in 0.1.4.*
+  `projects/index.json` (`devostasis.fleet.v1`) carries the facts of
+  `projects/README.md` as data, with no aggregate and no cross-project
+  ordering, so a control plane routes attention without parsing Markdown.
 - **B7. One repository that is not this one integrates self-observation.**
   Last, on purpose: B5 and B6 are the remaining changes to the consumer
   surface, so after them an adopter builds on something that will not move

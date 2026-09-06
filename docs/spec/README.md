@@ -11,7 +11,7 @@ conformance tests.
 | [vitals.md](vitals.md) | The seven Vitals: inputs, rules, bands, degradation, anti-gaming metadata |
 | [integrity-ci.md](integrity-ci.md) | Verification normalization, parent identity, revision verdicts, failure-sticky history |
 | [bundle.md](bundle.md) | Bundle members, canonical serialization, identity preimage, effective config, verification |
-| [history-and-reports.md](history-and-reports.md) | Comparison states, delta semantics, activity interval, history store layout, report rendering |
+| [history-and-reports.md](history-and-reports.md) | Comparison states, delta semantics, activity interval, history store layout, fleet index, report rendering |
 | [gauges.md](gauges.md) | 0-100 gauges: scales, band ranges, formulas, the `gauges.json` member |
 | [demand.md](demand.md) | Demand levels per Vital, the attention order, the `demand.json` member |
 | [registers.md](registers.md) | Targets and debt register files, the change-request link marker |
