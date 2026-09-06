@@ -104,6 +104,11 @@ to targets by a `Target: <id>` line. A repository without any of those
 declares nothing and gets `UNDECLARED` or `UNINSTRUMENTED`, which is a fact
 about its metadata, not about its code.
 
+Devostasis uses the register files on itself: see
+[`.devostasis/targets.json`](.devostasis/targets.json) and
+[`.devostasis/debt.json`](.devostasis/debt.json), which are the worked example
+to copy.
+
 The `display` configuration chooses which Vitals appear, whether the card
 shows bars, numbers or band names, and which report sections are rendered
 ([docs/configuration.md](docs/configuration.md)).
@@ -141,7 +146,7 @@ projects/
 Requires Python 3.12 or newer. The runtime uses the standard library only.
 
 ```bash
-pip install git+https://github.com/drevendev/devostasis@release/0.1.0
+pip install git+https://github.com/drevendev/devostasis@v0.1.3
 ```
 
 Observe one repository (a GitHub token is read from `DEVOSTASIS_GITHUB_TOKEN`,
@@ -186,7 +191,7 @@ secret at all, and branch its next steps on the demand levels:
 ```yaml
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.2
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.3
   decide:
     needs: vitals
     runs-on: ubuntu-latest

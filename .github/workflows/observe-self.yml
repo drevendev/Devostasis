@@ -4,9 +4,12 @@
 #
 #   jobs:
 #     vitals:
-#       uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.2
+#       uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.3
 #       with:
 #         debt-labels: "type:debt"
+#
+# This repository calls it with register files instead of labels; see
+# .github/workflows/self-observe.yml and .devostasis/ for the worked example.
 #
 # No secret is needed to read the calling repository. The caller must grant
 # read permissions for contents, issues, pull-requests, actions and checks.
@@ -21,7 +24,7 @@ on:
       devostasis-ref:
         description: Git ref of Devostasis to install (tag, branch or commit)
         type: string
-        default: v0.1.1
+        default: v0.1.3
       planning-source:
         description: milestones, file or none
         type: string

@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.2
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.3
     with:
       debt-labels: "type:debt"          # optional: issue labels that mark debt items
       # planning-source: file             # optional: targets register instead of milestones
@@ -55,6 +55,34 @@ it.
 The caller's `permissions` block must grant the five read scopes above, or
 the token cannot see issues, pull requests and workflow runs and the
 corresponding Vitals come back FORBIDDEN.
+
+### The worked example is this repository
+
+Devostasis observes itself this way, with register files rather than
+milestones and labels. Its caller
+([`.github/workflows/self-observe.yml`](../.github/workflows/self-observe.yml))
+passes:
+
+```yaml
+    with:
+      planning-source: file
+      planning-path: .devostasis/targets.json
+      link-marker: "Target:"
+      debt-path: .devostasis/debt.json
+      debt-mapping-version: "2026-09-06"
+```
+
+and the two registers live in [`.devostasis/`](../.devostasis). Copy that
+shape rather than the fictional paths in
+[the register specification](spec/registers.md): the files there are real,
+maintained by hand, and small enough to read in a minute.
+
+Both registers are read from the repository's **default branch**, not from the
+branch the workflow runs on. A register added on a working branch is
+`UNAVAILABLE / REGISTER_NOT_FOUND` until it merges, and Horizon, Direction and
+Debt are `UNKNOWN` in the meantime. That is the contract failing closed rather
+than guessing, and it means the register lands before the configuration that
+points at it.
 
 Self-observation is a convenience shape, not durable history. The bundle
 lives in the job's workspace and in the uploaded artifact, which expires with
@@ -123,7 +151,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Devostasis
-        run: python -m pip install --quiet "git+https://github.com/drevendev/devostasis@release/0.1.0"
+        run: python -m pip install --quiet "git+https://github.com/drevendev/devostasis@v0.1.3"
       - name: Observe every configured project
         id: run
         continue-on-error: true
@@ -142,7 +170,8 @@ jobs:
         run: exit 1
 ```
 
-Pin the installed version to a release tag once one exists. `cancel-in-progress`
+Pin the installed version to a release tag and bump it deliberately, so an
+engine change never arrives unannounced in a nightly run. `cancel-in-progress`
 is false so that two overlapping runs never race on the store; the store
 itself refuses to overwrite an existing bundle.
 
