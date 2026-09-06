@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.3
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.4
     with:
       debt-labels: "type:debt"          # optional: issue labels that mark debt items
       # planning-source: file             # optional: targets register instead of milestones
@@ -151,7 +151,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Devostasis
-        run: python -m pip install --quiet "git+https://github.com/drevendev/devostasis@v0.1.3"
+        run: python -m pip install --quiet "git+https://github.com/drevendev/devostasis@v0.1.4"
       - name: Observe every configured project
         id: run
         continue-on-error: true
@@ -185,9 +185,24 @@ as "no change".
 ## 5. Reading the results
 
 - `projects/README.md` is the fleet overview: latest bands per project.
+- `projects/index.json` is the same fleet as data
+  ([devostasis.fleet.v1](spec/history-and-reports.md)), for a control plane
+  that routes attention without parsing Markdown. It carries no aggregate and
+  no cross-project order: a fleet-wide priority is the consumer's policy, not
+  ours.
 - `projects/<forge>/<owner>/<repo>/latest/report.md` is the current report.
 - `history/YYYY/MM/DD/<bundle_id>/` holds every immutable bundle; verify any
   of them with `devostasis verify --bundle <dir>`.
+
+For example, the projects whose Integrity currently calls for the most
+attention:
+
+```bash
+jq -r '.projects[] | select(.vitals.integrity.level == "CRITICAL") | .locator' projects/index.json
+```
+
+`devostasis index --store .` regenerates both files from the store without
+observing anything.
 
 ## Local mode
 

@@ -3,7 +3,35 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## 0.1.3 (release/0.1.3, unreleased)
+## 0.1.4 (release/0.1.4, unreleased)
+
+Roadmap target B6: the fleet as data, not only as Markdown. No rule,
+threshold, window or gauge changed.
+
+- `projects/index.json` (`devostasis.fleet.v1`, schema
+  `schemas/fleet-index.schema.json`): one entry per project with the locator,
+  the immutable project id, `observed_at`, `bundle_id`, `comparison_status`,
+  the project's own attention order and one row per Vital carrying band,
+  evaluation status, gauge and demand level, plus relative paths to the report
+  and to the immutable bundle the entry came from. Written beside
+  `projects/README.md` by every fleet run and by `devostasis index`.
+- The index adds no meaning: every value comes from the latest bundle, which
+  stays authoritative. `aggregate` and `cross_project_order` are explicitly
+  `null`, because no accepted contract says what it means for one project's
+  `CRITICAL` to outrank another's; a fleet-wide priority is the consumer's
+  policy.
+- Entries are ordered by project key and the file carries no generation
+  timestamp, so a run that changes nothing rewrites the same bytes and the
+  store stays quiet in version control.
+- A bundle written before the demand interface existed yields `null` levels
+  and an empty attention order rather than invented ones.
+
+This is the last change to the consumer surface that the implementation owns.
+The remaining one is the band ordering contract, which decides whether
+`delta.json` ever emits `IMPROVED` and `WORSENED`, and it belongs to the
+research process.
+
+## 0.1.3 (2026-09-06)
 
 Roadmap target A1: Devostasis declares its own plan and debt, so its report
 about itself stops saying `UNDECLARED` and `UNINSTRUMENTED` and starts saying

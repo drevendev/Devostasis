@@ -43,6 +43,10 @@ GAUGES_SCHEMA = "devostasis.gauges.v1"
 # aggregate. v2 orders inside a level by canonical Vital order only (ROLE-01).
 DEMAND_CONTRACT = "devostasis.demand.v2"
 
+# Machine-readable fleet index of a history store: the facts of projects/README.md
+# as data, with no aggregate and no cross-project ordering.
+FLEET_SCHEMA = "devostasis.fleet.v1"
+
 # Canonical JSON profile used for every digest.
 CANONICAL_SERIALIZATION_VERSION = "devostasis.canon.v1"
 

@@ -9,7 +9,7 @@ from typing import Any
 
 from . import activity as activity_mod
 from . import delta as delta_mod
-from . import normalize, render, timeutil
+from . import canonical, fleet, normalize, render, timeutil
 from .adapters.github import CollectionError, GitHubAdapter, GitHubClient, UrllibTransport
 from .bundle import Bundle, BundleError, build_bundle
 from .config import Config, ResolvedProject
@@ -98,12 +98,15 @@ def run_project(project: ResolvedProject, store: FilesystemHistoryStore, client:
 
 
 def write_fleet_index(store: FilesystemHistoryStore) -> Path | None:
+    """Write both fleet surfaces: the Markdown overview for people, the index for machines."""
     entries = store.all_projects()
     if not entries:
         return None
-    path = store.root / "projects" / "README.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
+    directory = store.root / "projects"
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / "README.md"
     path.write_bytes(render.render_fleet_index(entries).encode("utf-8"))
+    canonical.write_pretty(directory / "index.json", fleet.build_index(entries))
     return path
 
 

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/devostasis/schemas/fleet-index.schema.json",
+  "title": "Fleet index (devostasis.fleet.v1)",
+  "description": "The facts of projects/README.md as data: the latest bundle of every project in a store, with bands, gauges and demand levels. Adds no meaning; the bundle each entry points at stays authoritative. There is no aggregate and no cross-project ordering.",
+  "type": "object",
+  "required": ["schema", "canonical_semantics", "aggregate", "cross_project_order", "projects"],
+  "properties": {
+    "schema": { "const": "devostasis.fleet.v1" },
+    "canonical_semantics": { "type": "string" },
+    "aggregate": { "type": "null" },
+    "cross_project_order": { "type": "null" },
+    "projects": {
+      "type": "array",
+      "description": "Ordered by project_key so the file is stable between runs.",
+      "items": {
+        "type": "object",
+        "required": ["project_key", "locator", "immutable_project_id", "observed_at", "bundle_id", "comparison_status", "previous_bundle_id", "attention", "attention_order", "vitals", "report_path", "bundle_path"],
+        "properties": {
+          "project_key": { "type": "string" },
+          "locator": { "type": "string" },
+          "immutable_project_id": { "type": ["string", "null"] },
+          "observed_at": { "type": "string", "format": "date-time" },
+          "bundle_id": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+          "comparison_status": { "enum": ["BASELINE", "COMPARABLE", "HISTORY_GAP", "INCOMPARABLE"] },
+          "previous_bundle_id": { "type": ["string", "null"] },
+          "attention": {
+            "type": ["string", "null"],
+            "description": "First entry of this project's attention order, e.g. \"integrity CRITICAL\". Never comparable with another project's."
+          },
+          "attention_order": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["vital_id", "level"],
+              "additionalProperties": false,
+              "properties": {
+                "vital_id": { "enum": ["horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse"] },
+                "level": { "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "MINIMAL", "UNRESOLVED", null] }
+              }
+            }
+          },
+          "vitals": {
+            "type": "object",
+            "required": ["horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse"],
+            "additionalProperties": false,
+            "patternProperties": {
+              "^(horizon|clutter|direction|flow|integrity|debt|pulse)$": {
+                "type": "object",
+                "required": ["band", "evaluation_status", "gauge", "level"],
+                "additionalProperties": false,
+                "properties": {
+                  "band": { "type": ["string", "null"] },
+                  "evaluation_status": { "enum": ["AVAILABLE", "DEGRADED", "UNKNOWN", null] },
+                  "gauge": {
+                    "type": ["integer", "null"],
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Position inside the band on the scale of that Vital's phenomenon. Never comparable with another Vital's gauge."
+                  },
+                  "level": {
+                    "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "MINIMAL", "UNRESOLVED", null],
+                    "description": "Null when the latest bundle predates the demand interface."
+                  }
+                }
+              }
+            }
+          },
+          "report_path": { "type": ["string", "null"], "description": "Relative to the projects directory." },
+          "bundle_path": { "type": ["string", "null"], "description": "Immutable bundle directory, relative to the projects directory." }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

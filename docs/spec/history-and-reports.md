@@ -54,7 +54,8 @@ Layout of the filesystem store, intended to be a companion Git repository
 committed by the scheduler:
 
 ```text
-projects/README.md                               fleet overview (convenience)
+projects/README.md                               fleet overview for people (convenience)
+projects/index.json                              fleet index for machines (convenience)
 projects/<forge>/<owner>/<repo>/latest/          copy of the newest bundle
 projects/<forge>/<owner>/<repo>/history/YYYY/MM/DD/<bundle_id>/
 projects/<forge>/<owner>/<repo>/index.json       chronological index with bands
@@ -89,6 +90,39 @@ Decisions taken by PV-REV-REPORT-001 on the questions the contract left open:
   `BASELINE` and whose artifact expires. It is not canonical durable history,
   and a deployment claiming durable history must persist through a store
   outside CI artifact retention ([deployment.md](../deployment.md)).
+
+## Fleet index (devostasis.fleet.v1)
+
+`projects/README.md` is written for a human and cannot be parsed without
+guessing. `projects/index.json` carries the same facts as data, so a control
+plane routing attention across many projects does not read Markdown.
+
+One entry per project, ordered by `project_key` so the file is byte-stable
+between runs of an unchanged store: the project key and locator, the immutable
+project id, `observed_at`, `bundle_id`, `previous_bundle_id`,
+`comparison_status`, the project's own `attention` and `attention_order`, one
+row per Vital with `band`, `evaluation_status`, `gauge` and `level`, and
+relative paths to the report and to the immutable bundle the entry came from.
+
+Three rules make it safe to consume:
+
+- **It adds no meaning.** Every value comes from the latest bundle of that
+  project. A consumer that needs provenance, coverage or the reasoning behind
+  a band reads the bundle the entry points at, which stays authoritative.
+- **There is no aggregate**, per project or across projects, and `aggregate`
+  is explicitly `null`. The seven Vitals share signals and are not
+  independent votes.
+- **There is no cross-project ordering**, and `cross_project_order` is
+  explicitly `null`. Demand levels order Vitals inside one project; no
+  accepted contract defines what it means for one project's `CRITICAL` to
+  outrank another's. A consumer that wants a fleet-wide order applies its own
+  policy and owns that decision.
+
+A bundle written before the demand interface existed has no `demand.json`, so
+its `level` and `evaluation_status` are `null` rather than invented, and its
+`attention_order` is empty. The index carries no generation timestamp: a run
+that changes nothing rewrites the same bytes, so the store stays quiet in
+version control. Schema: `schemas/fleet-index.schema.json`.
 
 ## Report rendering (devostasis.render.v4)
 

@@ -134,19 +134,26 @@ Git repository, next to a convenience `latest/` copy and a fleet overview:
 
 ```text
 projects/
-  README.md                          fleet overview: latest bands per project
+  README.md                          fleet overview for people
+  index.json                         the same fleet as data, for machines
   github.com/<owner>/<repo>/
     latest/                          convenience copy, never authoritative
     history/YYYY/MM/DD/<bundle_id>/  immutable bundles
     index.json
 ```
 
+`projects/index.json` ([docs/spec/history-and-reports.md](docs/spec/history-and-reports.md))
+gives a control plane the bands, gauges and demand levels of every project
+without parsing Markdown. It adds no meaning to the bundles it points at, and
+it carries neither an aggregate nor a cross-project ordering: which project
+comes first is the consumer's policy, and no accepted contract defines it.
+
 ## Quick start
 
 Requires Python 3.12 or newer. The runtime uses the standard library only.
 
 ```bash
-pip install git+https://github.com/drevendev/devostasis@v0.1.3
+pip install git+https://github.com/drevendev/devostasis@v0.1.4
 ```
 
 Observe one repository (a GitHub token is read from `DEVOSTASIS_GITHUB_TOKEN`,
@@ -191,7 +198,7 @@ secret at all, and branch its next steps on the demand levels:
 ```yaml
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.3
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.4
   decide:
     needs: vitals
     runs-on: ubuntu-latest
