@@ -3,7 +3,45 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## 0.1.6 (release/0.1.6, unreleased)
+## 0.1.7 (review/0.1.7, unreleased)
+
+A review of what exists, with no new capability. Six defects found and fixed,
+one open question filed, and two guards added so the same classes cannot come
+back. No rule, threshold, window or gauge changed.
+
+- **A capped release enumeration reported itself as complete.** The collector
+  always emitted `AVAILABLE` with `recent_only`, so a repository with more
+  than thirty releases had the newest thirty recorded as the whole truth. A
+  full page is now `PARTIAL` with the cap reason, like every other
+  enumeration. No band reads releases, so no band was ever wrong.
+- **A `PARTIAL` release inventory left no coverage note in `activity.json`**,
+  so a truncated list looked complete in the report even when the collector
+  had flagged it.
+- **Activity could declare an interval wider than its evidence.** The
+  inventories reach back 28 days; after a longer outage the report claimed the
+  whole gap and the unobserved part read as "nothing happened". It now carries
+  `INTERVAL_EXCEEDS_EVIDENCE_WINDOW:evidence_from=<timestamp>`. Whether the
+  collection window should widen instead is
+  [issue #9](https://github.com/drevendev/Devostasis/issues/9) for the
+  reporting contract.
+- **A `304` answered to a request that carried no entity tag** was treated as
+  a successful empty body. It is now `UNEXPECTED_NOT_MODIFIED`, an explicit
+  failure, because an empty answer that nobody asked for is not evidence.
+- **A cached entry whose body was null kept its tag**, so every later `304`
+  read as a miss and refetched forever. Such an entry is no longer stored.
+- **`all_projects` collected a `renames` list that nothing consumed.** Rename
+  history stays in the project index; a fleet consumer follows
+  `immutable_project_id`, which the fleet index already carries.
+- **Bookkeeping:** target B4 shipped in 0.1.6 and was never closed in the
+  register.
+- **Two guards against specification drift** (debt D-4): the conformance table
+  may not cite a test that no longer exists, the specification index must link
+  every specification page, and every contract identifier the runtime writes
+  into a bundle must be findable in the specification. The last one immediately
+  found five member schema identifiers that were documented nowhere, now listed
+  in [bundle.md](docs/spec/bundle.md).
+
+## 0.1.6 (2026-09-06)
 
 Roadmap target B4: spend provider quota on what actually changed, wait only
 when waiting helps, and truncate honestly when a budget runs out. No rule,

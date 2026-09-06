@@ -117,7 +117,7 @@ def build_observation_set() -> ObservationSet:
     result.add(obs(normalize.INV_ISSUES, issues, "series", {"open_complete": True, "window_complete": True, "window_start": "2026-08-08T12:00:00Z"}))
     result.add(obs(normalize.INV_BRANCHES, branches, "series", {"complete": True, "heads_resolved": True, "head_lookups": 2}))
     result.add(obs(normalize.INV_TARGETS, targets, "series", {"complete": True, "source": "milestones"}))
-    result.add(obs(normalize.INV_RELEASES, releases, "series", {"recent_only": True, "limit": 30}))
+    result.add(obs(normalize.INV_RELEASES, releases, "series", {"recent_only": True, "limit": 30, "complete": True}))
     result.add(obs(normalize.CI_CONFIGURED, True, "boolean"))
     result.add(obs(normalize.CI_REVISIONS, series, "series", {"window_start": "2026-08-22T12:00:00Z", "window_end": OBSERVED_AT, "runs_complete": True, "attempts_complete": True, "outcome_map_version": "devostasis.ci-outcomes.github.v1", "surface": "github_actions"}))
     result.finalize_receipt(

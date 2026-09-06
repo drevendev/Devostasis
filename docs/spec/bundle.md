@@ -17,6 +17,27 @@ One successful canonical run of one project produces one immutable bundle.
 | `report.html` | optional | presence (through the effective config) | not rendered in this version; enabling it fails closed |
 | `manifest.json` | yes | no (post-identity) | versions, identity preimage, member profile, member digests, receipt |
 
+## Member schema identifiers
+
+Every canonical member names its own schema in its first field, so a consumer
+can tell what it is holding without inferring it from the file name:
+
+| Member | `schema` |
+| --- | --- |
+| `snapshot.json` | `devostasis.snapshot.v1` |
+| `delta.json` | `devostasis.delta.v1` |
+| `activity.json` | `devostasis.activity.v1` |
+| `observations.json` | `devostasis.observations.v1`, with a receipt of `devostasis.receipt.v2` |
+| `gauges.json` | `devostasis.gauges.v1` |
+| `demand.json` | `devostasis.demand.v2` |
+| `effective-config.json` | `devostasis.effective-config.v2` |
+| `manifest.json` | `devostasis.manifest.v1` |
+
+The store adds two documents that are not bundle members and carry their own
+identifiers: a project's chronological index (`devostasis.index.v1`) and the
+fleet index (`devostasis.fleet.v1`, see
+[history-and-reports.md](history-and-reports.md)).
+
 ## Canonical serialization (devostasis.canon.v1)
 
 UTF-8; object keys sorted by code point; no insignificant whitespace; only

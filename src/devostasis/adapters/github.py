@@ -56,6 +56,7 @@ MAX_BRANCH_HEAD_LOOKUPS = 60
 MAX_ATTEMPT_LOOKUPS = 60
 MAX_ATTEMPTS_PER_RUN = 5
 MAX_SUITE_REVISIONS = 100
+MAX_RELEASES = 30
 MAX_REGISTER_BYTES = 1_000_000
 
 TARGETS_REGISTER_SCHEMA = "devostasis.targets.v1"
@@ -288,11 +289,15 @@ class GitHubClient:
         for attempt in range(1, max(self.retry.attempts, 1) + 1):
             self._claim_request()
             status, response_headers, body = self._transport_get(path, params, headers)
-            if status == NOT_MODIFIED and key is not None:
+            if status == NOT_MODIFIED:
+                if key is None:
+                    raise ApiFailure(status, ERROR, "UNEXPECTED_NOT_MODIFIED", "provider answered 304 to an unconditional request", False)
                 cached = self.cache.body_for(key)
                 if cached is not None:
                     self.conditional_hits += 1
                     return cached
+                # The provider says nothing changed but our copy is gone: ask
+                # again without the tag rather than report an empty answer.
                 headers = None
                 continue
             if status < 400:
@@ -840,11 +845,15 @@ class GitHubAdapter:
     def _collect_releases(self, obs: ObservationSet, base: str) -> None:
         path = f"{base}/releases"
         common = self._common(path)
+        limit = MAX_RELEASES
         try:
-            raw = self.client.get(path, {"per_page": 30})
+            raw = self.client.get(path, {"per_page": limit})
         except (ApiFailure, NetworkFailure) as exc:
             obs.add(_failure_observation(INV_RELEASES, "series", exc, common))
             return
+        # A full page means the provider had at least this many: the newest are
+        # observed, the rest are not, and that is PARTIAL rather than complete.
+        complete = len(raw) < limit
         items = [
             {
                 "tag": r.get("tag_name"),
@@ -860,10 +869,11 @@ class GitHubAdapter:
         obs.add(
             Observation(
                 observation_id=INV_RELEASES,
-                status=AVAILABLE,
+                status=AVAILABLE if complete else PARTIAL,
                 value_type="series",
                 value=items,
-                coverage={"recent_only": True, "limit": 30},
+                coverage={"recent_only": True, "limit": limit, "complete": complete},
+                reason_code=None if complete else self.client.incomplete_reason(),
                 evidence_ref={"endpoint": path},
                 **common,
             )

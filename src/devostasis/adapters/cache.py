@@ -106,8 +106,8 @@ class ConditionalCache:
         return entry.get("body")
 
     def store(self, key: str, etag: str | None, body: Any) -> None:
-        """Remember a response. Bodies too large to be worth caching are skipped."""
-        if not etag:
+        """Remember a response. Bodies too large, or absent, are not worth a tag."""
+        if not etag or body is None:
             return
         try:
             size = len(json.dumps(body, separators=(",", ":")))
