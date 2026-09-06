@@ -24,7 +24,11 @@ jobs:
     uses: ./.github/workflows/observe-self.yml
     with:
       devostasis-ref: ${{ github.sha }}
-      debt-labels: "type:debt"
+      planning-source: file
+      planning-path: .devostasis/targets.json
+      link-marker: "Target:"
+      debt-path: .devostasis/debt.json
+      debt-mapping-version: "2026-09-06"
   react:
     needs: observe
     runs-on: ubuntu-latest

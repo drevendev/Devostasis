@@ -56,6 +56,34 @@ The caller's `permissions` block must grant the five read scopes above, or
 the token cannot see issues, pull requests and workflow runs and the
 corresponding Vitals come back FORBIDDEN.
 
+### The worked example is this repository
+
+Devostasis observes itself this way, with register files rather than
+milestones and labels. Its caller
+([`.github/workflows/self-observe.yml`](../.github/workflows/self-observe.yml))
+passes:
+
+```yaml
+    with:
+      planning-source: file
+      planning-path: .devostasis/targets.json
+      link-marker: "Target:"
+      debt-path: .devostasis/debt.json
+      debt-mapping-version: "2026-09-06"
+```
+
+and the two registers live in [`.devostasis/`](../.devostasis). Copy that
+shape rather than the fictional paths in
+[the register specification](spec/registers.md): the files there are real,
+maintained by hand, and small enough to read in a minute.
+
+Both registers are read from the repository's **default branch**, not from the
+branch the workflow runs on. A register added on a working branch is
+`UNAVAILABLE / REGISTER_NOT_FOUND` until it merges, and Horizon, Direction and
+Debt are `UNKNOWN` in the meantime. That is the contract failing closed rather
+than guessing, and it means the register lands before the configuration that
+points at it.
+
 Self-observation is a convenience shape, not durable history. The bundle
 lives in the job's workspace and in the uploaded artifact, which expires with
 the repository's artifact retention; nothing is appended to a canonical

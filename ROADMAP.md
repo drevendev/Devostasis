@@ -195,11 +195,16 @@ work actually happened in the next bundles. Its evidence window starts at the
 first daily bundle produced by 0.1.2, on 2026-09-06, and needs about two weeks.
 Nothing waits for it; it reports when it reports.
 
-## Next task: A1, Devostasis declares its own plan and debt
+## Task A1: Devostasis declares its own plan and debt
 
-**Why now.** Devostasis reports `Horizon UNDECLARED`, `Direction UNDECLARED`
-and `Debt UNINSTRUMENTED` about itself, and the first two entries of its own
-attention order are exactly those. Every word of that is true and it is a
+**Status: delivered on `release/0.1.3`.** The registers, the workflow inputs
+and the documentation are in the branch. The fleet configuration lands after
+the merge, because a register is read from the default branch and does not
+exist until then.
+
+**Why.** Devostasis reported `Horizon UNDECLARED`, `Direction UNDECLARED` and
+`Debt UNINSTRUMENTED` about itself, and the first two entries of its own
+attention order were exactly those. Every word of that was true and it was a
 statement about this repository's metadata. Fixing it costs two small files
 and gives three things at once: an honest self-report, the first real-world
 evidence for the register contracts, and a worked example a new adopter can
@@ -231,21 +236,30 @@ copy.
 6. Documentation: `docs/deployment.md` points at these two files as the
    worked example, replacing the fictional one where it helps.
 
-**Expected effect on the next bundle**, to be checked rather than assumed:
-Horizon leaves `UNDECLARED` for `DECLARED`, `VISIBLE` or `EXTENDED` depending
-on the dates actually written; Debt becomes `PRESENT` or `CLEAR` instead of
-`UNINSTRUMENTED`; Direction stays `UNDECLARED` until the first pull request
-carries a marker, then reports a real linkage share.
+**Measured effect**, checked against the register content rather than assumed
+(`tests/test_own_registers.py`): Horizon becomes `DECLARED` with ten open
+targets; Debt becomes `PRESENT` with five open items and none stale;
+Direction follows the pull requests, `NO_ACTIVE_CHANGE` with none open,
+`FULLY_LINKED` when every active one carries a marker, `MIXED` when some do
+not. Horizon stops at `DECLARED` rather than `VISIBLE` because no target
+carries a `due` date, and none does because none of the dates would be real.
 
-**Known and intended side effect.** Changing `planning` and `debt` changes the
-semantic configuration, so the first bundle after this lands is
-`INCOMPARABLE` with the previous one for this project. That is the contract
-working: the previous bands were produced under different semantics and must
-not be compared silently.
+**Known and intended side effects.** Changing `planning` and `debt` changes
+the semantic configuration, so the first bundle after the fleet adopts the
+registers is `INCOMPARABLE` with the previous one for this project. Until the
+registers reach the default branch, both are `UNAVAILABLE /
+REGISTER_NOT_FOUND` and Horizon, Direction and Debt are `UNKNOWN`: the
+contract fails closed instead of guessing, and a self-observation run on the
+branch shows that honestly.
 
 **Not in this task.** No rule, threshold, window or gauge changes. If the
 register evidence contradicts a rule, that is a calibration finding for the
 research process, recorded below.
+
+**After A1.** B1's fixture runner and B2 and B4 are unblocked and entirely
+ours; B4 pays down debt item D-2 and B2 pays down D-3. B1's vectors depend on
+the research process, which has PV-TEST-001 queued behind its own calibration
+unit.
 
 ## Calibration findings from the real runs
 

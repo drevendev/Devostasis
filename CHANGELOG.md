@@ -3,7 +3,34 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## 0.1.2 (release/0.1.2, unreleased)
+## 0.1.3 (release/0.1.3, unreleased)
+
+Roadmap target A1: Devostasis declares its own plan and debt, so its report
+about itself stops saying `UNDECLARED` and `UNINSTRUMENTED` and starts saying
+something a consumer can act on. No rule, threshold, window or gauge changed.
+
+- `.devostasis/targets.json` and `.devostasis/debt.json`: this repository's
+  planning targets and registered maintenance obligations, maintained by hand
+  and mirroring the phases in `ROADMAP.md`. They are also the worked example
+  an adopter copies, replacing the fictional paths in the specification.
+- Self-observation reads them: `self-observe.yml` passes `planning-source:
+  file`, both register paths and a debt `mapping_version`, so the workflow and
+  the fleet observation see the same metadata and cannot disagree.
+- `CONTRIBUTING.md` documents the `Target: <id>` line that links a pull
+  request to a target, the rule that a `due` date is written only when it is
+  real, and the boundary between a target and a debt item.
+- `docs/deployment.md` names this repository as the worked example and states
+  that registers are read from the default branch, so a register on a working
+  branch is `REGISTER_NOT_FOUND` until it merges.
+- The reusable workflow's default `devostasis-ref` is `v0.1.2`.
+
+This is the first real-repository evidence for `planning.source = file` and
+`debt.source = file`; until now both contracts existed only in synthetic
+fixtures. Devostasis's own history is `INCOMPARABLE` once when the fleet
+configuration adopts the registers, because the semantic configuration
+changed.
+
+## 0.1.2 (2026-09-06)
 
 Adopts the first round of research judgements and calibration repairs made
 against real bundles (PV-REV-ARTIFACT-005, PV-REV-REPORT-001,

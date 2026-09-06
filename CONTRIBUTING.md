@@ -12,6 +12,38 @@ runtime deterministic, model-free and honest about missing evidence.
 - When a release branch is complete and green, it is merged into `master`
   with a merge commit and tagged `v<version>`.
 
+## Linking a pull request to a target
+
+This repository declares its planning targets in
+[`.devostasis/targets.json`](.devostasis/targets.json) and its registered
+maintenance obligations in [`.devostasis/debt.json`](.devostasis/debt.json).
+Devostasis observes itself through those two files, so they are also the
+worked example an adopter copies.
+
+A pull request that advances a target carries a line in its description:
+
+```text
+Target: B1
+```
+
+Several lines link to several targets. The marker is the only linkage the
+engine accepts: it never infers intent from a branch name, a title or prose,
+because a heuristic that guesses drifts from run to run. A marker naming an id
+that is not in the register counts as unlinked and is reported separately, so
+a typo is visible rather than silently flattering.
+
+Two rules keep the registers honest:
+
+- a target gets a `due` date only when the date is real. An invented deadline
+  moves Horizon from `DECLARED` to `VISIBLE` without moving the project;
+- an item belongs in the debt register when the current code carries a cost.
+  Work we intend to do is a target, not debt.
+
+Adding, closing or renaming a target is an ordinary change. Changing the
+register *path* or the debt `mapping_version` changes the semantic
+configuration, so the next bundle is deliberately `INCOMPARABLE` with the
+previous one.
+
 ## Ground rules
 
 1. **No language model in the runtime path.** Collection, evaluation,
@@ -52,6 +84,8 @@ from `DEVOSTASIS_GITHUB_TOKEN`, `GITHUB_TOKEN`, `GH_TOKEN` or `gh auth token`).
 
 ## Pull request checklist
 
+- the description carries `Target: <id>` when the change advances a declared
+  target, and the id exists in `.devostasis/targets.json`;
 - tests pass on Python 3.12 or newer, and no new dependency was added to the
   runtime;
 - every new observation key or derived metric is documented in `docs/spec/`;

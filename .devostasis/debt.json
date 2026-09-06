@@ -1,0 +1,42 @@
+{
+  "schema": "devostasis.debt.v1",
+  "notes": "Registered maintenance obligations of this repository, read by Devostasis when debt.source = file. An item belongs here when the current code carries a cost, not when a feature is missing: planned work lives in targets.json and ROADMAP.md. 'opened' is the date the obligation started being carried, 'updated' the last time it changed; an open item untouched for 30 days is stale.",
+  "items": [
+    {
+      "id": "D-1",
+      "title": "Conformance cases named in the specification have no executable fixture",
+      "state": "open",
+      "opened": "2026-09-05",
+      "updated": "2026-09-06",
+      "cost": "docs/spec/conformance.md names T2-T9, R1-R53, ART-05, ART-08-ART-11, ART-15 and RPT-4-RPT-9 with no test behind them, so the public coverage claim is larger than the proof. Paid down by target B1."
+    },
+    {
+      "id": "D-2",
+      "title": "The GitHub adapter makes unconditional requests and never backs off",
+      "state": "open",
+      "opened": "2026-09-05",
+      "cost": "Every fleet run spends full API quota on evidence that mostly did not change, and a rate-limited day degrades bands to UNKNOWN instead of reusing the previous answer. Paid down by target B4."
+    },
+    {
+      "id": "D-3",
+      "title": "History is keyed by a mutable owner and name path",
+      "state": "open",
+      "opened": "2026-09-05",
+      "cost": "project_identity.immutable_project_id is recorded in every bundle but the store still writes under projects/<forge>/<owner>/<repo>, so renaming or transferring a repository silently splits its history in two. Paid down by target B2."
+    },
+    {
+      "id": "D-4",
+      "title": "Specification and provenance drift is caught only by a manual pass",
+      "state": "open",
+      "opened": "2026-09-06",
+      "cost": "The research process found docs/spec/PROVENANCE.md describing a bundle lineage the code had already moved past, and the CHANGELOG calling a released version unreleased. Nothing in CI compares the specification with the code."
+    },
+    {
+      "id": "D-5",
+      "title": "The reusable workflow's default install ref is bumped by hand at every release",
+      "state": "open",
+      "opened": "2026-09-05",
+      "cost": "observe-self.yml carries a default devostasis-ref. A release that forgets it installs an older engine for every caller that does not pass a ref, and nothing fails when it is forgotten."
+    }
+  ]
+}

@@ -104,6 +104,11 @@ to targets by a `Target: <id>` line. A repository without any of those
 declares nothing and gets `UNDECLARED` or `UNINSTRUMENTED`, which is a fact
 about its metadata, not about its code.
 
+Devostasis uses the register files on itself: see
+[`.devostasis/targets.json`](.devostasis/targets.json) and
+[`.devostasis/debt.json`](.devostasis/debt.json), which are the worked example
+to copy.
+
 The `display` configuration chooses which Vitals appear, whether the card
 shows bars, numbers or band names, and which report sections are rendered
 ([docs/configuration.md](docs/configuration.md)).

@@ -1,0 +1,16 @@
+{
+  "schema": "devostasis.targets.v1",
+  "notes": "Planning targets of this repository, read by Devostasis when planning.source = file. Ids mirror the phase items in ROADMAP.md and are never reused. A pull request that advances a target carries a line 'Target: <id>' in its description; that marker is the only linkage the engine accepts. A target gets a 'due' date only when the date is real: an invented deadline would improve Horizon without improving the project.",
+  "targets": [
+    { "id": "A1", "title": "Devostasis declares its own plan and debt", "state": "open" },
+    { "id": "B1", "title": "Executable conformance vectors for every case the specification names", "state": "open" },
+    { "id": "B2", "title": "History keyed by immutable project id instead of owner and name", "state": "open" },
+    { "id": "B3", "title": "Durable revision history across bundles", "state": "open" },
+    { "id": "B4", "title": "Conditional requests, backoff and a request budget per run", "state": "open" },
+    { "id": "B5", "title": "Band ordering contract that unlocks IMPROVED and WORSENED", "state": "open" },
+    { "id": "B6", "title": "Machine-readable fleet index beside the Markdown overview", "state": "open" },
+    { "id": "B7", "title": "First outside repository integrates self-observation", "state": "open" },
+    { "id": "v0.2", "title": "Release 0.2: phases A and B closed, one outside consumer, no unadopted research unit", "state": "open" },
+    { "id": "v1.0", "title": "Release 1.0: compatibility policy per contract, a second provider, a calibration corpus large enough to argue a threshold", "state": "open" }
+  ]
+}
