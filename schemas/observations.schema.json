@@ -29,7 +29,7 @@
       "type": ["object", "null"],
       "required": ["schema", "run_id", "collector_version", "target", "requested_keys", "returned_keys", "per_key"],
       "properties": {
-        "schema": { "const": "devostasis.receipt.v1" },
+        "schema": { "enum": ["devostasis.receipt.v1", "devostasis.receipt.v2"] },
         "run_id": { "type": "string" },
         "collector_version": { "type": "string" },
         "target": { "type": "object" },
@@ -49,8 +49,7 @@
           }
         },
         "capability_notes": { "type": "array", "items": { "type": "string" } },
-        "config_hash": { "type": ["string", "null"] },
-        "request_count": { "type": "integer", "minimum": 0 }
+        "config_hash": { "type": ["string", "null"] }
       }
     }
   },

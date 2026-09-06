@@ -10,6 +10,7 @@ from typing import Any
 from . import activity as activity_mod
 from . import delta as delta_mod
 from . import canonical, fleet, normalize, render, timeutil
+from .adapters.cache import ConditionalCache
 from .adapters.github import CollectionError, GitHubAdapter, GitHubClient, UrllibTransport
 from .bundle import Bundle, BundleError, build_bundle
 from .config import Config, ResolvedProject
@@ -30,6 +31,7 @@ class RunOutcome:
     path: str | None = None
     error: str | None = None
     requests: int = 0
+    conditional_hits: int = 0
 
 
 def observe(project: ResolvedProject, client: GitHubClient, now: datetime) -> ObservationSet:
@@ -89,13 +91,22 @@ def run_project(project: ResolvedProject, store: FilesystemHistoryStore, client:
     try:
         obs = observe(project, client, now)
     except CollectionError as exc:
-        return RunOutcome(project.locator, False, error=str(exc), requests=client.request_count)
+        return RunOutcome(project.locator, False, error=str(exc), requests=client.request_count, conditional_hits=client.conditional_hits)
     try:
-        run_meta = {"collection_started_at": timeutil.format_ts(started), "requests": client.request_count}
+        # How the evidence was fetched is provenance, not evidence: it lives in
+        # run_meta, which is post-identity, so a cached run and a fresh run of
+        # the same repository produce the same bundle_id.
+        run_meta = {
+            "collection_started_at": timeutil.format_ts(started),
+            "requests": client.request_count,
+            "billed_requests": client.billed_count,
+            "conditional_hits": client.conditional_hits,
+            "retries": client.retries,
+        }
         bundle = build_from_observations(project, obs, store, run_meta)
         path = store.commit(bundle)
     except (BundleError, HistoryStoreError) as exc:
-        return RunOutcome(project.locator, False, error=str(exc), requests=client.request_count)
+        return RunOutcome(project.locator, False, error=str(exc), requests=client.request_count, conditional_hits=client.conditional_hits)
     return RunOutcome(
         project.locator,
         True,
@@ -104,6 +115,7 @@ def run_project(project: ResolvedProject, store: FilesystemHistoryStore, client:
         bands=bundle.bands(),
         path=str(path),
         requests=client.request_count,
+        conditional_hits=client.conditional_hits,
     )
 
 
@@ -120,13 +132,32 @@ def write_fleet_index(store: FilesystemHistoryStore) -> Path | None:
     return path
 
 
-def run_all(config: Config, store: FilesystemHistoryStore, token: str | None, now: datetime, only: list[str] | None = None, user_agent: str | None = None) -> list[RunOutcome]:
+def run_all(
+    config: Config,
+    store: FilesystemHistoryStore,
+    token: str | None,
+    now: datetime,
+    only: list[str] | None = None,
+    user_agent: str | None = None,
+    request_budget: int | None = None,
+    cache_dir: str | Path | None = None,
+) -> list[RunOutcome]:
+    """Observe every configured project.
+
+    ``request_budget`` is per project, not per run: one very active repository
+    must not be able to starve the rest of the fleet. ``cache_dir`` holds the
+    entity tags of previous runs, shared by every project and written once at
+    the end, so a repeated run spends quota only on what actually changed.
+    """
+    cache = ConditionalCache(Path(cache_dir) / "github-etags.json") if cache_dir else None
     outcomes = []
     for project in config.projects:
         if only and project.locator not in only:
             continue
         transport = UrllibTransport(token, user_agent=user_agent or "devostasis/0.1 (+https://github.com/drevendev/devostasis)")
-        client = GitHubClient(transport)
+        client = GitHubClient(transport, budget=request_budget, cache=cache)
         outcomes.append(run_project(project, store, client, now))
+    if cache is not None:
+        cache.save()
     write_fleet_index(store)
     return outcomes

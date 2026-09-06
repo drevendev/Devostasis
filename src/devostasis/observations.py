@@ -119,7 +119,14 @@ class Observation:
 
 @dataclass
 class Receipt:
-    """Collection receipt: distinguishes not requested, requested-but-unknown and observed zero."""
+    """Collection receipt: distinguishes not requested, requested-but-unknown and observed zero.
+
+    It records *what* was asked for and what came back, never *how* the answers
+    were fetched. The number of HTTP calls a run needed is a property of the
+    client and its cache, not of the evidence, so it lives in the bundle's
+    post-identity ``run_meta``: enabling a conditional cache must not change the
+    identity of a bundle built from identical observations (v2).
+    """
 
     run_id: str
     collector_version: str
@@ -131,7 +138,6 @@ class Receipt:
     per_key: dict[str, dict[str, str]] = field(default_factory=dict)
     capability_notes: list[str] = field(default_factory=list)
     config_hash: str | None = None
-    request_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -146,7 +152,6 @@ class Receipt:
             "per_key": {key: dict(self.per_key[key]) for key in sorted(self.per_key)},
             "capability_notes": sorted(set(self.capability_notes)),
             "config_hash": self.config_hash,
-            "request_count": self.request_count,
         }
 
     @classmethod
@@ -162,7 +167,6 @@ class Receipt:
             per_key={k: dict(v) for k, v in data.get("per_key", {}).items()},
             capability_notes=list(data.get("capability_notes", [])),
             config_hash=data.get("config_hash"),
-            request_count=int(data.get("request_count", 0)),
         )
 
 

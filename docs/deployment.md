@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.5
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.6
     with:
       debt-labels: "type:debt"          # optional: issue labels that mark debt items
       # planning-source: file             # optional: targets register instead of milestones
@@ -151,7 +151,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Devostasis
-        run: python -m pip install --quiet "git+https://github.com/drevendev/devostasis@v0.1.5"
+        run: python -m pip install --quiet "git+https://github.com/drevendev/devostasis@v0.1.6"
       - name: Observe every configured project
         id: run
         continue-on-error: true
@@ -169,6 +169,25 @@ jobs:
         if: steps.run.outcome == 'failure'
         run: exit 1
 ```
+
+Add `--cache .devostasis-cache` and, if the fleet is large, a per-project
+`--request-budget`, then persist the cache between runs with
+`actions/cache`. Unchanged answers then cost a round trip instead of quota:
+
+```yaml
+      - uses: actions/cache@v4
+        with:
+          path: .devostasis-cache
+          key: devostasis-etags-${{ github.run_id }}
+          restore-keys: devostasis-etags-
+      - name: Observe every configured project
+        run: devostasis run --config devostasis.json --store . --cache .devostasis-cache
+```
+
+The cache holds provider bodies, so it is as sensitive as the store: keep it
+inside the private repository's own workspace and never in a public artifact.
+A run without it is not wrong, only more expensive, and a bundle built from a
+cached answer has the same identity as one built from a fresh fetch.
 
 Pin the installed version to a release tag and bump it deliberately, so an
 engine change never arrives unannounced in a nightly run. `cancel-in-progress`

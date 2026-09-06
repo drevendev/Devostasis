@@ -1534,7 +1534,6 @@
         "status": "AVAILABLE"
       }
     },
-    "request_count": 23,
     "requested_keys": [
       "ci.configured",
       "ci.revision_verdicts_14d",
@@ -1558,7 +1557,7 @@
       "planning.explicit_targets.inventory"
     ],
     "run_id": "run-20260905T120000Z-acme-widget",
-    "schema": "devostasis.receipt.v1",
+    "schema": "devostasis.receipt.v2",
     "started_at": "2026-09-05T12:00:00Z",
     "target": {
       "default_branch": "master",
