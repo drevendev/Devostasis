@@ -3,7 +3,34 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## 0.1.4 (release/0.1.4, unreleased)
+## 0.1.5 (release/0.1.5, unreleased)
+
+Roadmap target B2 and conformance case RPT-7: a project is its immutable id,
+not its path. No rule, threshold, window or gauge changed.
+
+- The history store locates a project by
+  `project_identity.immutable_project_id` and uses the locator only as the
+  human-readable place to put it. A renamed or transferred repository is
+  relocated once to its new locator instead of starting a second history, and
+  the move is recorded in the project index as a `renames` entry.
+- Fail closed on ambiguity: a locator already held by a different project is
+  refused rather than merged, and `latest()` reports the conflict instead of
+  comparing against the wrong project's history. A repository whose old name
+  is immediately reused by a new repository therefore yields two separate
+  histories, because the ids differ.
+- An adapter that cannot prove an immutable id keeps the previous behaviour:
+  the locator is the identity and a rename starts a `BASELINE`, which is more
+  honest than guessing that two names are the same project.
+- Bundles are unchanged, including the `project_key` each records: a bundle
+  keeps the locator it was observed under, and moving the directory does not
+  rewrite it. Every relocated bundle still verifies.
+- Debt item D-3 is closed by this change; targets A1 and B6 are closed as
+  delivered.
+- New calibration finding 9 for the research process, found by dogfooding:
+  closing a delivered target un-links the pull requests that delivered it,
+  because Direction counts links to *open* targets only.
+
+## 0.1.4 (2026-09-06)
 
 Roadmap target B6: the fleet as data, not only as Markdown. No rule,
 threshold, window or gauge changed.

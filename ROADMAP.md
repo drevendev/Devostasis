@@ -97,11 +97,12 @@ standing obligation asked for it.
   self-contained, provider-neutral JSON fixtures under `tests/fixtures`. The
   research process authors the vectors; this repository adds the runner. The
   conformance table already names the gap, so it is visible to anyone.
-- **B2. Durable history the store cannot lose.** Key history by
-  `project_identity.immutable_project_id` rather than by `owner/name`
-  directories, so a rename or transfer does not split a project's history
-  (RPT-7); close RPT-4..RPT-6 and RPT-9 as executable cases, including a
-  permission-domain fixture for the store.
+- **B2. Durable history the store cannot lose.** *Delivered in 0.1.5.* A
+  project is located by `project_identity.immutable_project_id`; a rename or
+  transfer relocates the directory once and is recorded, and two projects are
+  never merged into one directory (RPT-7). Still open from the same review:
+  RPT-4..RPT-6 and RPT-9 as executable cases, including a permission-domain
+  fixture for the store.
 - **B3. Durable revision history across bundles (PV-HIST-001).** Integrity
   history is reconstructed from what the provider still exposes; parent-level
   surfaces cannot prove earlier failures. Persisting `revision_history_state`
@@ -297,5 +298,24 @@ Open for judgement, introduced by the implementation in 0.1.2:
    (`RULE_VERSION_BOUNDARY`) while the bundle stays `COMPARABLE`. No research
    unit defined this; it was chosen so a rule repair never reinterprets a
    historical band. Submitted for judgement.
+
+Found by dogfooding in 0.1.5, in the accepted V1 Direction rule:
+
+9. **Closing a delivered target un-links the work that delivered it.**
+   Direction counts active change requests linked to an **open** target, so
+   the moment a target is completed and closed, every pull request that
+   delivered it becomes unlinked while it is still inside the 28-day active
+   window. Measured on this repository: with targets A1 and B6 open, two of
+   six active change requests were linked; closing both on delivery took the
+   linked count to zero and left the band `SCATTERED` on 0 of 3.
+   The incentive this creates is the wrong way round: never closing a target
+   keeps Direction high, and finishing work lowers it. The rule is not wrong
+   about the present moment, since work on a finished target is genuinely not
+   traceable to anything open, but the effect deserves a decision rather than
+   an accident. Candidate readings for the research process: a change request
+   linked to a target that was open *when the change request was last active*
+   stays linked; or the window for linkage follows the target's closing date;
+   or the current behaviour is confirmed and the anti-gaming note is amended
+   to say that Direction is a statement about work in flight only.
 
 New findings from later fleet runs are appended here as they appear.

@@ -20,9 +20,11 @@
     {
       "id": "D-3",
       "title": "History is keyed by a mutable owner and name path",
-      "state": "open",
+      "state": "closed",
       "opened": "2026-09-05",
-      "cost": "project_identity.immutable_project_id is recorded in every bundle but the store still writes under projects/<forge>/<owner>/<repo>, so renaming or transferring a repository silently splits its history in two. Paid down by target B2."
+      "cost": "Renaming or transferring a repository split its history in two: the old directory became an orphan and the new one started at BASELINE. Closed in 0.1.5 by target B2: the store locates a project by immutable_project_id, relocates the directory once and records the rename, and refuses to merge two projects into one directory.",
+      "updated": "2026-09-06",
+      "closed": "2026-09-06"
     },
     {
       "id": "D-4",
