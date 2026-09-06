@@ -43,9 +43,9 @@ Vitals themselves.** Devostasis reporting `UNDECLARED` about itself is a true
 statement about this repository's metadata; the fix belongs in this
 repository, not in the rule.
 
-## Phase A: observe ourselves honestly, then let someone else use it
+## Phase A: observe ourselves honestly
 
-Everything here is small and unblocks the rest.
+Small, and it unblocks the rest.
 
 - **A1. Devostasis declares its own plan and debt.** Add the two register
   files, point the fleet configuration and the self-observation workflow at
@@ -53,16 +53,35 @@ Everything here is small and unblocks the rest.
   in full below. It also gives the calibration corpus its first real evidence
   for `planning.source = file` and `debt.source = file`, which exist today
   only in synthetic fixtures.
-- **A2. One repository that is not this one integrates self-observation.**
-  A single job in one workflow, its own `GITHUB_TOKEN`, no secret. The point
-  is not the number of adopters, it is the first feedback from a consumer
-  who did not write the contract. Record what they could not do without
-  reading `docs/spec`.
-- **A3. Answer what A2 returns** before adding any new surface.
+- **A2. This repository is the first consumer.** The self-observation
+  workflow already reads its own outputs, and the history store already
+  consumes bundles. Whatever a stranger would trip over, we trip over first
+  and fix here, where a broken contract costs one commit instead of an
+  apology to another project.
 
 Exit gate for Phase A: Devostasis's own bundle reports `DECLARED` or better
-for Horizon and a real linkage share for Direction, and one outside
-repository has produced at least one bundle of its own.
+for Horizon and a real linkage share for Direction, and its own attention
+order is something a consumer could act on.
+
+## The consumer surface
+
+Integration is deferred until this list stops moving, because an adopter who
+builds on a contract we then change pays for our churn. Version 0.1.2 is the
+cautionary case: `devostasis.demand.v2` removed the `attention_key` field, and
+anything built on it would have broken on our release, not on theirs.
+
+These are the only surfaces an outside consumer touches:
+
+| Surface | Status |
+| --- | --- |
+| `demand.json` levels and attention order | `devostasis.demand.v2`, changed in 0.1.2 |
+| `observe-self.yml` inputs and outputs | unchanged since 0.1.1 |
+| `delta.json` transition classes | will gain IMPROVED and WORSENED with B5 |
+| machine-readable fleet index | does not exist yet, arrives with B6 |
+| `snapshot.json` bands and evaluation states | stable since 0.1.0 |
+
+"The base is implemented" is therefore an observable condition, not a feeling:
+every row above is either stable or deliberately frozen for a release.
 
 ## Phase B: make it trustworthy over time
 
@@ -95,10 +114,18 @@ standing obligation asked for it.
 - **B6. Machine-readable fleet index.** A JSON sibling of
   `projects/README.md` so a control plane routes attention without parsing
   Markdown.
+- **B7. One repository that is not this one integrates self-observation.**
+  Last, on purpose: B5 and B6 are the remaining changes to the consumer
+  surface, so after them an adopter builds on something that will not move
+  under them. A single job in one workflow, its own `GITHUB_TOKEN`, no
+  secret. The point is not the number of adopters, it is the first feedback
+  from a consumer who did not write the contract. Record what they could not
+  do without reading `docs/spec`, and answer it before Phase C.
 
 Exit gate for Phase B: a fleet run survives a rate-limit day, a renamed
-repository keeps its history, and the conformance table has no case that is
-named but unimplemented.
+repository keeps its history, the conformance table has no case that is named
+but unimplemented, and one outside repository has produced at least one
+bundle of its own and said what was unclear.
 
 ## Phase C: reach
 
@@ -152,9 +179,9 @@ makes trustworthy.
 
 The loop is not open-ended. Two named versions end it.
 
-**0.2 is reached when** Phase A and Phase B are closed, at least one consumer
-outside this repository depends on a bundle, and no accepted research unit is
-waiting for adoption.
+**0.2 is reached when** Phase A and Phase B are closed, which includes one
+consumer outside this repository depending on a bundle, and no accepted
+research unit is waiting for adoption.
 
 **1.0 is reached when** the contract identifiers have a compatibility policy,
 a second provider is implemented, and the calibration corpus is large enough
