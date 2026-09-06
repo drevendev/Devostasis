@@ -193,3 +193,23 @@ def test_observation_set_round_trips_through_json(tmp_path):
 
     loaded = ObservationSet.load(path)
     assert loaded.digest() == obs.digest()
+
+
+def test_a_full_page_of_releases_is_partial_not_complete():
+    """A capped enumeration is never complete evidence, even when nothing failed."""
+    from devostasis.adapters.github import MAX_RELEASES
+    from devostasis.normalize import INV_RELEASES
+
+    full_page = [
+        {"tag_name": f"v{i}", "name": f"release {i}", "published_at": f"2026-09-{i % 28 + 1:02d}T10:00:00Z", "draft": False, "prerelease": False, "html_url": f"r{i}"}
+        for i in range(MAX_RELEASES)
+    ]
+    obs, _, _ = _collect(_routes(**{f"{BASE}/releases": (200, {}, full_page)}))
+    item = obs.get(INV_RELEASES)
+    assert item.status == PARTIAL and item.reason_code == "PAGINATION_CAPPED"
+    assert item.coverage["complete"] is False and item.coverage["limit"] == MAX_RELEASES
+
+    short_page = full_page[:-1]
+    obs, _, _ = _collect(_routes(**{f"{BASE}/releases": (200, {}, short_page)}))
+    item = obs.get(INV_RELEASES)
+    assert item.status == AVAILABLE and item.reason_code is None and item.coverage["complete"] is True

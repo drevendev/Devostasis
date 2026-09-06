@@ -38,6 +38,14 @@ The interval is `(previous.observed_at, current.observed_at]`, never a blind
 24 hours: a missed day is covered by the next run. A `BASELINE` bundle reports
 the trailing 28-day observation window and says so in `interval.basis`.
 
+The inventories behind the report cover a fixed trailing window of 28 days.
+When a run follows an outage longer than that, the interval it declares is
+wider than the evidence behind it, and `coverage_notes` says so with
+`INTERVAL_EXCEEDS_EVIDENCE_WINDOW:evidence_from=<timestamp>`: the older part of
+the interval was not observed rather than quiet. Whether the collection window
+should instead widen to the interval is
+[an open question for the reporting contract](https://github.com/drevendev/Devostasis/issues/9).
+
 Activity classes: `REVISION` (default-branch commits), `CHANGE_REQUEST`
 (opened, merged, closed), `WORK_ITEM` (opened, closed), `VERIFICATION`
 (revisions verified, failed, unresolved), `RELEASE`, `CAPABILITY_CHANGE`

@@ -69,7 +69,7 @@ Inventories (emitted by adapters):
 | `forge.issues.inventory` | series | all open issues plus those updated in 28 days; `UNAVAILABLE` when issues are disabled |
 | `git.nondefault_branches.inventory` | series | `{name, head_sha, head_committed_at, protected}`; coverage `complete`, `heads_resolved` |
 | `planning.explicit_targets.inventory` | series | milestones with state and due date; `UNAVAILABLE` when `planning.source = none` |
-| `forge.releases.inventory` | series | recent published releases |
+| `forge.releases.inventory` | series | the 30 most recent published releases; a full page is `PARTIAL`, because the provider had at least that many |
 | `ci.configured` | boolean | positively observed presence or absence of verification |
 | `ci.revision_verdicts_14d` | series | one canonical record per default-branch revision of the 14-day window (see [integrity-ci.md](integrity-ci.md)) |
 

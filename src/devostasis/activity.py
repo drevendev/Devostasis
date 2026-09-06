@@ -46,6 +46,13 @@ def build_activity(
         start = timeutil.minus_days(end, ACTIVITY["window_days"])
         basis = BASIS_WINDOW
     coverage_notes: list[str] = []
+    # The inventories this report reads cover a fixed trailing window. When a
+    # run follows a long outage, the interval it claims is wider than the
+    # evidence behind it, and silence about the older part would read as "no
+    # activity" (G1). Say so instead.
+    evidence_start = timeutil.minus_days(end, ACTIVITY["window_days"])
+    if start < evidence_start:
+        coverage_notes.append(f"INTERVAL_EXCEEDS_EVIDENCE_WINDOW:evidence_from={timeutil.format_ts(evidence_start)}")
     truncated: dict[str, bool] = {}
     classes: dict[str, Any] = {}
 
@@ -152,6 +159,8 @@ def build_activity(
             [r for r in releases.value if _in_interval(r.get("published_at"), start, end)],
             key=lambda r: (r.get("published_at") or "", r.get("tag") or ""),
         )
+        if releases.status != "AVAILABLE":
+            coverage_notes.append(f"RELEASE:{releases.status}:{releases.reason_code}")
     else:
         coverage_notes.append(f"RELEASE:{obs.status_of(INV_RELEASES)}")
     items, cut = _cap(release_items, cap)

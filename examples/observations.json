@@ -525,6 +525,7 @@
       "adapter_version": "devostasis.github.v1",
       "collected_at": "2026-09-05T12:00:00Z",
       "coverage": {
+        "complete": true,
         "limit": 30,
         "recent_only": true
       },

@@ -356,7 +356,6 @@ class FilesystemHistoryStore:
                     "top_attention": tail.get("top_attention"),
                     "demand_rows": self._demand_rows(project_dir),
                     "attention_order": self._attention_order(project_dir),
-                    "renames": list(index.get("renames") or []),
                     "report_path": (project_dir / "latest" / "report.md").relative_to(projects_root).as_posix(),
                     "bundle_path": (project_dir / tail["path"]).relative_to(projects_root).as_posix() if tail.get("path") else None,
                 }

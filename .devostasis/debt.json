@@ -33,7 +33,8 @@
       "title": "Specification and provenance drift is caught only by a manual pass",
       "state": "open",
       "opened": "2026-09-06",
-      "cost": "The research process found docs/spec/PROVENANCE.md describing a bundle lineage the code had already moved past, and the CHANGELOG calling a released version unreleased. Nothing in CI compares the specification with the code."
+      "cost": "The research process found docs/spec/PROVENANCE.md describing a bundle lineage the code had already moved past, and the CHANGELOG calling a released version unreleased. Since 0.1.7 tests/test_spec_drift.py catches the mechanical half: a conformance citation that no longer resolves, a specification page missing from the index, and a contract identifier the runtime writes but the specification never names. The semantic half is still manual, because no test can tell whether a paragraph still describes what the code does.",
+      "updated": "2026-09-06"
     },
     {
       "id": "D-5",
