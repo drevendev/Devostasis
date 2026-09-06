@@ -89,8 +89,10 @@ Every bundle also carries `demand.json`
 ([docs/spec/demand.md](docs/spec/demand.md)): one level per Vital from
 CRITICAL, HIGH, MEDIUM, LOW, MINIMAL or UNRESOLVED, taken from a versioned
 band-to-level table you can override, plus an attention order that ranks the
-Vitals by level and then by gauge. Autonomous development systems consume it
-to decide what to work on; the report shows it as the "Attention" section.
+Vitals by level and then by their canonical order (gauges are shown but never
+compared across Vitals, because they measure different phenomena). Autonomous
+development systems consume it to decide what to work on; the report shows it
+as the "Attention" section.
 UNRESOLVED means evidence was missing and must never be read as "nothing to
 do".
 
@@ -184,7 +186,7 @@ secret at all, and branch its next steps on the demand levels:
 ```yaml
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.1
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.2
   decide:
     needs: vitals
     runs-on: ubuntu-latest

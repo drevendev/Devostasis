@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from fractions import Fraction
 from typing import Any
 
+from devostasis.canonical import rational_record
 from devostasis.observations import AVAILABLE, FRESH, Observation, ObservationSet, Receipt
 
 OBSERVED_AT = "2026-09-05T12:00:00Z"
@@ -17,6 +19,9 @@ SUBJECT = {
     "default_branch": "master",
     "visibility": "public",
 }
+
+MEDIAN_SECONDS = "forge.change_requests.median_time_to_merge_seconds_28d"
+MEDIAN_HOURS = "forge.change_requests.median_time_to_merge_hours_28d"
 
 
 def obs_set(observed_at: str = OBSERVED_AT, subject: dict[str, Any] | None = None) -> ObservationSet:
@@ -73,13 +78,27 @@ def pulse_inputs(obs: ObservationSet, commits: int, active_days: int, cr_updates
         add(obs, "forge.issues.updated_count_28d", issue_updates)
 
 
-def flow_inputs(obs: ObservationSet, open_count: int, merged: int, oldest: int | None = None, median: int | None = None) -> None:
+def flow_inputs(
+    obs: ObservationSet,
+    open_count: int,
+    merged: int,
+    oldest: int | None = None,
+    median: int | None = None,
+    median_seconds: int | Fraction | tuple[int, int] | None = None,
+) -> None:
+    """Flow inputs; ``median`` is whole hours, ``median_seconds`` an exact rational number of seconds."""
     add(obs, "forge.change_requests.open_count", open_count)
     add(obs, "forge.change_requests.merged_count_28d", merged)
     if oldest is not None:
         add(obs, "forge.change_requests.oldest_open_age_days", oldest, "duration")
-    if median is not None:
-        add(obs, "forge.change_requests.median_time_to_merge_hours_28d", median, "duration")
+    seconds: Fraction | None = None
+    if median_seconds is not None:
+        seconds = Fraction(*median_seconds) if isinstance(median_seconds, tuple) else Fraction(median_seconds)
+    elif median is not None:
+        seconds = Fraction(median) * 3600
+    if seconds is not None:
+        add(obs, MEDIAN_SECONDS, rational_record(seconds), "duration")
+        add(obs, MEDIAN_HOURS, int(seconds // 3600), "duration")
 
 
 def clutter_inputs(obs: ObservationSet, issues_open: int, issues_stale: int, cr_open: int, cr_stale: int, stale_branches: int) -> None:

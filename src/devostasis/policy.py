@@ -4,6 +4,10 @@ Every constant here is a PROVISIONAL calibration constant frozen by the V0
 taxonomy and preserved unchanged through V1.1. Changing any of them is a policy
 version change and must be justified against the conformance fixtures, never
 against one repository looking right.
+
+The ``*_median_seconds`` constants are the exact dimensional conversions of the
+hour constants demanded by PV-FLOW-MERGE-LATENCY-001 (168 h = 604800 s,
+336 h = 1209600 s); they are not a new threshold and keep the policy version.
 """
 
 POLICY_VERSION = "devostasis.policy.v1"
@@ -23,9 +27,11 @@ FLOW = {
     "gridlocked_oldest_days": 30,
     "gridlocked_open_with_slow_median": 10,
     "gridlocked_median_hours": 336,
+    "gridlocked_median_seconds": 336 * 3600,
     "congested_oldest_days": 14,
     "congested_open": 10,
     "congested_median_hours": 168,
+    "congested_median_seconds": 168 * 3600,
 }
 
 CLUTTER = {

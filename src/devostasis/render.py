@@ -1,10 +1,12 @@
-"""Deterministic Markdown renderer (``devostasis.render.v3``).
+"""Deterministic Markdown renderer (``devostasis.render.v4``).
 
 The renderer is a pure function of the canonical bundle plus the persisted
 display configuration: it adds no health semantics, no aggregate score, no
 evaluative aliases. Neutral bands such as Direction FULLY_LINKED and Debt
 PRESENT stay neutral. Version 3 honours ``display`` (which Vitals, which gauge
-components, which sections) and renders the demand interface.
+components, which sections) and renders the demand interface; version 4
+states the demand.v2 ordering (level, then canonical Vital order; gauges are
+never compared across Vitals) and renders exact rational durations.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import gauges as gauges_mod
-from .canonical import ratio_text
+from .canonical import ratio_text, rational_parts
 from .contracts import CORE_VITAL_IDS
 
 VITAL_TITLES = {
@@ -56,8 +58,9 @@ def _fmt(value: Any) -> str:
         return "n/a"
     if isinstance(value, bool):
         return "true" if value else "false"
-    if isinstance(value, dict) and set(value) == {"num", "den"}:
-        return f"{ratio_text(value)} ({value['num']}/{value['den']})"
+    parts = rational_parts(value)
+    if parts is not None:
+        return f"{ratio_text(value)} ({parts[0]}/{parts[1]})"
     if isinstance(value, dict):
         return ", ".join(f"{k}={_fmt(v)}" for k, v in sorted(value.items())) or "none"
     if isinstance(value, list):
@@ -69,7 +72,7 @@ def _metric_rows(derived: dict[str, Any]) -> list[str]:
     rows = []
     for key in sorted(derived):
         value = derived[key]
-        if isinstance(value, dict) and set(value) != {"num", "den"}:
+        if isinstance(value, dict) and rational_parts(value) is None:
             continue
         rows.append(f"| {key} | {_fmt(value)} |")
     return rows
@@ -142,7 +145,7 @@ def render_report(
     if "demand" in sections and demand_doc:
         lines.append("## Attention")
         lines.append("")
-        lines.append(f"Demand levels come from mapping `{demand_doc.get('mapping_version')}` ({demand_doc.get('contract')}); the order inside a level follows the gauge. There is no aggregate.")
+        lines.append(f"Demand levels come from mapping `{demand_doc.get('mapping_version')}` ({demand_doc.get('contract')}); inside a level the canonical Vital order applies and gauges are never compared across Vitals. There is no aggregate.")
         lines.append("")
         lines.append("| Order | Vital | Level | Band | Gauge |")
         lines.append("| --- | --- | --- | --- | --- |")

@@ -2,43 +2,36 @@
   "aggregate": null,
   "attention_order": [
     {
-      "attention_key": 38,
       "level": "HIGH",
       "vital_id": "integrity"
     },
     {
-      "attention_key": 50,
       "level": "MEDIUM",
       "vital_id": "direction"
     },
     {
-      "attention_key": 11,
       "level": "MEDIUM",
       "vital_id": "debt"
     },
     {
-      "attention_key": 10,
       "level": "LOW",
       "vital_id": "clutter"
     },
     {
-      "attention_key": 10,
       "level": "LOW",
       "vital_id": "flow"
     },
     {
-      "attention_key": 18,
-      "level": "MINIMAL",
-      "vital_id": "pulse"
-    },
-    {
-      "attention_key": 16,
       "level": "MINIMAL",
       "vital_id": "horizon"
+    },
+    {
+      "level": "MINIMAL",
+      "vital_id": "pulse"
     }
   ],
   "canonical_semantics": "snapshot.json",
-  "contract": "devostasis.demand.v1",
+  "contract": "devostasis.demand.v2",
   "levels": [
     "CRITICAL",
     "HIGH",
@@ -49,10 +42,9 @@
   ],
   "mapping_version": "devostasis-default-1",
   "observed_at": "2026-09-05T12:00:00Z",
-  "schema": "devostasis.demand.v1",
+  "schema": "devostasis.demand.v2",
   "vitals": [
     {
-      "attention_key": 16,
       "band": "EXTENDED",
       "evaluation_status": "AVAILABLE",
       "gauge": 84,
@@ -61,7 +53,6 @@
       "vital_id": "horizon"
     },
     {
-      "attention_key": 10,
       "band": "LIGHT",
       "evaluation_status": "AVAILABLE",
       "gauge": 10,
@@ -70,7 +61,6 @@
       "vital_id": "clutter"
     },
     {
-      "attention_key": 50,
       "band": "MIXED",
       "evaluation_status": "AVAILABLE",
       "gauge": 50,
@@ -79,7 +69,6 @@
       "vital_id": "direction"
     },
     {
-      "attention_key": 10,
       "band": "MOVING",
       "evaluation_status": "AVAILABLE",
       "gauge": 10,
@@ -88,7 +77,6 @@
       "vital_id": "flow"
     },
     {
-      "attention_key": 38,
       "band": "FLAKY",
       "evaluation_status": "AVAILABLE",
       "gauge": 62,
@@ -97,7 +85,6 @@
       "vital_id": "integrity"
     },
     {
-      "attention_key": 11,
       "band": "PRESENT",
       "evaluation_status": "AVAILABLE",
       "gauge": 11,
@@ -106,7 +93,6 @@
       "vital_id": "debt"
     },
     {
-      "attention_key": 18,
       "band": "SURGING",
       "evaluation_status": "AVAILABLE",
       "gauge": 82,

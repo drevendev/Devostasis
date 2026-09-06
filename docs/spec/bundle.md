@@ -1,4 +1,4 @@
-# Bundle (devostasis.bundle.v2, PV-BUNDLE-ID-002, PV-EFFECTIVE-CONFIG-001)
+# Bundle (devostasis.bundle.v2, PV-BUNDLE-ID-002, PV-EFFECTIVE-CONFIG-001, PV-EFFECTIVE-CONFIG-AUTHORITY-001)
 
 One successful canonical run of one project produces one immutable bundle.
 
@@ -12,15 +12,17 @@ One successful canonical run of one project produces one immutable bundle.
 | `demand.json` | yes | digest | demand levels and attention order ([demand.md](demand.md)) |
 | `activity.json` | optional | digest or `ACTIVITY_DISABLED` | normalized activity in the interval |
 | `observations.json` | optional | digest or `OBSERVATIONS_MEMBER_DISABLED` | every observation and the receipt |
-| `effective-config.json` | yes | digest | the exact canonical effective config (B3 repair) |
+| `effective-config.json` | yes | digest | the exact canonical effective config (B3 repair); the semantic authority of the bundle (B4) |
 | `report.md` | yes | no (post-identity) | deterministic rendering under the persisted `display` configuration |
-| `manifest.json` | yes | no (post-identity) | versions, identity preimage, member digests, receipt |
+| `report.html` | optional | presence (through the effective config) | not rendered in this version; enabling it fails closed |
+| `manifest.json` | yes | no (post-identity) | versions, identity preimage, member profile, member digests, receipt |
 
 ## Canonical serialization (devostasis.canon.v1)
 
 UTF-8; object keys sorted by code point; no insignificant whitespace; only
 `null`, booleans, integers, strings, arrays and objects; **no floats**
-(ratios are `{"num": x, "den": y}` records); timestamps are
+(ratios are `{"num": x, "den": y}` records, exact durations in seconds are
+`{"numerator": n, "denominator": d}` records); timestamps are
 `YYYY-MM-DDTHH:MM:SSZ`. Digests are `sha256:<hex>` over canonical bytes.
 Files may be stored pretty-printed; their digest is computed from the parsed
 content. `effective-config.json` is stored in canonical form exactly.
@@ -39,6 +41,14 @@ SHA-256 of that projection.
 Every configuration input is classified as (A) already identity-bearing,
 (B) projected, or (C) proven non-canonical. An unclassified input fails closed
 with `CONFIG_IDENTITY_UNCLASSIFIED` before anything is persisted.
+
+The persisted projection is not merely hashed: it is the **semantic
+authority** of the bundle (PV-EFFECTIVE-CONFIG-AUTHORITY-001). The canonical
+member profile recorded in the manifest (`report_md`, `report_html`,
+`activity_json`, `observations_json`, `gauges_json`, `demand_json`,
+`effective_config_json`, each `REQUIRED`, `ENABLED` or `DISABLED`) is derived
+from it at build time, and verification derives it again from the stored
+file rather than trusting the manifest.
 
 ## Identity
 
@@ -64,19 +74,44 @@ never collides with an old bundle; `observed_at` is identity-bearing so two
 collections of the same repository are distinct bundles.
 
 Bundles written by `devostasis.bundle.v1` remain verifiable: verification
-uses the preimage stored in each manifest, and the comparison logic maps the
-older semantic-config shape onto the current one so history stays
+uses the preimage stored in each manifest, validates their
+`devostasis.effective-config.v1` projection under that schema (no gauges,
+demand, display or demand mapping members), and the comparison logic maps
+the older semantic-config shape onto the current one so history stays
 `COMPARABLE` across the upgrade.
 
 ## Verification
 
-`devostasis verify --bundle <dir>` recomputes every member digest, recomputes
-`bundle_id` from the stored preimage, checks that the persisted effective
-config is canonical and hashes to `effective_config_digest`, checks that the
-preimage contains no post-identity field, and re-renders `report.md` with the
-current renderer when the renderer version matches. Any mismatch is a
-verification failure. Verification needs nothing outside the bundle
-directory.
+`devostasis verify --bundle <dir>` needs nothing outside the bundle
+directory and performs, in this order:
+
+1. every declared member exists, is readable and hashes to its manifest
+   digest; every present member is declared; `effective-config.json` is in
+   canonical form (ART-21);
+2. `bundle_id` recomputes from the stored preimage; the preimage contains no
+   post-identity field (ART-22); the persisted effective config hashes to
+   `effective_config_digest` in both preimage and manifest, else
+   `EFFECTIVE_CONFIG_PREIMAGE_MISMATCH` (ART-20/ART-21);
+3. the stored effective config is validated fail-closed under its recorded
+   schema (`devostasis.effective-config.v1` or `v2`: exact key set, enums,
+   planning, debt mapping, display and demand shapes), else
+   `EFFECTIVE_CONFIG_SCHEMA_INVALID_OR_UNSUPPORTED` (ART-25);
+4. the canonical member profile is derived from the validated stored config
+   and must equal the manifest profile, agree with the members actually
+   present and declared, and agree with the `ACTIVITY_DISABLED` /
+   `OBSERVATIONS_MEMBER_DISABLED` markers in the identity preimage, else
+   `CANONICAL_MEMBER_PROFILE_MISMATCH` (ART-23);
+5. only when steps 3 and 4 passed, and the renderer version matches, is
+   `report.md` re-rendered from the immutable machine members and the
+   `display` of the stored config (never from current defaults) and compared
+   byte for byte (ART-12/ART-24). A bundle whose stored config failed the
+   checks reports that the replay was skipped instead of replaying from an
+   untrusted source.
+
+Any problem is a verification failure. A consistently re-hashed forgery that
+claims a member disabled in the stored config while keeping the member, or
+that changes the stored config to an unsupported shape, fails at step 3 or 4
+even though every digest matches.
 
 ## Conformance cases implemented
 
@@ -85,4 +120,6 @@ immutability, ART-12 renderer purity, ART-13 acyclicity, ART-14
 cross-implementation identity, ART-16 observed_at identity, ART-17 effective
 config collision, ART-18 optional member identity (enabled HTML fails closed
 in this version), ART-19 canonicalization invariance, ART-20 and ART-21
-persisted preimage, ART-22 no identity cycle.
+persisted preimage, ART-22 no identity cycle, ART-23 member profile from
+stored config, ART-24 stored-config render authority, ART-25 effective config
+schema verification.

@@ -7,16 +7,19 @@ revision in `ci.revision_verdicts_14d`; the evaluator only counts.
 ## Outcome normalization (PV-CI-NORM-001)
 
 Provider conclusions map to a provider-neutral vocabulary. Unknown future
-values fail closed.
+values fail closed. The GitHub map `devostasis.ci-outcomes.github.v1` was
+accepted by PV-CAL-003 (CI-OUTCOME-01..04).
 
 | Provider state | Normalized |
 | --- | --- |
-| not completed (queued, in progress, waiting) | `VERIFY_UNRESOLVED` |
+| not completed (queued, in progress, waiting) | `VERIFY_UNRESOLVED`, whatever conclusion is attached (CI-OUTCOME-03) |
 | `success` | `VERIFY_PASS` |
-| `failure`, `timed_out` | `VERIFY_FAIL` |
+| `failure` | `VERIFY_FAIL` |
+| `timed_out` | `VERIFY_FAIL`: a verification attempt that exceeded its allowed time did not verify the revision (CI-OUTCOME-01) |
 | `cancelled`, `neutral`, `action_required`, `stale` | `NON_VERIFY_TERMINAL` |
 | `skipped` | `NOT_EXECUTED` |
-| `startup_failure`, `null`, anything else | `UNKNOWN` |
+| `startup_failure` | `UNKNOWN`: a provider could not start the job, which says nothing about the code; it is neither a project failure nor zero evidence (CI-OUTCOME-02) |
+| `null`, anything else | `UNKNOWN` (CI-OUTCOME-04) |
 
 ## Parent identity
 
@@ -55,7 +58,9 @@ order cannot improve history (rule `ANY_FAIL_ELSE_ANY_PASS_PER_IMMUTABLE_REVISIO
 A newer revision is a distinct sample: a failed revision followed by a passing
 newer revision yields one failure and one pass while both are in the window.
 Integrity improves through new revisions and window expiry, never through
-retries.
+retries. A secondary workflow that fails on every revision therefore keeps
+the band `FAILING` while another workflow passes; PV-CAL-002 confirmed this
+reading against a real repository.
 
 ## Record shape
 
@@ -90,11 +95,11 @@ History is reconstructed from what the provider still exposes at collection
 time. Attempt-level surfaces (Actions) preserve failures; parent-level
 surfaces (check suites) do not, which is diagnosed as
 `HISTORY_PROVENANCE_PARENT_LEVEL_ONLY`. Persisting revision history across
-bundles is on the roadmap.
+bundles is on the roadmap (PV-HIST-001).
 
 ## Conformance cases implemented
 
 R54 same-revision retry keeps historical failure; R55 retry-count invariance;
 R56 newer revision is distinct; R57 order and surface invariance; the V0.7
-composition precedence; fail-closed outcome mapping; unresolved current
+composition precedence; CI-OUTCOME-01..04 outcome mapping; unresolved current
 verification degrades instead of claiming `CLEAN`.

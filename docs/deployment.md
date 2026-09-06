@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.1
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.2
     with:
       debt-labels: "type:debt"          # optional: issue labels that mark debt items
       # planning-source: file             # optional: targets register instead of milestones
@@ -55,6 +55,14 @@ it.
 The caller's `permissions` block must grant the five read scopes above, or
 the token cannot see issues, pull requests and workflow runs and the
 corresponding Vitals come back FORBIDDEN.
+
+Self-observation is a convenience shape, not durable history. The bundle
+lives in the job's workspace and in the uploaded artifact, which expires with
+the repository's artifact retention; nothing is appended to a canonical
+store, and without `history-repo` every run is a `BASELINE` bundle. A project
+that needs previous-vs-current deltas, an audit trail or replay must be
+observed into a companion history repository as described below (decision
+recorded by the research review of the reporting contract).
 
 ## Fleet observer with a companion history repository
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from . import timeutil
+from . import canonical, timeutil
 from .config import ResolvedProject
 from .observations import AVAILABLE, PARTIAL, UNAVAILABLE, VALUE_BEARING, Observation, ObservationSet
 from .policy import CLUTTER, FLOW, PLANNING, PULSE
@@ -28,6 +28,12 @@ CI_REVISIONS = "ci.revision_verdicts_14d"
 
 INVENTORY_IDS = [INV_REPO, INV_COMMITS, INV_CRS, INV_ISSUES, INV_BRANCHES, INV_TARGETS, INV_RELEASES, INV_DEBT_REGISTER, CI_CONFIGURED, CI_REVISIONS]
 
+# Exact rational merge latency in seconds is the classifier input (PV-FLOW-MERGE-LATENCY-001);
+# the whole-hour value is derived from it for presentation and compatibility only.
+MEDIAN_SECONDS = "forge.change_requests.median_time_to_merge_seconds_28d"
+MEDIAN_HOURS = "forge.change_requests.median_time_to_merge_hours_28d"
+MEDIAN_HOURS_NOTE = "whole-hour projection of median_time_to_merge_seconds_28d for presentation; never a classifier input"
+
 
 def _derived(
     obs: ObservationSet,
@@ -38,6 +44,7 @@ def _derived(
     complete: bool = True,
     extra_sources: list[str] | None = None,
     reason_override: str | None = None,
+    notes: str | None = None,
 ) -> None:
     """Add an aggregate derived from ``source``; status follows the source and the coverage flag."""
     if observation_id in obs:
@@ -50,6 +57,7 @@ def _derived(
         "adapter_version": source.adapter_version,
         "freshness": source.freshness,
         "evidence_ref": evidence,
+        "notes": notes,
     }
     if source.status not in VALUE_BEARING or not isinstance(source.value, list):
         obs.add(
@@ -82,13 +90,9 @@ def _flag(source: Observation, key: str) -> bool:
     return bool(coverage.get(key, True))
 
 
-def _median(values: list[int]) -> int:
-    ordered = sorted(values)
-    count = len(ordered)
-    middle = count // 2
-    if count % 2:
-        return ordered[middle]
-    return (ordered[middle - 1] + ordered[middle]) // 2
+def merge_latencies(items: list[dict[str, Any]]) -> list:
+    """Exact merge durations in seconds of merged change requests, order-independent."""
+    return [timeutil.exact_seconds_between(item["created_at"], item["merged_at"]) for item in items]
 
 
 def target_refs(item: dict[str, Any]) -> list[dict[str, Any]]:
@@ -152,12 +156,16 @@ def derive(obs: ObservationSet, project: ResolvedProject) -> ObservationSet:
             )
         if crs.has_value and _merged_in_window(crs.value):
             _derived(
-                obs, "forge.change_requests.median_time_to_merge_hours_28d", "duration", crs,
-                lambda items: _median([
-                    timeutil.hours_between(timeutil.parse_ts(i["created_at"]), timeutil.parse_ts(i["merged_at"]))
-                    for i in _merged_in_window(items)
-                ]),
+                obs, MEDIAN_SECONDS, "duration", crs,
+                lambda items: canonical.rational_record(timeutil.median_fraction(merge_latencies(_merged_in_window(items)))),
                 complete=window_ok,
+            )
+            _derived(
+                obs, MEDIAN_HOURS, "duration", crs,
+                lambda items: int(timeutil.median_fraction(merge_latencies(_merged_in_window(items))) // 3600),
+                complete=window_ok,
+                extra_sources=[MEDIAN_SECONDS],
+                notes=MEDIAN_HOURS_NOTE,
             )
 
         def _active(items):

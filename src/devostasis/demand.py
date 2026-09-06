@@ -1,10 +1,16 @@
-"""Generic consumer demand interface (``devostasis.demand.v1``).
+"""Generic consumer demand interface (``devostasis.demand.v2``).
 
 Demand answers "how much attention does this Vital call for" with a small
 ordered vocabulary that autonomous development systems can consume opaquely:
 CRITICAL, HIGH, MEDIUM, LOW, MINIMAL, plus UNRESOLVED when the Vital has no
 band (missing evidence must never look like low demand). Levels come from a
-versioned mapping band -> level; the gauge only orders Vitals inside a level.
+versioned mapping band -> level.
+
+The attention order ranks Vitals by level and then by the canonical Vital
+order. Gauges are carried for presentation and provenance only: they measure
+different phenomena on different scales and are never compared across Vitals
+(PV-ROLE-001 finding ROLE-01, SAME_LEVEL_GAUGE_INVARIANCE). Version 2 removed
+the gauge tie-break of version 1 for that reason.
 
 There is deliberately no aggregate: an attention *order* is emitted, never a
 sum or a score, because the seven Vitals share signals and are not
@@ -15,16 +21,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from .contracts import CORE_VITAL_IDS
+from .contracts import CORE_VITAL_IDS, DEMAND_CONTRACT
 
-DEMAND_CONTRACT = "devostasis.demand.v1"
-DEMAND_SCHEMA = "devostasis.demand.v1"
+DEMAND_SCHEMA = DEMAND_CONTRACT
 LEVELS = ("CRITICAL", "HIGH", "MEDIUM", "LOW", "MINIMAL")
 UNRESOLVED = "UNRESOLVED"
 RANK = {UNRESOLVED: -1, "CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "MINIMAL": 4}
-
-# For these Vitals more of the phenomenon means more attention; for the others less does.
-HIGH_IS_MORE_ATTENTION = frozenset({"flow", "clutter", "debt"})
 
 DEFAULT_LEVELS: dict[str, dict[str, str]] = {
     "pulse": {"DORMANT": "MEDIUM", "QUIET": "LOW", "STEADY": "MINIMAL", "SURGING": "MINIMAL"},
@@ -47,11 +49,9 @@ DEFAULT_LEVELS: dict[str, dict[str, str]] = {
 DEFAULT_MAPPING_VERSION = "devostasis-default-1"
 
 
-def attention_key(vital_id: str, gauge: int | None) -> int:
-    """Ordering inside a level: 0-100, larger means more attention."""
-    if gauge is None:
-        return 0
-    return gauge if vital_id in HIGH_IS_MORE_ATTENTION else 100 - gauge
+def order_key(row: dict[str, Any]) -> tuple[int, int]:
+    """Level rank first, then the canonical Vital order; never a gauge (ROLE-01)."""
+    return (RANK[row["level"]], CORE_VITAL_IDS.index(row["vital_id"]))
 
 
 def build_demand(snapshot: dict[str, Any], gauges: list[dict[str, Any]], config: dict[str, Any]) -> dict[str, Any]:
@@ -77,11 +77,10 @@ def build_demand(snapshot: dict[str, Any], gauges: list[dict[str, Any]], config:
                 "evaluation_status": vital.get("evaluation_status"),
                 "gauge": gauge,
                 "level": level,
-                "attention_key": attention_key(vital_id, gauge),
                 "reason": reason,
             }
         )
-    order = sorted(rows, key=lambda r: (RANK[r["level"]], -r["attention_key"], CORE_VITAL_IDS.index(r["vital_id"])))
+    order = sorted(rows, key=order_key)
     return {
         "schema": DEMAND_SCHEMA,
         "contract": DEMAND_CONTRACT,
@@ -91,7 +90,7 @@ def build_demand(snapshot: dict[str, Any], gauges: list[dict[str, Any]], config:
         "levels": list(LEVELS) + [UNRESOLVED],
         "aggregate": None,
         "vitals": rows,
-        "attention_order": [{"vital_id": r["vital_id"], "level": r["level"], "attention_key": r["attention_key"]} for r in order],
+        "attention_order": [{"vital_id": r["vital_id"], "level": r["level"]} for r in order],
     }
 
 

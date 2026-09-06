@@ -219,7 +219,7 @@ def cmd_demand(args: argparse.Namespace) -> int:
     payload = parsed.get("demand.json") or build_demand(snapshot, gauges_for_snapshot(snapshot), {"mapping_version": DEFAULT_MAPPING_VERSION, "levels": DEFAULT_LEVELS})
     if args.order_only:
         for position, entry in enumerate(payload["attention_order"], start=1):
-            print(f"{position}. {entry['vital_id']} {entry['level']} ({entry['attention_key']})")
+            print(f"{position}. {entry['vital_id']} {entry['level']}")
         return 0
     sys.stdout.write(canonical.pretty_json(payload))
     return 0

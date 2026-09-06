@@ -6,7 +6,7 @@
     }
   ],
   "artifact_contract_version": "devostasis.bundle.v2",
-  "bundle_id": "9e3e372d010f7ded7e9af6733141149c5c1b323b559fbf05fd00b099fc520f57",
+  "bundle_id": "cb851ed5b6f0d6f1b5b2fecaae1571b54bcaf2c66ef04fa32c645f0d73c3e1f0",
   "bundle_identity_contract": "PV-BUNDLE-ID-002",
   "canonical_member_profile": {
     "activity_json": "ENABLED",
@@ -21,7 +21,8 @@
   "ci_unit_contract_version": "PV-CI-UNIT-004",
   "comparison_status": "BASELINE",
   "config_version": "example-1",
-  "demand_contract": "devostasis.demand.v1",
+  "demand_contract": "devostasis.demand.v2",
+  "effective_config_authority_contract": "PV-EFFECTIVE-CONFIG-AUTHORITY-001",
   "effective_config_contract": "PV-EFFECTIVE-CONFIG-001",
   "effective_config_digest": "sha256:cc472c9ad93f6721ecc9a3fc14f3067ccc85af33c2acceb4489982a44eb370ac",
   "gauge_contract": "devostasis.gauge.v1",
@@ -34,14 +35,14 @@
     "comparison_status": "BASELINE",
     "config_version": "example-1",
     "delta_digest": "sha256:676f867bf439661449730559459d3f9291d666b9f6fcc593c37e5ea35818b3b4",
-    "demand_contract": "devostasis.demand.v1",
-    "demand_digest": "sha256:dfaece48452e7532ed8617901745888ef712df027657d85692dc47039d5eb634",
+    "demand_contract": "devostasis.demand.v2",
+    "demand_digest": "sha256:615dbc00bee70964a95bded568a13b56d8a77d18cf5db1f6e6a54ddba4b6acca",
     "effective_config_contract": "PV-EFFECTIVE-CONFIG-001",
     "effective_config_digest": "sha256:cc472c9ad93f6721ecc9a3fc14f3067ccc85af33c2acceb4489982a44eb370ac",
     "gauge_contract": "devostasis.gauge.v1",
     "gauges_digest": "sha256:9625ff34cc358d9343d865f6900a20c357b400f47be23a414775c21261bbc628",
     "observation_contract_version": "RAW-OBS-V0",
-    "observations_digest": "sha256:07ece09ccfc69520692f655da0a884afe27c29d995d0e254ccec34e7dc1c661d",
+    "observations_digest": "sha256:e3670fe2668494cdcdf2148fd6e43301845a5d7e6cd47aacddb108e06057a0b9",
     "observed_at": "2026-09-05T12:00:00Z",
     "policy_version": "devostasis.policy.v1",
     "previous_bundle_id": null,
@@ -52,20 +53,20 @@
       "immutable_project_id": "123456",
       "provider": "github"
     },
-    "renderer_version": "devostasis.render.v3",
-    "snapshot_digest": "sha256:158751fab86c927d61d82f67a58d89c7df0d304cb777fd5619ab0bfaf75297f4",
+    "renderer_version": "devostasis.render.v4",
+    "snapshot_digest": "sha256:f0bee250ab10bab25f9654cdcfebe8ed0fa3b371473ed92b7a8b2e3e0f152a3b",
     "source_receipts_digest": "sha256:7f35306f781930bd5c465b9c1df4599acad0e870d7b7c6551bfacee650c881d8",
     "vitals_contract_version": "PV-VITALS-V1-002"
   },
   "members": {
     "activity.json": "sha256:d80fa63f29071d59425dad060211db5fbf6d165248c23b18169b06c37a1a0595",
     "delta.json": "sha256:676f867bf439661449730559459d3f9291d666b9f6fcc593c37e5ea35818b3b4",
-    "demand.json": "sha256:dfaece48452e7532ed8617901745888ef712df027657d85692dc47039d5eb634",
+    "demand.json": "sha256:615dbc00bee70964a95bded568a13b56d8a77d18cf5db1f6e6a54ddba4b6acca",
     "effective-config.json": "sha256:cc472c9ad93f6721ecc9a3fc14f3067ccc85af33c2acceb4489982a44eb370ac",
     "gauges.json": "sha256:9625ff34cc358d9343d865f6900a20c357b400f47be23a414775c21261bbc628",
-    "observations.json": "sha256:07ece09ccfc69520692f655da0a884afe27c29d995d0e254ccec34e7dc1c661d",
-    "report.md": "sha256:a9393584a2965fc27e263b4d8440f412250698ee8e030ac21793948d2698bfad",
-    "snapshot.json": "sha256:158751fab86c927d61d82f67a58d89c7df0d304cb777fd5619ab0bfaf75297f4"
+    "observations.json": "sha256:e3670fe2668494cdcdf2148fd6e43301845a5d7e6cd47aacddb108e06057a0b9",
+    "report.md": "sha256:082b5c58c6dc971eec69822db8cfb926757650d9f2f58b285f9eacbb43e36c2a",
+    "snapshot.json": "sha256:f0bee250ab10bab25f9654cdcfebe8ed0fa3b371473ed92b7a8b2e3e0f152a3b"
   },
   "observation_contract_version": "RAW-OBS-V0",
   "observed_at": "2026-09-05T12:00:00Z",
@@ -162,12 +163,12 @@
       "visibility": "public"
     }
   },
-  "renderer_version": "devostasis.render.v3",
+  "renderer_version": "devostasis.render.v4",
   "run_meta": {
     "example": true,
     "tool": {
       "name": "devostasis",
-      "version": "0.1.0"
+      "version": "0.1.2"
     }
   },
   "schema": "devostasis.manifest.v1",

@@ -5,12 +5,18 @@ expected but the previous bundle cannot be loaded or verified) and INCOMPARABLE
 (semantic versions or semantic configuration differ). Only COMPARABLE emits
 UNCHANGED/CHANGED. No Vital declares a normative band ordering in this version,
 so IMPROVED/WORSENED are never emitted: a changed band is CHANGED.
+
+Inside a COMPARABLE bundle a single Vital whose rule version changed since the
+previous bundle is INCOMPARABLE on its own (``RULE_VERSION_BOUNDARY``): a rule
+repair never reinterprets the historical band, and the other six Vitals keep
+comparing.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from .canonical import rational_parts
 from .contracts import CORE_VITAL_IDS, DELTA_SCHEMA
 
 BASELINE = "BASELINE"
@@ -33,7 +39,7 @@ def _numeric(value: Any) -> bool:
         return False
     if isinstance(value, int):
         return True
-    return isinstance(value, dict) and set(value) == {"num", "den"}
+    return rational_parts(value) is not None
 
 
 def _metric_deltas(previous: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
@@ -68,6 +74,9 @@ def _coverage_delta(previous: list[dict[str, str]], current: list[dict[str, str]
 
 def _transition(previous: dict[str, Any], current: dict[str, Any]) -> tuple[str, list[str]]:
     reasons: list[str] = []
+    p_rule, c_rule = previous.get("rule_id"), current.get("rule_id")
+    if p_rule != c_rule:
+        return T_INCOMPARABLE, [f"RULE_VERSION_BOUNDARY:{p_rule}->{c_rule}"]
     p_band, c_band = previous.get("band"), current.get("band")
     p_eval, c_eval = previous.get("evaluation_status"), current.get("evaluation_status")
     if p_band is None and c_band is None:
@@ -128,7 +137,8 @@ def compare(
             transition, codes = _transition(prev, cur)
             row["transition_class"] = transition
             row["reason_codes"] = codes
-            row["metric_deltas"] = _metric_deltas(prev.get("derived") or {}, cur.get("derived") or {})
+            if transition != T_INCOMPARABLE:
+                row["metric_deltas"] = _metric_deltas(prev.get("derived") or {}, cur.get("derived") or {})
             row["coverage_delta"] = _coverage_delta(prev.get("inputs") or [], cur.get("inputs") or [])
         rows.append(row)
     return {
