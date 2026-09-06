@@ -2,9 +2,14 @@
 
 The accepted contracts keep named bands canonical and reserve 0-100 values
 for a versioned normalization contract. Gauges are that contract in this
-implementation: a deterministic placement of a Vital on a 0-100 scale so that
-gradation inside a band is visible to humans and usable by consumers as an
-ordering inside a level (see [demand.md](demand.md)).
+implementation, accepted by the independent review PV-REV-GAUGE-001: a
+deterministic placement of a Vital on a 0-100 scale so that gradation inside
+a band is visible to humans and usable for ordering *within the same Vital*.
+Gauges of different Vitals measure different phenomena on different scales;
+they are never compared with each other, never summed or averaged, and never
+take part in the demand attention order (see [demand.md](demand.md)).
+Changing a range, formula, scale meaning or qualifier rule is a new contract
+identifier, never a silent edit of `devostasis.gauge.v1`.
 
 Rules:
 

@@ -32,6 +32,14 @@ Every Vital emits: `vital_id`, `vital_version`, `rule_id`, `band`,
 `shared_signal_groups`, `dependency_group_ids`, `diagnostics` and a
 deterministic `explanation`. An `UNKNOWN` Vital has `band = null`.
 
+`rule_id` versions the evaluation rule of one Vital independently of the
+taxonomy and the policy constants. Flow (`flow.bands.v1`) and Pulse
+(`pulse.bands.v1`) carry the calibration repairs adopted in 0.1.2; the other
+five Vitals keep their V0 rule ids. A rule version change never rewrites a
+historical bundle: the affected Vital compares as `INCOMPARABLE`
+(`RULE_VERSION_BOUNDARY`) across the boundary while the rest of the bundle
+stays comparable ([history-and-reports.md](history-and-reports.md)).
+
 ## Pulse
 
 *How intense is recent observable activity?* Not productivity; low Pulse is
@@ -56,10 +64,28 @@ stale yields `UNKNOWN`. An optional channel that is not exact is never treated
 as zero: the band is computed from the observed channels as a
 `CONSERVATIVE_LOWER_BOUND` with `possible_bands` listing every band from that
 bound upward (zero observed activity therefore degrades to `DORMANT`, not
-`QUIET`). A required input that is `PARTIAL` with a value because a
-newest-first enumeration was capped is treated the same way: the true
-activity can only be higher, so the band is a `DEGRADED` lower bound with the
-diagnostic `REQUIRED_INPUT_PARTIAL` (implementation extension, see ROADMAP).
+`QUIET`).
+
+A required input that is `PARTIAL` with a fresh value because a newest-first
+enumeration was capped follows **PV-PULSE-REQUIRED-LOWER-BOUND-001** (rule
+`pulse.bands.v1`, diagnostic `REQUIRED_INPUT_PARTIAL`): the observed rows are
+a lower bound, never complete evidence. The classifier is evaluated over every
+admissible completion of the missing tail (more commits, more active days up
+to the window, more activity on unobserved optional channels). If every
+completion yields the same band, that band is emitted as `DEGRADED` /
+`CONSERVATIVE_LOWER_BOUND` with a `possible_bands` of length one
+(PULSE-CAP-01). If completions cross a band boundary, `possible_bands` lists
+every reachable band and the lowest one is reported without any exactness
+claim (PULSE-CAP-02). A capped input without a fresh value stays `UNKNOWN`
+(PULSE-CAP-03). Optional evidence never turns a capped required input into
+exact certainty (PULSE-CAP-04). Provider page size, order and chunking are
+acquisition metadata and cannot change the result (PULSE-CAP-05). The
+derived metrics name the bounded inputs (`commits_28d_semantics`,
+`commit_active_days_28d_semantics` = `LOWER_BOUND`).
+
+The frozen active-day thresholds are unchanged. Substantial work concentrated
+on two active days is `QUIET`; PV-CAL-003 recorded this as an open
+calibration observation, not a defect.
 
 Groups: `DEFAULT_BRANCH_ACTIVITY`, `CHANGE_REQUEST_ACTIVITY`, `ISSUE_ACTIVITY`;
 dependencies `FLOW_PULSE_ACTIVITY`, `DIRECTION_PULSE_ACTIVITY`.
@@ -70,19 +96,34 @@ dependencies `FLOW_PULSE_ACTIVITY`, `DIRECTION_PULSE_ACTIVITY`.
 descriptive, never positive.
 
 Required: `forge.change_requests.open_count`, `.merged_count_28d`; conditional
-`.oldest_open_age_days` when open > 0 and `.median_time_to_merge_hours_28d`
-when merged > 0. Any applicable input that is not exact yields `UNKNOWN`.
+`.oldest_open_age_days` when open > 0 and
+`.median_time_to_merge_seconds_28d` when open > 0 and merged > 0. The median
+is an exact rational record `{"numerator": n, "denominator": d}` in seconds
+(**PV-FLOW-MERGE-LATENCY-001**). Any applicable input that is not exact
+yields `UNKNOWN`.
+
+Rule `flow.bands.v1` applies **PV-FLOW-EMPTY-QUEUE-001** first: a positively
+observed empty queue is `NO_QUEUE`, and the friction predicates apply only
+when open > 0. Historical merge latency is evidence about completed change
+requests and cannot congest a queue that does not exist.
 
 | Band | Rule |
 | --- | --- |
-| GRIDLOCKED | (`open >= 3` and `oldest >= 30` days and `merged_28d = 0`) or (`open >= 10` and `median > 336` h) |
-| CONGESTED | `oldest >= 14` days or `open >= 10` or `median > 168` h |
+| NO_QUEUE | `open = 0`, whatever the historical median |
+| GRIDLOCKED | `open > 0` and ((`open >= 3` and `oldest >= 30` days and `merged_28d = 0`) or (`open >= 10` and `median > 1209600` s)) |
+| CONGESTED | `open > 0` and (`oldest >= 14` days or `open >= 10` or `median > 604800` s) |
 | MOVING | `open > 0` |
-| NO_QUEUE | `open = 0` |
 
-The rules are applied literally; an empty queue with a slow recent median is
-`CONGESTED` and carries the diagnostic `FLOW_MEDIAN_WITH_EMPTY_QUEUE`
-(calibration finding, see ROADMAP).
+The second boundaries are the exact conversions of the frozen 168 h and 336 h
+constants with unchanged strictness: a median of exactly 604800 s is not
+`> 168 h` (FLOW-PREC-03..05). The whole-hour value
+`median_time_to_merge_hours_28d` is still emitted, derived from the exact
+record, for presentation and compatibility; it never enters classification.
+When the queue is empty and a historical median above 168 h exists, the
+diagnostic `FLOW_HISTORICAL_MEDIAN_NOT_APPLICABLE:EMPTY_QUEUE` keeps that
+evidence visible (FLOW-EQ-01). Rule `flow.bands.v0` classified this case
+`CONGESTED` with `FLOW_MEDIAN_WITH_EMPTY_QUEUE`; PV-CAL-002 judged that a
+construct defect, not a threshold to retune.
 
 Groups: `CHANGE_REQUEST_INVENTORY`, `CHANGE_REQUEST_ACTIVITY`; dependencies
 `CLUTTER_FLOW_FORGE`, `FLOW_PULSE_ACTIVITY`.
@@ -110,6 +151,10 @@ verification is still unresolved, yields `DEGRADED` with a
 `NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET` that always includes `FAILING`.
 When the latest revision has no decisive verdict (skipped or cancelled), the
 latest decisive revision is used and diagnosed.
+
+A persistently failing secondary workflow makes every revision
+`FAILURE_OBSERVED` and the band `FAILING`; PV-CAL-002 confirmed this as the
+evidence-faithful reading of the accepted contract (ROADMAP finding 3).
 
 Groups: `CI_VERIFICATION`; dependency `INTEGRITY_ONLY`.
 
@@ -164,8 +209,8 @@ Groups: `PLANNING_TARGETS`; dependency `HORIZON_DIRECTION_PLANNING`.
 ## Direction
 
 *Is active change work explicitly traceable to declared targets?* Linkage
-must be explicit and auditable (milestone on the change request); keyword,
-branch-name or model heuristics are forbidden.
+must be explicit and auditable (milestone on the change request, or the
+register marker); keyword, branch-name or model heuristics are forbidden.
 
 Inputs: `planning.linkage.active_change_requests_count_28d`,
 `.active_change_requests_linked_to_open_target_count_28d`,
@@ -182,6 +227,9 @@ Inputs: `planning.linkage.active_change_requests_count_28d`,
 `FULLY_LINKED` is neutral exact traceability. It is never rendered as
 ALIGNED, ON_TRACK or HEALTHY. Mass-linking every change to one target yields
 `FULLY_LINKED` truthfully, with the diagnostic `ALL_LINKS_TO_SINGLE_TARGET`.
+A repository that never had a milestone is `SUPPORTED_UNUSED` and therefore
+`UNDECLARED`, not `SCATTERED`: it truthfully states that no explicit target is
+declared on the observed surface (confirmed by PV-CAL-002, ROADMAP finding 4).
 
 Groups: `PLANNING_TARGETS`, `CHANGE_REQUEST_ACTIVITY`; dependencies
 `HORIZON_DIRECTION_PLANNING`, `DIRECTION_PULSE_ACTIVITY`.
@@ -189,8 +237,8 @@ Groups: `PLANNING_TARGETS`, `CHANGE_REQUEST_ACTIVITY`; dependencies
 ## Debt
 
 *How much explicitly registered maintenance obligation is unresolved?* Debt
-exists only through an explicit, versioned mapping (issue labels in this
-version). Age, TODO comments, lint output and prose never count.
+exists only through an explicit, versioned mapping (issue labels or a debt
+register file). Age, TODO comments, lint output and prose never count.
 
 Inputs: `debt.registry.capability`, `debt.mapping`, `debt.items.open_count`,
 `.open_stale_count_30d`, `.closed_count_28d`.
@@ -230,6 +278,6 @@ comparisons report `CHANGED` rather than improved or worsened.
 | Integrity failing ratio | 1/4 |
 | Pulse surging | 15 active days, or 40 events on 2 channels |
 | Pulse steady | 3 active days and 5 events |
-| Flow congested | 14 days, 10 open, 168 hours |
-| Flow gridlocked | 3 open for 30 days with 0 merged, or 10 open with median over 336 hours |
+| Flow congested | 14 days, 10 open, median over 168 h = 604800 s |
+| Flow gridlocked | 3 open for 30 days with 0 merged, or 10 open with median over 336 h = 1209600 s |
 | Clutter heavy / cluttered | 25 / 5 stale items, ratio 1/2 / 1/4 with 4 tracked, 20 / 6 stale branches |

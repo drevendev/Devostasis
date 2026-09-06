@@ -573,11 +573,12 @@
       },
       "evidence_ref": {
         "derived_from": [
-          "forge.change_requests.inventory"
+          "forge.change_requests.inventory",
+          "forge.change_requests.median_time_to_merge_seconds_28d"
         ]
       },
       "freshness": "FRESH",
-      "notes": null,
+      "notes": "whole-hour projection of median_time_to_merge_seconds_28d for presentation; never a classifier input",
       "observation_id": "forge.change_requests.median_time_to_merge_hours_28d",
       "provider": "github",
       "reason_code": null,
@@ -585,6 +586,36 @@
       "source_ref": "derived:forge.change_requests.inventory",
       "status": "AVAILABLE",
       "value": 20,
+      "value_type": "duration"
+    },
+    {
+      "adapter_version": "devostasis.github.v1",
+      "collected_at": "2026-09-05T12:00:00Z",
+      "coverage": {
+        "complete": true,
+        "source_coverage": {
+          "open_complete": true,
+          "window_complete": true,
+          "window_start": "2026-08-08T12:00:00Z"
+        }
+      },
+      "evidence_ref": {
+        "derived_from": [
+          "forge.change_requests.inventory"
+        ]
+      },
+      "freshness": "FRESH",
+      "notes": null,
+      "observation_id": "forge.change_requests.median_time_to_merge_seconds_28d",
+      "provider": "github",
+      "reason_code": null,
+      "schema_version": "RAW-OBS-V0",
+      "source_ref": "derived:forge.change_requests.inventory",
+      "status": "AVAILABLE",
+      "value": {
+        "denominator": 1,
+        "numerator": 72000
+      },
       "value_type": "duration"
     },
     {

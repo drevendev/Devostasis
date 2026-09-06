@@ -4,7 +4,7 @@
 #
 #   jobs:
 #     vitals:
-#       uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.1
+#       uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.2
 #       with:
 #         debt-labels: "type:debt"
 #

@@ -347,3 +347,139 @@ def single_project(repo: str, config_version: str = "cli", **overrides: Any) -> 
     raw: dict[str, Any] = {"provider": "github", "repo": repo}
     raw.update(overrides)
     return resolve_project(raw, DEFAULTS, config_version)
+
+
+EFFECTIVE_CONFIG_SCHEMA_V1 = "devostasis.effective-config.v1"
+SUPPORTED_EFFECTIVE_CONFIG_SCHEMAS = (EFFECTIVE_CONFIG_SCHEMA_V1, EFFECTIVE_CONFIG_SCHEMA)
+MEMBER_SWITCHES = ("ENABLED", "DISABLED")
+PROFILE_MEMBERS = {
+    "report_md": "report.md",
+    "report_html": "report.html",
+    "activity_json": "activity.json",
+    "observations_json": "observations.json",
+    "gauges_json": "gauges.json",
+    "demand_json": "demand.json",
+    "effective_config_json": "effective-config.json",
+}
+
+
+def _is_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _check_stored_debt_mapping(value: Any, legacy: bool) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, dict):
+        return ["debt_mapping must be null or an object"]
+    if legacy and "source" not in value:
+        expected = {"labels", "mapping_version"}
+    else:
+        source = value.get("source")
+        if source == "labels":
+            expected = {"source", "labels", "mapping_version"}
+        elif source == "file":
+            expected = {"source", "path", "mapping_version"}
+        else:
+            return [f"debt_mapping.source {source!r} is not one of {DEBT_SOURCES}"]
+    problems: list[str] = []
+    if set(value) != expected:
+        problems.append(f"debt_mapping keys {sorted(value)} differ from {sorted(expected)}")
+    if "labels" in expected:
+        labels = value.get("labels")
+        if not isinstance(labels, list) or not labels or not all(isinstance(item, str) for item in labels):
+            problems.append("debt_mapping.labels must be a non-empty list of strings")
+    if "path" in expected and not isinstance(value.get("path"), str):
+        problems.append("debt_mapping.path must be a string")
+    if not isinstance(value.get("mapping_version"), str):
+        problems.append("debt_mapping.mapping_version must be a string")
+    return problems
+
+
+def validate_effective_config(config: Any) -> list[str]:
+    """Problems of a stored effective config under its recorded schema (ART-25); empty means valid.
+
+    Verification treats the persisted effective-config.json as the semantic
+    authority of a bundle (PV-EFFECTIVE-CONFIG-AUTHORITY-001), so it is validated
+    fail-closed before any semantic use. Both persisted shapes are supported:
+    devostasis.effective-config.v1 (bundle.v1 history) and the current v2.
+    """
+    if not isinstance(config, dict):
+        return ["effective config is not an object"]
+    schema = config.get("schema")
+    if schema not in SUPPORTED_EFFECTIVE_CONFIG_SCHEMAS:
+        return [f"unsupported effective config schema {schema!r}"]
+    legacy = schema == EFFECTIVE_CONFIG_SCHEMA_V1
+    expected = {"schema", "debt_mapping", "report_html", "locale", "activity", "activity_list_cap", "observations_member"}
+    expected |= {"planning_source"} if legacy else {"planning", "display", "demand"}
+    if set(config) != expected:
+        return [f"keys {sorted(config)} differ from {sorted(expected)}"]
+    problems: list[str] = []
+    for key in ("report_html", "activity", "observations_member"):
+        if config[key] not in MEMBER_SWITCHES:
+            problems.append(f"{key} must be ENABLED or DISABLED, got {config[key]!r}")
+    if config["locale"] not in LOCALES:
+        problems.append(f"locale {config['locale']!r} is not one of {LOCALES}")
+    if not _is_int(config["activity_list_cap"]) or config["activity_list_cap"] < 0:
+        problems.append("activity_list_cap must be a non-negative integer")
+    problems.extend(_check_stored_debt_mapping(config["debt_mapping"], legacy))
+    if legacy:
+        if config["planning_source"] not in PLANNING_SOURCES:
+            problems.append(f"planning_source {config['planning_source']!r} is not one of {PLANNING_SOURCES}")
+        return problems
+    planning = config["planning"]
+    if not isinstance(planning, dict) or set(planning) != {"source", "path", "link_marker"}:
+        problems.append("planning must be an object with source, path and link_marker")
+    else:
+        if planning["source"] not in PLANNING_SOURCES:
+            problems.append(f"planning.source {planning['source']!r} is not one of {PLANNING_SOURCES}")
+        if planning["path"] is not None and not isinstance(planning["path"], str):
+            problems.append("planning.path must be a string or null")
+        if not isinstance(planning["link_marker"], str) or not planning["link_marker"]:
+            problems.append("planning.link_marker must be a non-empty string")
+    display = config["display"]
+    if not isinstance(display, dict) or set(display) != {"vitals", "gauge", "sections"}:
+        problems.append("display must be an object with vitals, gauge and sections")
+    else:
+        vitals = display["vitals"]
+        if not isinstance(vitals, list) or not vitals or any(v not in CORE_VITAL_IDS for v in vitals) or len(set(vitals)) != len(vitals):
+            problems.append("display.vitals must be a non-empty list of distinct Vital ids")
+        gauge = display["gauge"]
+        if not isinstance(gauge, list) or not gauge or any(mode not in GAUGE_MODES for mode in gauge) or len(set(gauge)) != len(gauge):
+            problems.append("display.gauge must be a non-empty list of distinct gauge modes")
+        sections = display["sections"]
+        if not isinstance(sections, list) or any(s not in DISPLAY_SECTIONS for s in sections) or len(set(sections)) != len(sections):
+            problems.append("display.sections must be a list of distinct known sections")
+    demand = config["demand"]
+    if not isinstance(demand, dict) or set(demand) != {"mapping_version", "levels"}:
+        problems.append("demand must be an object with mapping_version and levels")
+    else:
+        if not isinstance(demand["mapping_version"], str) or not demand["mapping_version"]:
+            problems.append("demand.mapping_version must be a non-empty string")
+        levels = demand["levels"]
+        if not isinstance(levels, dict):
+            problems.append("demand.levels must be an object")
+        else:
+            for vital_id, table in levels.items():
+                if vital_id not in CORE_VITAL_IDS or not isinstance(table, dict):
+                    problems.append(f"demand.levels has an invalid entry {vital_id!r}")
+                    continue
+                for band, level in table.items():
+                    if band not in BANDS[vital_id] or level not in LEVELS:
+                        problems.append(f"demand.levels.{vital_id}.{band} = {level!r} is not a valid band/level pair")
+    return problems
+
+
+def member_profile_from_config(config: dict[str, Any]) -> dict[str, str]:
+    """Canonical member profile implied by a validated stored effective config (ART-23)."""
+    profile = {
+        "report_md": "REQUIRED",
+        "report_html": config["report_html"],
+        "activity_json": config["activity"],
+        "observations_json": config["observations_member"],
+        "effective_config_json": "REQUIRED",
+    }
+    if config.get("schema") != EFFECTIVE_CONFIG_SCHEMA_V1:
+        profile["gauges_json"] = "REQUIRED"
+        profile["demand_json"] = "REQUIRED"
+    return profile

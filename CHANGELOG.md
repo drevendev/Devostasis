@@ -3,7 +3,56 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## 0.1.1 (release/0.1.1, unreleased)
+## 0.1.2 (release/0.1.2, unreleased)
+
+Adopts the first round of research judgements and calibration repairs made
+against real bundles (PV-REV-ARTIFACT-005, PV-REV-REPORT-001,
+PV-REV-GAUGE-001, PV-ROLE-001, PV-CAL-002, PV-CAL-003 and their repair
+units). No numeric threshold or window changed.
+
+- Flow rule `flow.bands.v1`: a positively observed empty queue is `NO_QUEUE`
+  regardless of the historical merge median (PV-FLOW-EMPTY-QUEUE-001); the
+  classifier consumes the exact rational median merge latency in seconds,
+  `forge.change_requests.median_time_to_merge_seconds_28d`, with the
+  boundaries 604800 s and 1209600 s as exact conversions of 168 h and 336 h
+  (PV-FLOW-MERGE-LATENCY-001); the whole-hour observation stays as a derived
+  presentation projection. Fractional timestamps are handled exactly.
+- Pulse rule `pulse.bands.v1`: a capped required enumeration is evaluated
+  over every admissible completion of the missing tail
+  (PV-PULSE-REQUIRED-LOWER-BOUND-001): one forced band, or every reachable
+  band in `possible_bands`, or `UNKNOWN` when no bound is defensible.
+- Delta: a Vital whose rule version changed since the previous bundle is
+  `INCOMPARABLE` on its own (`RULE_VERSION_BOUNDARY`) while the bundle stays
+  `COMPARABLE`; historical bands are never reinterpreted.
+- Demand `devostasis.demand.v2`: the attention order is level rank, then
+  canonical Vital order; the cross-Vital gauge tie-break of v1 is removed
+  (ROLE-01 SAME_LEVEL_GAUGE_INVARIANCE) and `attention_key` is gone.
+- Verification adopts PV-EFFECTIVE-CONFIG-AUTHORITY-001: the stored effective
+  config is schema-validated fail-closed
+  (`EFFECTIVE_CONFIG_SCHEMA_INVALID_OR_UNSUPPORTED`, ART-25), the canonical
+  member profile is derived from it and checked against the manifest, the
+  members and the identity markers (`CANONICAL_MEMBER_PROFILE_MISMATCH`,
+  ART-23), and the report is replayed only from the validated stored config
+  (ART-24). Bundles of both effective-config schemas (v1 history, v2) verify.
+- Renderer `devostasis.render.v4`: states the v2 demand ordering and renders
+  exact rational durations.
+- GitHub outcome map `devostasis.ci-outcomes.github.v1` confirmed by
+  PV-CAL-003 (`timed_out` is `VERIFY_FAIL`, `startup_failure` is `UNKNOWN`),
+  with CI-OUTCOME-01..04 tests.
+- Documentation: gauges accepted (PV-REV-GAUGE-001) and their cross-Vital
+  boundary stated; reporting decisions of PV-REV-REPORT-001 (permission-domain
+  stores, optional `report.html`, retention, self-observation is not durable
+  history); provenance, conformance table and calibration findings updated;
+  the stale gauges docstring fixed.
+- Conformance tests added: FLOW-EQ-01..06, FLOW-PREC-01..09, PULSE-CAP-01..05,
+  ROLE-01..04, CI-OUTCOME-01..04, ART-23..ART-25, rule version boundary,
+  legacy effective-config v1 verification.
+
+Bundle identities change for every project (new rule ids, demand v2,
+renderer v4). History stays `COMPARABLE`; Flow and Pulse report
+`RULE_VERSION_BOUNDARY` on the first bundle after the upgrade.
+
+## 0.1.1 (2026-09-05)
 
 - Self-observation: the reusable workflow `.github/workflows/observe-self.yml`
   lets any repository observe itself with its own `GITHUB_TOKEN`, upload the

@@ -78,7 +78,7 @@ relevant coverage flag):
 | Key | From |
 | --- | --- |
 | `git.default_branch.commits.count_28d`, `git.default_branch.commit_active_days_28d` | commits |
-| `forge.change_requests.open_count`, `.merged_count_28d`, `.updated_count_28d`, `.stale_open_count_14d`, `.oldest_open_age_days` (when open > 0), `.median_time_to_merge_hours_28d` (when merged > 0) | change requests |
+| `forge.change_requests.open_count`, `.merged_count_28d`, `.updated_count_28d`, `.stale_open_count_14d`, `.oldest_open_age_days` (when open > 0), `.median_time_to_merge_seconds_28d` (when merged > 0; exact rational record `{"numerator": n, "denominator": d}` in seconds), `.median_time_to_merge_hours_28d` (whole-hour projection of the former, presentation only) | change requests |
 | `forge.issues.open_count`, `.stale_open_count_30d`, `.updated_count_28d` | issues |
 | `git.nondefault_branches.stale_count_30d` | branches (heads older than 30 days) |
 | `planning.explicit_targets.capability` (`SUPPORTED`, `SUPPORTED_UNUSED`, `UNSUPPORTED`), `.open_count`, `.open_with_future_boundary_count`, `.open_beyond_28d_count`, `.nearest_future_boundary_days` | targets and configuration |
@@ -88,8 +88,12 @@ relevant coverage flag):
 Definitions: "stale" means open and not updated for the stated number of days;
 "active" change requests are those updated within the 28-day frame; "linked"
 means the change request carries an explicit reference to an open planning
-target; a "median" over an even number of durations is the floor of the mean
-of the two middle values, in whole hours.
+target; merge durations are computed exactly from the timestamps (fractional
+seconds of an RFC 3339 timestamp are kept as exact decimal fractions, never
+rounded through binary floats), the "median" over an odd sample is the middle
+duration and over an even sample the exact arithmetic mean of the two middle
+durations, reduced to lowest terms (PV-FLOW-MERGE-LATENCY-001); the whole-hour
+value is the floor of that median and never a classifier input.
 
 ## Conformance cases
 

@@ -4,9 +4,11 @@ A gauge is a presentation aid: it places a Vital on a 0-100 scale so that a
 human sees gradation inside a band instead of a binary label. Gauges are
 computed deterministically from the authoritative snapshot (band plus the
 derived metrics the rule actually used) with integer arithmetic. They are
-never part of ``snapshot.json``, never enter bundle identity, and no consumer
-may treat them as machine truth: the named band and the observations remain
-canonical.
+never part of ``snapshot.json``; they are persisted as the identity-bearing
+member ``gauges.json`` (``gauges_digest`` enters the bundle identity), and no
+consumer may treat them as machine truth: the named band and the observations
+remain canonical. Gauges of different Vitals measure different phenomena and
+are never compared with each other or summed (accepted by PV-REV-GAUGE-001).
 
 Each gauge measures the *intensity of the phenomenon the Vital describes*,
 not virtue: Clutter 90 means a lot of residue, Flow 90 means a lot of queue

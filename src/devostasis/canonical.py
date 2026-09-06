@@ -5,7 +5,9 @@ Rules of the profile:
 * UTF-8, object keys sorted by Unicode code point, no insignificant whitespace;
 * only ``null``, booleans, integers, strings, arrays and objects are allowed;
 * floats are rejected outright: ratios are stored as ``{"num": x, "den": y}``
-  records so two implementations can never disagree on number formatting;
+  records and exact durations as ``{"numerator": n, "denominator": d}``
+  records (PV-FLOW-MERGE-LATENCY-001), so two implementations can never
+  disagree on number formatting;
 * digests are ``sha256:<hex>`` over the canonical bytes.
 
 A pretty-printed file and its canonical form have the same digest, because the
@@ -16,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -105,11 +108,38 @@ def ratio(num: int, den: int) -> dict[str, int]:
     return {"num": int(num), "den": int(den)}
 
 
-def ratio_text(record: dict[str, int] | None, places: int = 2) -> str:
-    """Deterministic decimal rendering of a ratio record for human output."""
-    if not record or not record.get("den"):
+def rational_record(value: Fraction | int) -> dict[str, int]:
+    """Exact reduced rational record ``{"numerator": n, "denominator": d}`` (durations in seconds)."""
+    fraction = Fraction(value)
+    return {"numerator": fraction.numerator, "denominator": fraction.denominator}
+
+
+def rational_parts(value: Any) -> tuple[int, int] | None:
+    """``(numerator, denominator)`` of a rational record in either persisted shape, else ``None``."""
+    if not isinstance(value, dict) or len(value) != 2:
+        return None
+    for num_key, den_key in (("num", "den"), ("numerator", "denominator")):
+        if set(value) == {num_key, den_key}:
+            num, den = value[num_key], value[den_key]
+            if isinstance(num, int) and isinstance(den, int) and not isinstance(num, bool) and not isinstance(den, bool) and den > 0:
+                return num, den
+    return None
+
+
+def rational_from_record(value: Any) -> Fraction | None:
+    parts = rational_parts(value)
+    if parts is None:
+        return None
+    return Fraction(parts[0], parts[1])
+
+
+def ratio_text(record: Any, places: int = 2) -> str:
+    """Deterministic decimal rendering of a rational record for human output."""
+    parts = rational_parts(record)
+    if parts is None:
         return "n/a"
+    num, den = parts
     scale = 10**places
-    scaled = (record["num"] * scale * 2 + record["den"]) // (record["den"] * 2)
+    scaled = (num * scale * 2 + den) // (den * 2)
     whole, frac = divmod(scaled, scale)
     return f"{whole}.{frac:0{places}d}"

@@ -2,7 +2,7 @@
 
 - Observed at: 2026-09-05T12:00:00Z
 - Comparison: BASELINE
-- Bundle: `9e3e372d010f7ded7e9af6733141149c5c1b323b559fbf05fd00b099fc520f57`
+- Bundle: `cb851ed5b6f0d6f1b5b2fecaae1571b54bcaf2c66ef04fa32c645f0d73c3e1f0`
 - Contracts: vitals PV-VITALS-V1-002, observations RAW-OBS-V0, policy devostasis.policy.v1
 
 ```text
@@ -19,7 +19,7 @@ Bands are the canonical states. Gauges are the versioned 0-100 normalization (de
 
 ## Attention
 
-Demand levels come from mapping `devostasis-default-1` (devostasis.demand.v1); the order inside a level follows the gauge. There is no aggregate.
+Demand levels come from mapping `devostasis-default-1` (devostasis.demand.v2); inside a level the canonical Vital order applies and gauges are never compared across Vitals. There is no aggregate.
 
 | Order | Vital | Level | Band | Gauge |
 | --- | --- | --- | --- | --- |
@@ -28,8 +28,8 @@ Demand levels come from mapping `devostasis-default-1` (devostasis.demand.v1); t
 | 3 | Debt | MEDIUM | PRESENT | 11 |
 | 4 | Clutter | LOW | LIGHT | 10 |
 | 5 | Flow | LOW | MOVING | 10 |
-| 6 | Pulse | MINIMAL | SURGING | 82 |
-| 7 | Horizon | MINIMAL | EXTENDED | 84 |
+| 6 | Horizon | MINIMAL | EXTENDED | 84 |
+| 7 | Pulse | MINIMAL | SURGING | 82 |
 
 ## Vitals
 
@@ -38,7 +38,7 @@ Demand levels come from mapping `devostasis-default-1` (devostasis.demand.v1); t
 | Horizon | 84 | EXTENDED | AVAILABLE | EXACT | 1 open planning targets, 1 with a future boundary, 1 reaching beyond 28 days. |
 | Clutter | 10 | LIGHT | AVAILABLE | EXACT | 1 stale work items out of 5 tracked open items; 1 stale non-default branches. |
 | Direction | 50 | MIXED | AVAILABLE | EXACT | 5 of 10 active change requests are explicitly linked to an open planning target. |
-| Flow | 10 | MOVING | AVAILABLE | EXACT | 2 open change requests; 8 merged in 28 days; oldest open for 3 days; median time to merge 20 hours. |
+| Flow | 10 | MOVING | AVAILABLE | EXACT | 2 open change requests; 8 merged in 28 days; oldest open for 3 days; median time to merge 20h 0m. |
 | Integrity | 62 | FLAKY | AVAILABLE | EXACT | 1 of 8 decisive revisions failed verification in 14 days; latest decisive verdict is VERIFY_PASS. |
 | Debt | 11 | PRESENT | AVAILABLE | EXACT | 1 open registered debt items under mapping version example-1. |
 | Pulse | 82 | SURGING | AVAILABLE | EXACT | 19 default-branch commits on 19 active days and 32 activity events across 3 channels in 28 days. |
@@ -96,13 +96,14 @@ Diagnostics:
 
 _What is the state and friction of the current change-request queue?_
 
-- Evaluation: AVAILABLE; rule `flow.bands.v0`
+- Evaluation: AVAILABLE; rule `flow.bands.v1`
 - Gauge (queue pressure): █░░░░░░░░░ 10
 - Shares signals with: CLUTTER_FLOW_FORGE, FLOW_PULSE_ACTIVITY
 
 | Metric | Value |
 | --- | --- |
 | median_time_to_merge_hours_28d | 20 |
+| median_time_to_merge_seconds_28d | 72000.00 (72000/1) |
 | merged_count_28d | 8 |
 | oldest_open_age_days | 3 |
 | open_count | 2 |
@@ -142,7 +143,7 @@ _How much explicitly registered maintenance obligation is unresolved?_
 
 _How intense is recent observable activity?_
 
-- Evaluation: AVAILABLE; rule `pulse.bands.v0`
+- Evaluation: AVAILABLE; rule `pulse.bands.v1`
 - Gauge (activity intensity): ████████░░ 82
 - Shares signals with: FLOW_PULSE_ACTIVITY, DIRECTION_PULSE_ACTIVITY
 
@@ -211,8 +212,8 @@ Releases:
 
 ## Provenance
 
-- Artifact contract: devostasis.bundle.v2; bundle identity: PV-BUNDLE-ID-002; renderer: devostasis.render.v3; gauges: devostasis.gauge.v1; demand: devostasis.demand.v1
+- Artifact contract: devostasis.bundle.v2; bundle identity: PV-BUNDLE-ID-002; renderer: devostasis.render.v4; gauges: devostasis.gauge.v1; demand: devostasis.demand.v2
 - Effective config digest: `sha256:cc472c9ad93f6721ecc9a3fc14f3067ccc85af33c2acceb4489982a44eb370ac` (config version `example-1`)
 - Adapters: github devostasis.github.v1
-- Observations digest: `sha256:07ece09ccfc69520692f655da0a884afe27c29d995d0e254ccec34e7dc1c661d`
+- Observations digest: `sha256:e3670fe2668494cdcdf2148fd6e43301845a5d7e6cd47aacddb108e06057a0b9`
 - Generated deterministically from the machine bundle without any language model.

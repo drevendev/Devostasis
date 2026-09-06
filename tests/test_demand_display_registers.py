@@ -35,11 +35,31 @@ def test_demand_rows_and_attention_order():
     rows = {r["vital_id"]: r for r in demand["vitals"]}
     assert rows["integrity"]["level"] == "MINIMAL" and rows["direction"]["level"] == "MEDIUM" and rows["debt"]["level"] == "MEDIUM"
     order = [e["vital_id"] for e in demand["attention_order"]]
-    assert order[:2] == ["direction", "debt"] or order[:2] == ["debt", "direction"]
+    assert order == ["direction", "debt", "clutter", "flow", "horizon", "integrity", "pulse"]
     assert demand["aggregate"] is None and demand["mapping_version"] == "t"
+    assert demand["contract"] == "devostasis.demand.v2" and demand["schema"] == "devostasis.demand.v2"
     levels = [e["level"] for e in demand["attention_order"]]
     ranks = [demand["levels"].index(level) for level in levels]
     assert ranks == sorted(ranks)
+    assert all("attention_key" not in row for row in demand["vitals"])
+
+
+def test_role_01_same_level_gauge_invariance():
+    snapshot = build_snapshot(full_inputs(obs_set()))
+    base = gauges_for_snapshot(snapshot)
+    orders = []
+    for direction_gauge, debt_gauge in ((0, 100), (100, 0), (37, 37)):
+        gauges = [
+            dict(g, value=direction_gauge if g["vital_id"] == "direction" else debt_gauge if g["vital_id"] == "debt" else g["value"])
+            for g in base
+        ]
+        demand = build_demand(snapshot, gauges, {"mapping_version": "t", "levels": DEFAULT_LEVELS})
+        rows = {r["vital_id"]: r for r in demand["vitals"]}
+        assert rows["direction"]["level"] == rows["debt"]["level"] == "MEDIUM"
+        orders.append([e["vital_id"] for e in demand["attention_order"]])
+        assert all(set(e) == {"vital_id", "level"} for e in demand["attention_order"])
+    assert orders[0] == orders[1] == orders[2]
+    assert orders[0].index("direction") < orders[0].index("debt")
 
 
 def test_unknown_vital_is_unresolved_and_first():
@@ -48,7 +68,10 @@ def test_unknown_vital_is_unresolved_and_first():
     obs.replace(type(obs.get("ci.revision_verdicts_14d"))(**dict(obs.get("ci.revision_verdicts_14d").to_dict(), status="ERROR", value=None, reason_code="PROVIDER_ERROR")))
     snapshot = build_snapshot(obs)
     demand = build_demand(snapshot, gauges_for_snapshot(snapshot), {"mapping_version": "t", "levels": DEFAULT_LEVELS})
-    assert demand["attention_order"][0] == {"vital_id": "integrity", "level": "UNRESOLVED", "attention_key": 0}
+    assert demand["attention_order"][0] == {"vital_id": "integrity", "level": "UNRESOLVED"}
+    rows = {r["vital_id"]: r for r in demand["vitals"]}
+    assert rows["integrity"]["gauge"] is None and rows["integrity"]["reason"] == "EVALUATION_UNKNOWN"
+    assert demand["aggregate"] is None
 
 
 def test_demand_overrides_require_a_mapping_version_and_valid_values():

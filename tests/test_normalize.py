@@ -1,4 +1,4 @@
-"""Inventories to aggregates: windows, medians, staleness, linkage, debt mapping, planning capability."""
+"""Inventories to aggregates: windows, exact medians (FLOW-PREC-01/02/07/08), staleness, linkage, debt mapping, planning capability."""
 
 from devostasis import normalize
 from devostasis.config import single_project
@@ -6,6 +6,7 @@ from devostasis.observations import AVAILABLE, PARTIAL, UNAVAILABLE
 from helpers import add, obs_set
 
 NOW = "2026-09-05T12:00:00Z"
+COVERAGE = {"open_complete": True, "window_complete": True}
 
 
 def _crs():
@@ -18,19 +19,77 @@ def _crs():
     ]
 
 
+def _merged(pairs):
+    """Merged change requests with the given (created_at, merged_at) pairs, all inside the window."""
+    return [
+        {"number": i, "title": "m", "state": "MERGED", "created_at": created, "updated_at": merged, "merged_at": merged, "closed_at": merged, "target_id": None, "target_state": None, "url": f"u{i}"}
+        for i, (created, merged) in enumerate(pairs, start=1)
+    ]
+
+
+def _derive_merged(pairs):
+    obs = obs_set(NOW)
+    add(obs, normalize.INV_CRS, _merged(pairs), "series", coverage=COVERAGE)
+    normalize.derive(obs, single_project("acme/widget"))
+    return obs
+
+
 def test_change_request_aggregates():
     obs = obs_set(NOW)
-    add(obs, normalize.INV_CRS, _crs(), "series", coverage={"open_complete": True, "window_complete": True})
+    add(obs, normalize.INV_CRS, _crs(), "series", coverage=COVERAGE)
     normalize.derive(obs, single_project("acme/widget"))
     assert obs.value_of("forge.change_requests.open_count") == 2
     assert obs.value_of("forge.change_requests.merged_count_28d") == 2
     assert obs.value_of("forge.change_requests.oldest_open_age_days") == 66
-    assert obs.value_of("forge.change_requests.median_time_to_merge_hours_28d") == (10 + 240) // 2
+    assert obs.value_of(normalize.MEDIAN_SECONDS) == {"numerator": (10 + 240) * 3600 // 2, "denominator": 1}
+    assert obs.value_of(normalize.MEDIAN_HOURS) == (10 + 240) // 2
     assert obs.value_of("forge.change_requests.stale_open_count_14d") == 1
     assert obs.value_of("forge.change_requests.updated_count_28d") == 3
     assert obs.value_of("planning.linkage.active_change_requests_count_28d") == 3
     assert obs.value_of("planning.linkage.active_change_requests_linked_to_open_target_count_28d") == 2
     assert obs.value_of("planning.linkage.links_per_target_28d") == {"5": 2}
+
+
+def test_flow_prec_01_sub_hour_medians_are_preserved():
+    obs = _derive_merged([
+        ("2026-09-01T00:00:00Z", "2026-09-01T00:05:00Z"),
+        ("2026-09-01T00:00:00Z", "2026-09-01T00:10:00Z"),
+        ("2026-09-01T00:00:00Z", "2026-09-01T00:15:00Z"),
+    ])
+    assert obs.value_of(normalize.MEDIAN_SECONDS) == {"numerator": 600, "denominator": 1}
+    assert obs.value_of(normalize.MEDIAN_HOURS) == 0
+    hours = obs.get(normalize.MEDIAN_HOURS)
+    assert hours.evidence_ref["derived_from"] == [normalize.INV_CRS, normalize.MEDIAN_SECONDS]
+    assert hours.notes == normalize.MEDIAN_HOURS_NOTE
+
+
+def test_flow_prec_02_even_sample_uses_the_exact_arithmetic_mean():
+    obs = _derive_merged([
+        ("2026-09-01T00:00:00Z", "2026-09-01T00:05:00Z"),
+        ("2026-09-01T00:00:00Z", "2026-09-01T00:05:01Z"),
+    ])
+    assert obs.value_of(normalize.MEDIAN_SECONDS) == {"numerator": 601, "denominator": 2}
+
+
+def test_flow_prec_07_median_is_invariant_under_permutation():
+    pairs = [
+        ("2026-09-01T00:00:00Z", "2026-09-01T00:05:00Z"),
+        ("2026-09-02T00:00:00Z", "2026-09-02T00:10:00Z"),
+        ("2026-09-03T00:00:00Z", "2026-09-03T00:15:00Z"),
+        ("2026-09-04T00:00:00Z", "2026-09-04T00:20:00Z"),
+    ]
+    expected = {"numerator": 750, "denominator": 1}
+    assert _derive_merged(pairs).value_of(normalize.MEDIAN_SECONDS) == expected
+    assert _derive_merged(list(reversed(pairs))).value_of(normalize.MEDIAN_SECONDS) == expected
+    assert _derive_merged([pairs[2], pairs[0], pairs[3], pairs[1]]).value_of(normalize.MEDIAN_SECONDS) == expected
+
+
+def test_flow_prec_08_fractional_timestamps_are_exact():
+    obs = _derive_merged([
+        ("2026-09-01T00:00:00Z", "2026-09-01T00:00:01.25Z"),
+        ("2026-09-01T00:00:00Z", "2026-09-01T00:00:01.75Z"),
+    ])
+    assert obs.value_of(normalize.MEDIAN_SECONDS) == {"numerator": 3, "denominator": 2}
 
 
 def test_partial_open_enumeration_marks_open_aggregates_partial_only():
@@ -39,6 +98,7 @@ def test_partial_open_enumeration_marks_open_aggregates_partial_only():
     normalize.derive(obs, single_project("acme/widget"))
     assert obs.status_of("forge.change_requests.open_count") == PARTIAL
     assert obs.status_of("forge.change_requests.merged_count_28d") == PARTIAL
+    assert obs.status_of(normalize.MEDIAN_SECONDS) == PARTIAL
 
 
 def test_issues_disabled_propagates_unavailable_and_debt_stays_unknown():
@@ -59,7 +119,7 @@ def test_issue_and_debt_aggregates():
         {"number": 3, "title": "closed debt", "state": "CLOSED", "created_at": "2026-08-01T00:00:00Z", "updated_at": "2026-08-20T00:00:00Z", "closed_at": "2026-08-20T00:00:00Z", "labels": ["type:refactor"], "url": "i3"},
     ]
     obs = obs_set(NOW)
-    add(obs, normalize.INV_ISSUES, issues, "series", coverage={"open_complete": True, "window_complete": True})
+    add(obs, normalize.INV_ISSUES, issues, "series", coverage=COVERAGE)
     normalize.derive(obs, single_project("acme/widget", debt={"labels": ["type:refactor"], "mapping_version": "2026-09"}))
     assert obs.value_of("forge.issues.open_count") == 2
     assert obs.value_of("forge.issues.stale_open_count_30d") == 1

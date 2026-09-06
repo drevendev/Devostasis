@@ -6,10 +6,13 @@ renderer outputs -> output digests -> manifest -> persistence. The manifest,
 report and output digests are post-identity, so the graph is acyclic.
 
 The exact canonical effective config preimage is persisted as the member
-``effective-config.json`` (B3 repair): a historical bundle can recompute its
-own ``effective_config_digest`` and re-render itself without any external
-configuration. ``gauges.json`` and ``demand.json`` are derived from the
-snapshot under versioned contracts and are identity-bearing members.
+``effective-config.json`` (B3 repair) and is the semantic authority of a
+historical bundle (PV-EFFECTIVE-CONFIG-AUTHORITY-001, B4): verification
+validates it under its recorded schema, derives the canonical member profile
+from it, checks that profile against the actual members and the manifest, and
+only then replays the renderer from stored config plus immutable machine
+members. ``gauges.json`` and ``demand.json`` are derived from the snapshot
+under versioned contracts and are identity-bearing members.
 """
 
 from __future__ import annotations
@@ -19,13 +22,14 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__, canonical, render
-from .config import ResolvedProject
+from .config import PROFILE_MEMBERS, ResolvedProject, member_profile_from_config, validate_effective_config
 from .contracts import (
     ARTIFACT_CONTRACT_VERSION,
     BUNDLE_IDENTITY_CONTRACT,
     CANONICAL_SERIALIZATION_VERSION,
     CI_UNIT_CONTRACT_VERSION,
     DEMAND_CONTRACT,
+    EFFECTIVE_CONFIG_AUTHORITY_CONTRACT,
     EFFECTIVE_CONFIG_CONTRACT,
     GAUGE_CONTRACT,
     MANIFEST_SCHEMA,
@@ -39,6 +43,7 @@ from .observations import ObservationSet
 from .policy import POLICY_VERSION
 
 ACTIVITY_DISABLED = "ACTIVITY_DISABLED"
+OBSERVATIONS_DISABLED = "OBSERVATIONS_MEMBER_DISABLED"
 MEMBER_NAMES = (
     "manifest.json",
     "snapshot.json",
@@ -49,7 +54,13 @@ MEMBER_NAMES = (
     "demand.json",
     "effective-config.json",
     "report.md",
+    "report.html",
 )
+
+# Verification problem codes named by the accepted artifact contract.
+EFFECTIVE_CONFIG_SCHEMA_INVALID = "EFFECTIVE_CONFIG_SCHEMA_INVALID_OR_UNSUPPORTED"
+CANONICAL_MEMBER_PROFILE_MISMATCH = "CANONICAL_MEMBER_PROFILE_MISMATCH"
+EFFECTIVE_CONFIG_PREIMAGE_MISMATCH = "EFFECTIVE_CONFIG_PREIMAGE_MISMATCH"
 
 
 @dataclass
@@ -112,6 +123,9 @@ def build_bundle(
     effective_digest = canonical.digest_bytes(effective_bytes)
     receipt_dict = obs.receipt.to_dict()
     identity = project_identity(obs, project)
+    member_profile = member_profile_from_config(effective_config)
+    if (activity is None) != (member_profile["activity_json"] == "DISABLED"):
+        raise BundleError("activity member presence disagrees with the effective configuration")
 
     gauges_doc = gauges_member(snapshot)
     demand_doc = build_demand(snapshot, gauges_doc["gauges"], project.demand)
@@ -148,7 +162,7 @@ def build_bundle(
         "activity_digest": activity_digest,
         "gauges_digest": gauges_digest,
         "demand_digest": demand_digest,
-        "observations_digest": observations_digest if project.observations_member else "OBSERVATIONS_MEMBER_DISABLED",
+        "observations_digest": observations_digest if project.observations_member else OBSERVATIONS_DISABLED,
         "source_receipts_digest": receipt_digest,
     }
     bundle_id = canonical.sha256_hex(canonical.canonical_bytes(preimage))
@@ -174,17 +188,10 @@ def build_bundle(
         "renderer_version": RENDERER_VERSION,
         "canonical_serialization_version": CANONICAL_SERIALIZATION_VERSION,
         "effective_config_contract": EFFECTIVE_CONFIG_CONTRACT,
+        "effective_config_authority_contract": EFFECTIVE_CONFIG_AUTHORITY_CONTRACT,
         "effective_config_digest": effective_digest,
         "semantic_config": project.semantic_config(),
-        "canonical_member_profile": {
-            "report_md": "REQUIRED",
-            "report_html": "DISABLED",
-            "activity_json": "ENABLED" if activity is not None else "DISABLED",
-            "observations_json": "ENABLED" if project.observations_member else "DISABLED",
-            "gauges_json": "REQUIRED",
-            "demand_json": "REQUIRED",
-            "effective_config_json": "REQUIRED",
-        },
+        "canonical_member_profile": member_profile,
         "adapters": [{"provider": "github", "adapter_version": obs.receipt.collector_version}],
         "receipt": receipt_dict,
         "identity_preimage": preimage,
@@ -243,9 +250,54 @@ PREIMAGE_MEMBER_DIGESTS = (
     ("demand.json", "demand_digest"),
 )
 
+BYTE_DIGESTED_MEMBERS = ("report.md", "report.html", "effective-config.json")
+
+
+def _member_digest(name: str, data: bytes) -> str:
+    if name in BYTE_DIGESTED_MEMBERS:
+        return canonical.digest_bytes(data)
+    return canonical.digest(canonical.loads(data.decode("utf-8")))
+
+
+def _check_member_profile(members: dict[str, bytes], manifest: dict[str, Any], config: dict[str, Any]) -> list[str]:
+    """ART-23: the profile implied by the stored config must match the manifest and the actual members."""
+    problems: list[str] = []
+    expected = member_profile_from_config(config)
+    recorded = manifest.get("canonical_member_profile")
+    if recorded != expected:
+        problems.append(
+            f"{CANONICAL_MEMBER_PROFILE_MISMATCH}: manifest profile {recorded} differs from the profile implied by the stored effective config {expected} (ART-23)"
+        )
+    declared = manifest.get("members") or {}
+    for key, member in PROFILE_MEMBERS.items():
+        state = expected.get(key)
+        present = member in members or member in declared
+        if state is None:
+            if present:
+                problems.append(f"{CANONICAL_MEMBER_PROFILE_MISMATCH}: {member} is present but the stored effective config schema knows no such member (ART-23)")
+            continue
+        if state in ("REQUIRED", "ENABLED") and not present:
+            problems.append(f"{CANONICAL_MEMBER_PROFILE_MISMATCH}: {member} is {state} by the stored effective config but absent (ART-23)")
+        if state == "DISABLED" and present:
+            problems.append(f"{CANONICAL_MEMBER_PROFILE_MISMATCH}: {member} is DISABLED by the stored effective config but present (ART-23)")
+    preimage = manifest.get("identity_preimage") or {}
+    if preimage:
+        activity_disabled = preimage.get("activity_digest") == ACTIVITY_DISABLED
+        if activity_disabled != (expected["activity_json"] == "DISABLED"):
+            problems.append(f"{CANONICAL_MEMBER_PROFILE_MISMATCH}: identity preimage activity marker disagrees with the stored effective config (ART-23)")
+        observations_disabled = preimage.get("observations_digest") == OBSERVATIONS_DISABLED
+        if observations_disabled != (expected["observations_json"] == "DISABLED"):
+            problems.append(f"{CANONICAL_MEMBER_PROFILE_MISMATCH}: identity preimage observations marker disagrees with the stored effective config (ART-23)")
+    return problems
+
 
 def verify_members(members: dict[str, bytes]) -> list[str]:
-    """Return verification problems for a bundle (empty list means verified)."""
+    """Return verification problems for a bundle (empty list means verified).
+
+    Order: member digests and canonical form; identity preimage and bundle_id;
+    the stored effective config as semantic authority (schema, member profile,
+    identity markers); only then the renderer replay from stored config.
+    """
     problems: list[str] = []
     if "manifest.json" not in members:
         return ["manifest.json missing"]
@@ -260,24 +312,24 @@ def verify_members(members: dict[str, bytes]) -> list[str]:
             problems.append(f"{name} declared but missing")
             continue
         data = members[name]
-        if name == "report.md":
-            actual = canonical.digest_bytes(data)
-        elif name == "effective-config.json":
-            actual = canonical.digest_bytes(data)
+        try:
+            actual = _member_digest(name, data)
+        except Exception as exc:  # noqa: BLE001
+            problems.append(f"{name} unreadable: {exc}")
+            continue
+        if name == "effective-config.json":
             try:
-                parsed = canonical.loads(data.decode("utf-8"))
-                if canonical.canonical_bytes(parsed) != data:
+                if canonical.canonical_bytes(canonical.loads(data.decode("utf-8"))) != data:
                     problems.append("effective-config.json is not stored in canonical form (ART-21)")
             except Exception as exc:  # noqa: BLE001
                 problems.append(f"effective-config.json unreadable: {exc}")
-        else:
-            try:
-                actual = canonical.digest(canonical.loads(data.decode("utf-8")))
-            except Exception as exc:  # noqa: BLE001
-                problems.append(f"{name} unreadable: {exc}")
-                continue
         if actual != digest:
             problems.append(f"{name} digest mismatch: manifest {digest}, actual {actual}")
+    for name in sorted(members):
+        if name != "manifest.json" and name not in declared:
+            problems.append(f"{name} is present but not declared in the manifest")
+    if "effective-config.json" not in members:
+        problems.append("effective-config.json missing (ART-20)")
 
     preimage = manifest.get("identity_preimage") or {}
     if not preimage:
@@ -287,9 +339,9 @@ def verify_members(members: dict[str, bytes]) -> list[str]:
         if recomputed != manifest.get("bundle_id"):
             problems.append(f"bundle_id mismatch: manifest {manifest.get('bundle_id')}, recomputed {recomputed}")
         if preimage.get("effective_config_digest") != manifest.get("effective_config_digest"):
-            problems.append("effective_config_digest differs between preimage and manifest")
+            problems.append(f"{EFFECTIVE_CONFIG_PREIMAGE_MISMATCH}: effective_config_digest differs between preimage and manifest")
         if "effective-config.json" in members and preimage.get("effective_config_digest") != canonical.digest_bytes(members["effective-config.json"]):
-            problems.append("persisted effective config does not hash to effective_config_digest (ART-20/ART-21)")
+            problems.append(f"{EFFECTIVE_CONFIG_PREIMAGE_MISMATCH}: persisted effective config does not hash to effective_config_digest (ART-20/ART-21)")
         for member, key in PREIMAGE_MEMBER_DIGESTS:
             if member in declared and key in preimage and preimage.get(key) != declared[member]:
                 problems.append(f"{member} digest differs between preimage and manifest members")
@@ -297,22 +349,42 @@ def verify_members(members: dict[str, bytes]) -> list[str]:
             if key in preimage:
                 problems.append(f"identity preimage must not contain post-identity field {key} (ART-22)")
 
-    if "report.md" in members and "snapshot.json" in members and "delta.json" in members:
+    # B4: the stored effective config is the semantic authority (ART-25, then ART-23).
+    config: dict[str, Any] | None = None
+    authority_ok = "effective-config.json" in members
+    if authority_ok:
         try:
-            snapshot = canonical.loads(members["snapshot.json"].decode("utf-8"))
-            delta = canonical.loads(members["delta.json"].decode("utf-8"))
-            activity = canonical.loads(members["activity.json"].decode("utf-8")) if "activity.json" in members else None
-            gauges_doc = canonical.loads(members["gauges.json"].decode("utf-8")) if "gauges.json" in members else None
-            demand_doc = canonical.loads(members["demand.json"].decode("utf-8")) if "demand.json" in members else None
-            display = None
-            if "effective-config.json" in members:
-                display = canonical.loads(members["effective-config.json"].decode("utf-8")).get("display")
-            if manifest.get("renderer_version") == RENDERER_VERSION:
-                rendered = render.render_report(manifest, snapshot, delta, activity, gauges_doc, demand_doc, display).encode("utf-8")
-                if rendered != members["report.md"]:
-                    problems.append("report.md is not reproducible from the machine bundle with the current renderer (ART-12)")
+            config = canonical.loads(members["effective-config.json"].decode("utf-8"))
         except Exception as exc:  # noqa: BLE001
-            problems.append(f"report re-rendering failed: {exc}")
+            problems.append(f"{EFFECTIVE_CONFIG_SCHEMA_INVALID}: effective-config.json unreadable: {exc} (ART-25)")
+            authority_ok = False
+    if authority_ok:
+        schema_problems = validate_effective_config(config)
+        if schema_problems:
+            problems.extend(f"{EFFECTIVE_CONFIG_SCHEMA_INVALID}: {problem} (ART-25)" for problem in schema_problems)
+            authority_ok = False
+    if authority_ok:
+        profile_problems = _check_member_profile(members, manifest, config)
+        if profile_problems:
+            problems.extend(profile_problems)
+            authority_ok = False
+
+    # ART-24: replay only from the validated stored config and immutable machine members.
+    if "report.md" in members:
+        if not authority_ok:
+            problems.append("report.md replay skipped: the stored effective config is not a valid authority (ART-24)")
+        elif "snapshot.json" in members and "delta.json" in members and manifest.get("renderer_version") == RENDERER_VERSION:
+            try:
+                snapshot = canonical.loads(members["snapshot.json"].decode("utf-8"))
+                delta = canonical.loads(members["delta.json"].decode("utf-8"))
+                activity = canonical.loads(members["activity.json"].decode("utf-8")) if "activity.json" in members else None
+                gauges_doc = canonical.loads(members["gauges.json"].decode("utf-8")) if "gauges.json" in members else None
+                demand_doc = canonical.loads(members["demand.json"].decode("utf-8")) if "demand.json" in members else None
+                rendered = render.render_report(manifest, snapshot, delta, activity, gauges_doc, demand_doc, config.get("display")).encode("utf-8")
+                if rendered != members["report.md"]:
+                    problems.append("report.md is not reproducible from the machine bundle and the stored effective config with the current renderer (ART-12/ART-24)")
+            except Exception as exc:  # noqa: BLE001
+                problems.append(f"report re-rendering failed: {exc}")
     return problems
 
 

@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/drevendev/devostasis/schemas/demand.schema.json",
-  "title": "Demand member (devostasis.demand.v1)",
-  "description": "One demand level per Vital from a versioned band-to-level table plus an attention order. aggregate is always null.",
+  "title": "Demand member (devostasis.demand.v2)",
+  "description": "One demand level per Vital from a versioned band-to-level table plus an attention order (level rank, then canonical Vital order; gauges are never compared across Vitals). aggregate is always null.",
   "type": "object",
   "required": ["schema", "contract", "mapping_version", "observed_at", "canonical_semantics", "levels", "aggregate", "vitals", "attention_order"],
   "properties": {
-    "schema": { "const": "devostasis.demand.v1" },
-    "contract": { "const": "devostasis.demand.v1" },
+    "schema": { "const": "devostasis.demand.v2" },
+    "contract": { "const": "devostasis.demand.v2" },
     "mapping_version": { "type": "string" },
     "observed_at": { "type": "string", "format": "date-time" },
     "canonical_semantics": { "const": "snapshot.json" },
@@ -19,14 +19,13 @@
       "maxItems": 7,
       "items": {
         "type": "object",
-        "required": ["vital_id", "band", "evaluation_status", "gauge", "level", "attention_key", "reason"],
+        "required": ["vital_id", "band", "evaluation_status", "gauge", "level", "reason"],
         "properties": {
           "vital_id": { "enum": ["horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse"] },
           "band": { "type": ["string", "null"] },
           "evaluation_status": { "enum": ["AVAILABLE", "DEGRADED", "UNKNOWN"] },
           "gauge": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
           "level": { "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "MINIMAL", "UNRESOLVED"] },
-          "attention_key": { "type": "integer", "minimum": 0, "maximum": 100 },
           "reason": { "type": "string" }
         },
         "additionalProperties": false
@@ -38,12 +37,11 @@
       "maxItems": 7,
       "items": {
         "type": "object",
-        "required": ["vital_id", "level", "attention_key"],
+        "required": ["vital_id", "level"],
         "additionalProperties": false,
         "properties": {
-          "vital_id": { "type": "string" },
-          "level": { "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "MINIMAL", "UNRESOLVED"] },
-          "attention_key": { "type": "integer" }
+          "vital_id": { "enum": ["horizon", "clutter", "direction", "flow", "integrity", "debt", "pulse"] },
+          "level": { "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "MINIMAL", "UNRESOLVED"] }
         }
       }
     }
