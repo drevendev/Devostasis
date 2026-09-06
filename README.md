@@ -153,7 +153,7 @@ comes first is the consumer's policy, and no accepted contract defines it.
 Requires Python 3.12 or newer. The runtime uses the standard library only.
 
 ```bash
-pip install git+https://github.com/drevendev/devostasis@v0.1.4
+pip install git+https://github.com/drevendev/devostasis@v0.1.5
 ```
 
 Observe one repository (a GitHub token is read from `DEVOSTASIS_GITHUB_TOKEN`,
@@ -198,7 +198,7 @@ secret at all, and branch its next steps on the demand levels:
 ```yaml
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.4
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.5
   decide:
     needs: vitals
     runs-on: ubuntu-latest

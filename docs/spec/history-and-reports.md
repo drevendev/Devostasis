@@ -65,9 +65,39 @@ Rules: history directories are append-only and never overwritten (an
 identical re-put is idempotent, a different one is an `ImmutabilityError`);
 `latest` is a convenience pointer, never authoritative; storage activity is
 never observed as project activity because the store is not a target; a store
-must not be more permissive than its sources. Rename continuity by immutable
-project id is on the roadmap (`project_identity.immutable_project_id` is
-already recorded, the path still keys by owner and name).
+must not be more permissive than its sources.
+
+### Identity and rename continuity (RPT-7)
+
+A project **is** its `project_identity.immutable_project_id`; the directory
+keeps the human-readable locator because a store is browsed by people. The
+store therefore locates a project by identity first and by locator second:
+
+1. if the locator's directory already carries this identity, use it;
+2. if it carries a *different* identity, refuse to write and report it, rather
+   than merging two projects into one history;
+3. otherwise, if the identity is found under another locator, the repository
+   was renamed or transferred: relocate that directory once to the new
+   locator and record the move;
+4. otherwise this is a new project.
+
+The relocation moves the directory; it never copies, so history stays one
+chain and the old path does not survive as an orphan. Each bundle keeps the
+`project_key` it was observed under, because that is what the project was
+called at that moment, and the per-project index records the move:
+
+```json
+"renames": [
+  {"from": "github.com/acme/widget", "to": "github.com/acme/gadget",
+   "observed_at": "2026-09-06T12:00:00Z", "bundle_id": "..."}
+]
+```
+
+Two consequences are deliberate. A repository whose old name is immediately
+reused by a *new* repository yields two separate histories, because the ids
+differ. An adapter that cannot prove an immutable id falls back to locator
+keying, so a rename starts a new `BASELINE`: without proof that two names are
+the same project, losing continuity is more honest than guessing.
 
 Decisions taken by PV-REV-REPORT-001 on the questions the contract left open:
 
@@ -148,8 +178,9 @@ version that produced it, replaying only from the validated stored config.
 ## Conformance cases implemented
 
 RPT-1 (ART-01) baseline without fake delta; RPT-2 interval from the previous
-successful bundle; RPT-3 (ART-03) history gap; RPT-8 storage isolation by
-construction; RPT-10 (ART-04) semantic incompatibility; per-Vital rule
-version boundary. RPT-4..RPT-7 and RPT-9 (including rename continuity keyed
-by immutable id and an executable permission-domain fixture) remain open
-implementation work named by PV-REV-REPORT-001.
+successful bundle; RPT-3 (ART-03) history gap; RPT-7 rename and transfer
+continuity keyed by immutable project id, including the fail-closed cases;
+RPT-8 storage isolation by construction; RPT-10 (ART-04) semantic
+incompatibility; per-Vital rule version boundary. RPT-4..RPT-6 and RPT-9,
+including an executable permission-domain fixture, remain open implementation
+work named by PV-REV-REPORT-001.

@@ -44,9 +44,19 @@ def evaluate(obs: ObservationSet, project: ResolvedProject | None = None) -> dic
     return build_snapshot(obs, evaluate_all(obs))
 
 
-def decide_comparison(store: FilesystemHistoryStore, project: ResolvedProject) -> tuple[str, str | None, dict[str, Any] | None, dict[str, Any] | None, list[str]]:
-    """Return (comparison_status, previous_bundle_id, previous_manifest, previous_snapshot, reasons)."""
-    latest = store.latest(project.project_key)
+def decide_comparison(
+    store: FilesystemHistoryStore,
+    project: ResolvedProject,
+    immutable_project_id: str | None = None,
+) -> tuple[str, str | None, dict[str, Any] | None, dict[str, Any] | None, list[str]]:
+    """Return (comparison_status, previous_bundle_id, previous_manifest, previous_snapshot, reasons).
+
+    The immutable project id locates history across a rename or transfer
+    (RPT-7); without it the locator is the identity and a renamed project
+    starts a new BASELINE, which is the honest outcome when nothing proves
+    the two names are the same project.
+    """
+    latest = store.latest(project.project_key, immutable_project_id)
     if not latest.exists:
         return delta_mod.BASELINE, None, None, None, []
     if not latest.verified or latest.manifest is None or latest.snapshot is None:
@@ -65,7 +75,7 @@ def decide_comparison(store: FilesystemHistoryStore, project: ResolvedProject) -
 
 def build_from_observations(project: ResolvedProject, obs: ObservationSet, store: FilesystemHistoryStore, run_meta: dict[str, Any] | None = None) -> Bundle:
     snapshot = build_snapshot(obs, evaluate_all(obs))
-    status, previous_id, previous_manifest, previous_snapshot, reasons = decide_comparison(store, project)
+    status, previous_id, previous_manifest, previous_snapshot, reasons = decide_comparison(store, project, obs.subject.get("immutable_project_id"))
     delta = delta_mod.compare(snapshot, previous_snapshot, status, previous_id, reasons)
     activity = None
     if project.activity_enabled:
