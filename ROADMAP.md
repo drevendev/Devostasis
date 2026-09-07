@@ -1,21 +1,19 @@
 # Roadmap
 
-Version 0.1.2 closed the first round of research judgements and calibration
-repairs made against real bundles. What follows is ordered by what unblocks
-what, not by what is interesting.
+Ordered by what unblocks what, not by what is interesting. Every item names
+who or what blocks it, so a reader can tell the difference between work not
+started and work that cannot start.
 
 ## How this roadmap is worked
-
-The project runs a loop, and two things sit outside it.
 
 ```text
 standing obligations (interrupt anything)
         │
         ▼
-Phase A  dogfood and one outside consumer
+Phase A  observe ourselves honestly            closed
         │
         ▼
-Phase B  durability and coverage the feedback justifies
+Phase B  durability and coverage               3 of 7 done
         │
         ▼
 Phase C  reach: other providers and instruments
@@ -28,164 +26,217 @@ Phase C  reach: other providers and instruments
 
 | Obligation | Trigger | Response |
 | --- | --- | --- |
-| Research finding | an entry in `ANSWERS_TO_IMPLEMENTER`, an issue labelled `for:researcher`, or an accepted unit that this repository has not adopted | adopt it, or record why not, before continuing queued work |
-| Calibration contradiction | a bundle that contradicts a rule on real evidence | record it under "Calibration findings" below; never change a threshold to make one repository look right |
-| Consumer question | a consumer of the bundle cannot do something the contract promised | answer it before adding surface |
+| Research finding | an entry in `ANSWERS_TO_IMPLEMENTER`, an issue labelled `for:researcher`, or an accepted unit this repository has not adopted | adopt it, or record why not, before continuing queued work |
+| Calibration contradiction | a bundle that contradicts a rule on real evidence | record it under "Calibration findings"; never change a threshold to make one repository look right |
+| Consumer question | a consumer cannot do something the contract promised | answer it before adding surface |
 
-**Rule changes are research units, not maintenance.** A band rule, a
-threshold, a window or a gauge constant changes only with named evidence,
-fixtures, and an independent judgement. Making the engine's own report look
-better by moving its own thresholds is the one failure the whole contract
-chain exists to prevent.
+**Rule changes are research units, not maintenance.** A band rule, threshold,
+window or gauge constant changes only with named evidence, fixtures and an
+independent judgement. Making the engine's own report look better by moving
+its own thresholds is the failure the whole contract chain exists to prevent.
 
 **Improving a project's Vitals is a different activity from improving the
-Vitals themselves.** Devostasis reporting `UNDECLARED` about itself is a true
-statement about this repository's metadata; the fix belongs in this
-repository, not in the rule.
+Vitals themselves.** Devostasis reporting `SCATTERED` about itself is a true
+statement; the fix belongs in this repository, not in the rule.
 
-## Phase A: observe ourselves honestly
+## Who blocks what
 
-Small, and it unblocks the rest.
+| Item | Owner of the next step | Blocker |
+| --- | --- | --- |
+| B5 band ordering | **this repository** | none: the contract is accepted and adoption is authorized |
+| B1 vector runner | **this repository** | none |
+| B1 vectors | research process | `PV-TEST-001`, READY in their queue, not yet produced |
+| B7 first outside consumer | this repository, then the owner | B5 adoption, then the owner picking a repository |
+| B3 durable revision history | research process | `PV-HIST-001` is PENDING behind their current queue |
+| C1 GitLab adapter | research process | GitLab adapter requirements not yet produced |
+| C2 uncollected GitHub surfaces | this repository | each surface needs a contract decision first |
+| C3 Instruments | research process | `PV-INSTR-001` and children deferred past Iteration 1 |
+| C4 register generators | this repository | none; low value until a second project uses registers |
+| Renderer themes | owner | needs an owner-selected vocabulary per band |
+| PyPI publication | owner | needs an owner decision that the API surface is stable |
+| Compatibility policy | research process and owner | no contract defines what a breaking change is |
+| `PV-CAL-004` predictive validity | elapsed time | needs calendar days of bundles, not more bundles (see the self-review) |
+| Judgements owed to us | research process | four open, listed below |
 
-- **A1. Devostasis declares its own plan and debt.** Add the two register
-  files, point the fleet configuration and the self-observation workflow at
-  them, and link pull requests to targets. This is the next task, specified
-  in full below. It also gives the calibration corpus its first real evidence
-  for `planning.source = file` and `debt.source = file`, which exist today
-  only in synthetic fixtures.
-- **A2. This repository is the first consumer.** The self-observation
-  workflow already reads its own outputs, and the history store already
-  consumes bundles. Whatever a stranger would trip over, we trip over first
-  and fix here, where a broken contract costs one commit instead of an
-  apology to another project.
+Four judgements the research process owes this repository, all of them about
+work already shipped:
 
-Exit gate for Phase A: Devostasis's own bundle reports `DECLARED` or better
-for Horizon and a real linkage share for Direction, and its own attention
-order is something a consumer could act on.
+| Unit | About | State |
+| --- | --- | --- |
+| `PV-REV-REGISTERS-001` | whether a `Target: <id>` marker is auditable enough under G7, and whether a bulk-editable register is gameable | READY |
+| `PV-REV-FLEET-001` | whether `devostasis.fleet.v1` is right to declare no cross-project ordering | PENDING |
+| `PV-REV-DIRECTION-CLOSED-TARGET-001` | calibration finding 9: closing a delivered target un-links the work that delivered it | PENDING |
+| [issue #9](https://github.com/drevendev/Devostasis/issues/9) | activity declaring an interval wider than its evidence | filed, not yet indexed |
+
+`PV-SPEC-001` becomes due the moment B5 is adopted.
+
+## Phase A: observe ourselves honestly — closed
+
+- **A1. Devostasis declares its own plan and debt.** Done in 0.1.3. The
+  registers are `.devostasis/targets.json` and `.devostasis/debt.json`, the
+  fleet and the self-observation workflow read them, and a pull request links
+  to a target with a `Target: <id>` line.
+- **A2. This repository is the first consumer.** Continuing, not a
+  deliverable: whatever a stranger would trip over, we trip over first.
+
+Exit gate, met: Devostasis reports `DECLARED` for Horizon and a real linkage
+share for Direction, and its own attention order is actionable.
+
+## Phase B: make it trustworthy over time
+
+### B5. Band ordering — next, and unblocked
+
+`PV-BAND-ORDER-001` is accepted and adoption is authorized. Ordering is per
+Vital only, never across Vitals, projects or into an aggregate.
+
+| Vital | Order |
+| --- | --- |
+| Clutter | `CLEAN > LIGHT > CLUTTERED > HEAVY`, transitively |
+| Flow | `MOVING > CONGESTED > GRIDLOCKED` for a live queue; `NO_QUEUE` incomparable with all of them |
+| Integrity | `CLEAN > FLAKY > FAILING` and `SPARSE > SPARSE_MIXED`; no order across the two families or with evidence states |
+| Pulse, Horizon, Direction, Debt | none: every unequal transition stays `CHANGED` |
+
+`IMPROVED` and `WORSENED` are eligible only when the pair is `COMPARABLE`, the
+`rule_id` is unchanged and both evaluations are `AVAILABLE` and exact.
+Observability transitions and `RULE_VERSION_BOUNDARY` keep precedence, and
+gauges never establish an order. Conformance `ORDER-01..15`.
+
+`PV-BAND-ORDER-001` supersedes `PV-ORDER-001`, the research item that produced
+it: `PV-ORDER-001` asked whether an order could be declared at all, and
+`PV-BAND-ORDER-001` is the accepted answer to that question.
+[`docs/spec/history-and-reports.md`](docs/spec/history-and-reports.md) still
+names `PV-ORDER-001` because it describes the runtime as it is today, and both
+it and [`docs/spec/PROVENANCE.md`](docs/spec/PROVENANCE.md) move to the new
+identifier in the adoption change. That change is where the acceptance record
+and the `ORDER-01..15` conformance evidence are checked in; until it merges,
+this section is a summary of the decision and not the record of it.
+
+Adoption bumps the delta contract and changes bundle identities once, and it
+triggers `PV-SPEC-001`.
+
+### B1. Executable conformance vectors — half unblocked
+
+The specification names **70 conformance cases with no test behind them**
+(T2..T9, R1, R2, R4..R53, ART-05, ART-08..ART-11, ART-15, RPT-4..RPT-6,
+RPT-9) against 79 rows that do cite one. The vectors are the research
+process's `PV-TEST-001`, READY but not yet produced. The runner and the vector
+format are ours and blocked by nothing; defining the format first means their
+vectors arrive executable rather than needing translation.
+
+### B7. First outside repository integrates self-observation — blocked by B5
+
+Last on purpose: B5 is the final change to the consumer surface, so an
+adopter after it builds on something that will not move under them. One job in
+one workflow, its own `GITHUB_TOKEN`, no secret. The point is not the number
+of adopters but the first feedback from a consumer who did not write the
+contract. After B5 lands, the remaining blocker is the owner choosing a
+repository.
+
+### B3. Durable revision history across bundles — blocked by research
+
+Integrity history is reconstructed from what the provider still exposes;
+parent-level surfaces cannot prove earlier failures, which is diagnosed as
+`HISTORY_PROVENANCE_PARENT_LEVEL_ONLY`. Persisting `revision_history_state`
+per revision across bundles closes that gap, with policy provenance and
+replay-or-`INCOMPARABLE` on semantic changes. The contract is `PV-HIST-001`,
+PENDING behind the research queue; building it first would repeat the mistake
+the consumer-surface freeze exists to avoid.
+
+### Also open from the reporting review
+
+`RPT-4..RPT-6` and `RPT-9` as executable cases, including a permission-domain
+fixture for the store. Ours, and covered by B1's format.
+
+### Done
+
+- **B2** (0.1.5): a project is located by `immutable_project_id`; a rename or
+  transfer relocates the directory once and is recorded, and two projects are
+  never merged into one directory. Closed debt D-3.
+- **B4** (0.1.6): conditional requests with a persisted entity-tag cache,
+  retries bounded by what the provider asks and by a total waiting budget, and
+  a per-project request budget that truncates honestly. Measured on the fleet:
+  rate-limited requests fell from 248 to 66 per run. Closed debt D-2.
+- **B6** (0.1.4): `projects/index.json` under `devostasis.fleet.v1`, with no
+  aggregate and no cross-project ordering.
+
+Exit gate for Phase B: a fleet run survives a rate-limit day, a renamed
+repository keeps its history, the conformance table names no case that is
+unimplemented, and one outside repository has produced a bundle and said what
+was unclear.
 
 ## The consumer surface
 
 Integration is deferred until this list stops moving, because an adopter who
 builds on a contract we then change pays for our churn. Version 0.1.2 is the
-cautionary case: `devostasis.demand.v2` removed the `attention_key` field, and
-anything built on it would have broken on our release, not on theirs.
-
-These are the only surfaces an outside consumer touches:
+cautionary case: `devostasis.demand.v2` removed `attention_key`, and anything
+built on it would have broken on our release, not theirs.
 
 | Surface | Status |
 | --- | --- |
-| `demand.json` levels and attention order | `devostasis.demand.v2`, changed in 0.1.2 |
-| `observe-self.yml` inputs and outputs | unchanged since 0.1.1 |
-| `delta.json` transition classes | still moving: B5 decides whether IMPROVED and WORSENED exist |
-| machine-readable fleet index | `devostasis.fleet.v1`, added in 0.1.4 |
+| `demand.json` levels and attention order | `devostasis.demand.v2`, stable since 0.1.2 |
+| `observe-self.yml` inputs and outputs | stable since 0.1.1 |
 | `snapshot.json` bands and evaluation states | stable since 0.1.0 |
+| machine-readable fleet index | `devostasis.fleet.v1`, stable since 0.1.4 |
+| `delta.json` transition classes | **moving**: B5 adds `IMPROVED` and `WORSENED` |
 
-"The base is implemented" is therefore an observable condition, not a feeling:
-every row above is either stable or deliberately frozen for a release.
-
-One row is still moving, and it is not ours. B5 is the research unit
-PV-ORDER-001; until it reports, the surface cannot be declared frozen and B7
-cannot start. Everything else the implementation owns has landed.
-
-## Phase B: make it trustworthy over time
-
-Ordered; each item is worth doing only because something in Phase A or a
-standing obligation asked for it.
-
-- **B1. Executable conformance vectors (PV-TEST-001).** The remaining cases
-  (T2..T9, R1..R53, ART-05, ART-08..ART-11, ART-15, RPT-4..RPT-9) as
-  self-contained, provider-neutral JSON fixtures under `tests/fixtures`. The
-  research process authors the vectors; this repository adds the runner. The
-  conformance table already names the gap, so it is visible to anyone.
-- **B2. Durable history the store cannot lose.** *Delivered in 0.1.5.* A
-  project is located by `project_identity.immutable_project_id`; a rename or
-  transfer relocates the directory once and is recorded, and two projects are
-  never merged into one directory (RPT-7). Still open from the same review:
-  RPT-4..RPT-6 and RPT-9 as executable cases, including a permission-domain
-  fixture for the store.
-- **B3. Durable revision history across bundles (PV-HIST-001).** Integrity
-  history is reconstructed from what the provider still exposes; parent-level
-  surfaces cannot prove earlier failures. Persisting `revision_history_state`
-  per revision across bundles closes that, with policy provenance and
-  replay-or-INCOMPARABLE on semantic changes.
-- **B4. Rate limits and caching.** *Delivered in 0.1.6.* Conditional requests
-  with a persisted entity-tag cache, retries bounded by what the provider asks
-  and by a total waiting budget, and a per-project request budget that
-  truncates honestly. The receipt stopped recording the request count in the
-  same change, so enabling the cache cannot move a bundle identity.
-- **B5. Band ordering contract (PV-ORDER-001).** No Vital declares a
-  normative ordering, so deltas never say IMPROVED or WORSENED. An
-  independently accepted ordering unlocks those transition classes where they
-  are meaningful, and must respect the neutrality of Direction
-  `FULLY_LINKED` and Debt `PRESENT`.
-- **B6. Machine-readable fleet index.** *Delivered in 0.1.4.*
-  `projects/index.json` (`devostasis.fleet.v1`) carries the facts of
-  `projects/README.md` as data, with no aggregate and no cross-project
-  ordering, so a control plane routes attention without parsing Markdown.
-- **B7. One repository that is not this one integrates self-observation.**
-  Last, on purpose: B5 and B6 are the remaining changes to the consumer
-  surface, so after them an adopter builds on something that will not move
-  under them. A single job in one workflow, its own `GITHUB_TOKEN`, no
-  secret. The point is not the number of adopters, it is the first feedback
-  from a consumer who did not write the contract. Record what they could not
-  do without reading `docs/spec`, and answer it before Phase C.
-
-Exit gate for Phase B: a fleet run survives a rate-limit day, a renamed
-repository keeps its history, the conformance table has no case that is named
-but unimplemented, and one outside repository has produced at least one
-bundle of its own and said what was unclear.
+One row is still moving, and after B5 none is. "The base is implemented" is
+therefore an observable condition, not a feeling.
 
 ## Phase C: reach
 
-Not before Phase B, because each item multiplies the surface that Phase B
-makes trustworthy.
+Not before Phase B, because each item multiplies the surface Phase B makes
+trustworthy.
 
-- **C1. GitLab adapter**: merge requests, pipelines with in-place retries,
-  epics and iterations as planning targets, under the same provider-neutral
-  observation keys. PV-VIT-006 and later already define the identity
-  semantics.
-- **C2. GitHub surfaces not collected yet**: external check apps alongside
-  Actions, legacy commit statuses, branch protection and rulesets as an
-  *enforcement* observation, pull request to issue to milestone linkage,
-  GitHub Projects fields as planning targets.
-- **C3. Instruments (PV-INSTR-001 and children)**: configurable,
-  deterministic instruments separable from the seven core Vitals, sharing the
-  same availability, freshness, coverage and provenance semantics: test state
-  (PV-TESTSTATE-001), code coverage (PV-COV-001), deployment state
-  (PV-DEPLOY-001), normalized work since the previous bundle (PV-WORK-001).
-- **C4. Register generators.** Small scripts that derive `targets.json` from
-  a project's own roadmap format, owned by the project, so the register never
-  drifts from the roadmap.
+- **C1. GitLab adapter** (blocked by research): merge requests, pipelines with
+  in-place retries, epics and iterations as planning targets, under the same
+  provider-neutral observation keys. Until it exists, provider neutrality is a
+  design intent rather than a demonstrated property.
+- **C2. GitHub surfaces not collected yet** (ours, each needs a contract
+  decision): external check apps alongside Actions, legacy commit statuses,
+  branch protection and rulesets as an *enforcement* observation, pull request
+  to issue to milestone linkage, GitHub Projects fields as planning targets.
+- **C3. Instruments** (blocked by research, deferred past Iteration 1):
+  configurable deterministic instruments separable from the seven Vitals and
+  sharing their availability, freshness, coverage and provenance semantics:
+  test state (`PV-TESTSTATE-001`), coverage (`PV-COV-001`), deployment state
+  (`PV-DEPLOY-001`), normalized work since the previous bundle
+  (`PV-WORK-001`).
+- **C4. Register generators** (ours, unblocked): scripts that derive
+  `targets.json` from a project's own roadmap format, so the register never
+  drifts from the roadmap. Worth little until a second project uses registers.
 
 ## Presentation
 
-- **Custom report templates.** A user-supplied template persisted in the
-  bundle and hashed into its identity, so re-rendering stays reproducible;
-  deferred because `display` covers selection and layout without a template
-  engine.
-- `report.html` as an optional canonical member (already identity-bearing:
-  enabling it changes `bundle_id`; PV-REV-REPORT-001 confirmed it stays
-  optional).
-- Optional renderer themes (PV-RENDER-CLINICAL-001): vivid or clinical labels
-  next to the canonical bands in a layer that cannot alter machine semantics.
-  Needs an owner-selected vocabulary per band that respects the neutrality
-  rules; the gauge contract already provides the numeric side.
-- Per-Vital history views: transition timelines and observability history.
-- Locales beyond English.
+- **Custom report templates** (ours, deferred by decision): a user-supplied
+  template persisted in the bundle and hashed into its identity. The `display`
+  configuration covers selection and layout without a template engine.
+- **`report.html`** (ours, deferred): already identity-bearing, since enabling
+  it changes `bundle_id`; the reporting review confirmed it stays optional.
+- **Renderer themes** (blocked by the owner): vivid or clinical labels beside
+  the canonical bands, in a layer that cannot alter machine semantics
+  (`PV-RENDER-CLINICAL-001`). Needs an owner-selected vocabulary per band that
+  respects the neutrality of Direction `FULLY_LINKED` and Debt `PRESENT`.
+- **Per-Vital history views** (ours): transition timelines and observability
+  history.
+- **Locales beyond English** (ours).
 
 ## Storage and governance
 
 - Object storage and same-repository history ref backends behind the
-  `HistoryStore` interface.
+  `HistoryStore` interface (ours).
 - Retention and compaction for convenience and derived views only; immutable
-  bundles needed for audit are never destroyed (PV-REV-REPORT-001).
-- Optional exclusion of `observations.json` for very active repositories.
-- Publication to PyPI once the API surface is stable.
-- Versioning and compatibility policy per contract identifier.
+  bundles needed for audit are never destroyed (decided by the reporting
+  review, ours to implement).
+- Optional exclusion of `observations.json` for very active repositories
+  (ours).
+- **Publication to PyPI** (blocked by the owner): needs a decision that the
+  API surface is stable.
+- **Versioning and compatibility policy per contract identifier** (blocked by
+  research and the owner): the repository declares 22 contract identifiers and
+  nothing states what a breaking change to one of them is, or what a consumer
+  may rely on across versions.
 
 ## What ends the loop
-
-The loop is not open-ended. Two named versions end it.
 
 **0.2 is reached when** Phase A and Phase B are closed, which includes one
 consumer outside this repository depending on a bundle, and no accepted
@@ -194,130 +245,102 @@ research unit is waiting for adoption.
 **1.0 is reached when** the contract identifiers have a compatibility policy,
 a second provider is implemented, and the calibration corpus is large enough
 that a threshold change can be argued from evidence rather than from one
-repository. Only then is a new major idea a decision rather than a distraction.
+repository.
 
 ## Background clock
 
 `PV-CAL-004` measures whether the attention order of one bundle predicts where
-work actually happened in the next bundles. Its evidence window starts at the
-first daily bundle produced by 0.1.2, on 2026-09-06, and needs about two weeks.
-Nothing waits for it; it reports when it reports.
+work happened in the next ones. It is blocked by elapsed time, and by corpus
+quality rather than corpus size: see the self-review below.
 
-## Task A1: Devostasis declares its own plan and debt
+## Self-review, 2026-09-06
 
-**Status: delivered on `release/0.1.3`.** The registers, the workflow inputs
-and the documentation are in the branch. The fleet configuration lands after
-the merge, because a register is read from the default branch and does not
-exist until then.
+An honest reading of the state, including what is weaker than the numbers
+suggest.
 
-**Why.** Devostasis reported `Horizon UNDECLARED`, `Direction UNDECLARED` and
-`Debt UNINSTRUMENTED` about itself, and the first two entries of its own
-attention order were exactly those. Every word of that was true and it was a
-statement about this repository's metadata. Fixing it costs two small files
-and gives three things at once: an honest self-report, the first real-world
-evidence for the register contracts, and a worked example a new adopter can
-copy.
+**The calibration corpus is thinner than it looks.** 218 bundles across 18
+projects sounds substantial. They span **two calendar days**, and 144 of them
+were produced on the second day by manual runs minutes apart while releases
+were being verified. `PV-CAL-004` asks whether the attention order of bundle N
+predicts activity in bundles N+1..N+k; bundles minutes apart have almost no
+activity between them by construction, so they add count without adding
+evidence and could make the study look ready while it holds about one day of
+real signal. The study must count calendar days, not bundles, and manual
+triggering should stop now that the release chain is quiet.
 
-**Deliverables.**
+**Half of the named conformance surface is unproven.** 79 table rows cite a
+test; 70 named cases have none. The specification says so and the roadmap
+admits it, so nothing is being hidden, but "conformance" currently covers
+about half of what it names. This is debt D-1 and target B1.
 
-1. `devostasis/targets.json` (`devostasis.targets.v1`): one target per item
-   of this roadmap that is actually in flight, with a stable id that is never
-   reused, a title, `state`, and `due` only where a date is real. Suggested
-   ids follow the roadmap sections (`A1`, `A2`, `B1` and so on) so the file
-   and this document cannot drift apart silently.
-2. `devostasis/debt.json` (`devostasis.debt.v1`): the maintenance
-   obligations this repository actually carries, not features. Candidates
-   visible today: the conformance table names cases that have no executable
-   fixture; the adapter has no conditional requests or backoff; history is
-   keyed by a mutable `owner/name` path; specification and provenance drift
-   is caught only by a manual pass.
-3. Fleet configuration: the `drevendev/devostasis` entry in the history
-   store's `devostasis.json` gains `planning` with `source: file` and the
-   register path, and `debt` with `source: file`, the register path and a
-   `mapping_version`. Bump `config_version`.
-4. Self-observation: `self-observe.yml` passes `planning-source`,
-   `planning-path`, `debt-path` and `debt-mapping-version` so both surfaces
-   read the same metadata and cannot disagree.
-5. Contribution rule: a pull request that advances a target carries a
-   `Target: <id>` line in its description. Document it in `CONTRIBUTING.md`;
-   it is the only linkage the engine accepts, by design.
-6. Documentation: `docs/deployment.md` points at these two files as the
-   worked example, replacing the fictional one where it helps.
+**Provider neutrality is a design intent, not a demonstrated property.** Every
+provider-neutral contract has exactly one implemented provider. The GitLab
+semantics exist in the research contracts and nothing exercises them. Until a
+second adapter exists, "provider-neutral" should be read as "designed to be",
+and the first GitLab implementation should be expected to find contract
+defects rather than to confirm the design.
 
-**Measured effect**, checked against the register content rather than assumed
-(`tests/test_own_registers.py`): Horizon becomes `DECLARED` with ten open
-targets; Debt becomes `PRESENT` with five open items and none stale;
-Direction follows the pull requests, `NO_ACTIVE_CHANGE` with none open,
-`FULLY_LINKED` when every active one carries a marker, `MIXED` when some do
-not. Horizon stops at `DECLARED` rather than `VISIBLE` because no target
-carries a `due` date, and none does because none of the dates would be real.
+**Bundle identity moved three times in one day** (0.1.2 receipt and rule
+versions, 0.1.6 receipt v2, 0.1.7 evidence shape), and B5 will move it a
+fourth time. Every one was justified and comparability held throughout, but
+for a system whose product is durable comparable history that cadence is a
+cost paid by whoever reads the store. Fewer, larger releases would be
+cheaper, and after B5 the consumer surface is frozen, which is the natural
+place to slow down.
 
-**Known and intended side effects.** Changing `planning` and `debt` changes
-the semantic configuration, so the first bundle after the fleet adopts the
-registers is `INCOMPARABLE` with the previous one for this project. Until the
-registers reach the default branch, both are `UNAVAILABLE /
-REGISTER_NOT_FOUND` and Horizon, Direction and Debt are `UNKNOWN`: the
-contract fails closed instead of guessing, and a self-observation run on the
-branch shows that honestly.
+**The engine still has one consumer, and it wrote the contracts.** This is the
+largest untested assumption in the project. It is deferred deliberately rather
+than forgotten, and B7 is one step away.
 
-**Not in this task.** No rule, threshold, window or gauge changes. If the
-register evidence contradicts a rule, that is a calibration finding for the
-research process, recorded below.
-
-**After A1.** B1's fixture runner and B2 and B4 are unblocked and entirely
-ours; B4 pays down debt item D-2 and B2 pays down D-3. B1's vectors depend on
-the research process, which has PV-TEST-001 queued behind its own calibration
-unit.
+**What is genuinely solid.** The core contracts have documented research
+provenance in `docs/spec/PROVENANCE.md`; local and pending extensions stay
+explicitly identified there and in the judgement table above. Selected
+fail-closed paths have regression coverage: an invalid stored configuration
+stops a replay, and a locator held by another project refuses a write.
+Pagination limits are checked for the inventories that have tests; CI
+check-suite coverage still has the gaps tracked in
+[#12](https://github.com/drevendev/Devostasis/issues/12), where a truncated
+sample can still be emitted as complete. All 218 bundles in the
+store verify from their own contents. Two automated guards now catch the
+mechanical half of specification drift, and one of them found five undocumented
+identifiers on the day it was written.
 
 ## Calibration findings from the real runs
 
-Recorded here so they reach the research process. Dispositions after
-PV-CAL-002 and PV-CAL-003 (2026-09-06):
+Recorded so they reach the research process. Dispositions after `PV-CAL-002`
+and `PV-CAL-003` (2026-09-06):
 
 1. **Flow with an empty queue and a slow median.** Repaired in
-   `flow.bands.v1` (PV-FLOW-EMPTY-QUEUE-001): an empty queue is `NO_QUEUE`
-   and the historical median is diagnosed instead of classified
-   (FLOW-EQ-01..06).
+   `flow.bands.v1` (`PV-FLOW-EMPTY-QUEUE-001`, FLOW-EQ-01..06).
 2. **Pulse and bursty solo development.** Open observation: substantial work
-   on two active days remains `QUIET`. PV-CAL-003 found the frozen active-day
-   rule defensible and asks for contrasting fixtures before any change.
+   on two active days remains `QUIET`. The frozen active-day rule was found
+   defensible; contrasting fixtures are wanted before any change.
 3. **Integrity with a persistently failing secondary workflow.** Confirmed as
-   the evidence-faithful reading of the accepted contract; no repair.
-4. **Direction when no milestone ever existed.** Confirmed:
-   `SUPPORTED_UNUSED` yields `UNDECLARED`, not `SCATTERED`.
-5. **`timed_out` and `startup_failure`.** Confirmed: `VERIFY_FAIL` and
-   `UNKNOWN` respectively (CI-OUTCOME-01..04).
+   the evidence-faithful reading; no repair.
+4. **Direction when no milestone ever existed.** Confirmed: `SUPPORTED_UNUSED`
+   yields `UNDECLARED`, not `SCATTERED`.
+5. **`timed_out` and `startup_failure`.** Confirmed as `VERIFY_FAIL` and
+   `UNKNOWN` (CI-OUTCOME-01..04).
 6. **Pulse on capped enumerations.** Repaired in `pulse.bands.v1`
-   (PV-PULSE-REQUIRED-LOWER-BOUND-001, PULSE-CAP-01..05).
+   (`PV-PULSE-REQUIRED-LOWER-BOUND-001`, PULSE-CAP-01..05).
 7. **Median time to merge in whole hours.** Repaired: the classifier consumes
-   the exact rational median in seconds (PV-FLOW-MERGE-LATENCY-001,
-   FLOW-PREC-01..09); the hour value is a presentation projection.
+   the exact rational median in seconds (`PV-FLOW-MERGE-LATENCY-001`,
+   FLOW-PREC-01..09).
 
-Open for judgement, introduced by the implementation in 0.1.2:
+Judged since:
 
-8. **Per-Vital rule version boundary.** A Vital whose `rule_id` changed since
-   the previous bundle is `INCOMPARABLE` on its own
-   (`RULE_VERSION_BOUNDARY`) while the bundle stays `COMPARABLE`. No research
-   unit defined this; it was chosen so a rule repair never reinterprets a
-   historical band. Submitted for judgement.
+8. **Per-Vital rule version boundary.** Accepted by
+   `PV-REV-RULEBOUNDARY-001`: a Vital whose `rule_id` changed is
+   `INCOMPARABLE` on its own while the bundle stays `COMPARABLE`.
 
-Found by dogfooding in 0.1.5, in the accepted V1 Direction rule:
+Open:
 
 9. **Closing a delivered target un-links the work that delivered it.**
-   Direction counts active change requests linked to an **open** target, so
-   the moment a target is completed and closed, every pull request that
-   delivered it becomes unlinked while it is still inside the 28-day active
-   window. Measured on this repository: with targets A1 and B6 open, two of
-   six active change requests were linked; closing both on delivery took the
-   linked count to zero and left the band `SCATTERED` on 0 of 3.
-   The incentive this creates is the wrong way round: never closing a target
-   keeps Direction high, and finishing work lowers it. The rule is not wrong
-   about the present moment, since work on a finished target is genuinely not
-   traceable to anything open, but the effect deserves a decision rather than
-   an accident. Candidate readings for the research process: a change request
-   linked to a target that was open *when the change request was last active*
-   stays linked; or the window for linkage follows the target's closing date;
-   or the current behaviour is confirmed and the anti-gaming note is amended
-   to say that Direction is a statement about work in flight only.
-
-New findings from later fleet runs are appended here as they appear.
+   Direction counts links to *open* targets, so completing a target removes
+   the linkage of the pull requests that delivered it while they are still in
+   the 28-day window. Measured here: closing A1 and B6 took the linked count
+   from 2 of 6 to 0. Never closing a target would keep the band higher than
+   finishing the work. Awaiting `PV-REV-DIRECTION-CLOSED-TARGET-001`.
+10. **Activity can declare an interval wider than its evidence.** Declared
+    since 0.1.7 with `INTERVAL_EXCEEDS_EVIDENCE_WINDOW`; whether collection
+    should widen instead is [issue #9](https://github.com/drevendev/Devostasis/issues/9).
