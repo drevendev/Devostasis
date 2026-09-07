@@ -147,7 +147,11 @@ fixture for the store. Ours, and covered by B1's format.
   evidence on both sides; observability transitions and
   `RULE_VERSION_BOUNDARY` keep precedence and gauges establish no order.
   Conformance `ORDER-01..15`, executable. It moved bundle identity once and
-  made `PV-SPEC-001` due.
+  made `PV-SPEC-001` due. `PV-BAND-ORDER-001` supersedes `PV-ORDER-001`, the
+  research item that asked whether an order could be declared at all;
+  [`docs/spec/PROVENANCE.md`](docs/spec/PROVENANCE.md) records the acceptance
+  and [`docs/spec/history-and-reports.md`](docs/spec/history-and-reports.md)
+  now names the new identifier.
 - **B2** (0.1.5): a project is located by `immutable_project_id`; a rename or
   transfer relocates the directory once and is recorded, and two projects are
   never merged into one directory. Closed debt D-3.
@@ -297,11 +301,15 @@ strong enough to state here.
 largest untested assumption in the project. It is deferred deliberately rather
 than forgotten, and B7 is one step away.
 
-**What is genuinely solid.** Every contract identifier traces to a research
-unit and an independent judgement, recorded in `docs/spec/PROVENANCE.md`. The
-fail-closed paths are tested where they matter: a stored configuration that
-does not validate stops a replay, a locator held by another project refuses a
-write, a capped enumeration cannot claim completeness. All 218 bundles in the
+**What is genuinely solid.** The core contracts have documented research
+provenance in `docs/spec/PROVENANCE.md`; local and pending extensions stay
+explicitly identified there and in the judgement table above. Selected
+fail-closed paths have regression coverage: an invalid stored configuration
+stops a replay, and a locator held by another project refuses a write.
+Pagination limits are checked for the inventories that have tests; CI
+check-suite coverage still has the gaps tracked in
+[#12](https://github.com/drevendev/Devostasis/issues/12), where a truncated
+sample can still be emitted as complete. All 218 bundles in the
 store verify from their own contents. Two automated guards now catch the
 mechanical half of specification drift, and one of them found five undocumented
 identifiers on the day it was written.
