@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## 0.1.8 (release/0.1.8, unreleased)
+## 0.1.8 (2026-09-07)
 
 Roadmap targets B5 and B1: the first accepted band ordering, and the format
 and runner that make a conformance case executable. No threshold, window or
@@ -73,6 +73,19 @@ gauge changed, and no rule was retuned.
   named cases without a test remain open (debt D-1), but what was missing on
   our side is now built, so those vectors arrive executable instead of needing
   translation.
+- **A documented pin that names a tag nobody published is now a red build.**
+  `tests/test_release_pins.py` proves the pins agree with `pyproject.toml`; it
+  cannot prove the tag they name exists, because on a release branch that tag
+  legitimately does not exist yet. Nothing closed the window afterwards, and
+  0.1.8 fell into it: every pin said `v0.1.8` while master carried no such tag,
+  so the install command in the README failed for anyone who ran it. A new
+  `Released pins resolve` workflow runs daily on master and resolves every
+  documented pin against the remote. Daily rather than per push, because the
+  window is legitimate for as long as it takes to tag a merge and not a day
+  longer. The self-observation workflow could never have caught this: it passes
+  `devostasis-ref: ${{ github.sha }}`, which is right for its purpose and means
+  the one live exercise of `observe-self.yml` overrides the input that goes
+  stale (issue #18).
 - **Bookkeeping:** the 0.1.7 section still said "unreleased" after v0.1.7 was
   tagged and released, which is the exact drift debt D-4 names.
 
