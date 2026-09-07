@@ -273,6 +273,38 @@ def cmd_demand(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_vectors(args: argparse.Namespace) -> int:
+    """Execute conformance vectors. A vector that cannot be loaded fails the run."""
+    from .vectors import VectorError, load, run_all
+
+    paths = args.path or [path for path in ("tests/vectors", "examples/vectors") if Path(path).exists()]
+    if not paths:
+        print("vector error: no --path given and no default corpus in the working directory", file=sys.stderr)
+        return 2
+    try:
+        vectors = load(paths)
+    except VectorError as exc:
+        print(f"vector error: {exc}", file=sys.stderr)
+        return 2
+    if args.case:
+        wanted = set(args.case)
+        vectors = [vector for vector in vectors if vector.case in wanted]
+        missing = sorted(wanted - {vector.case for vector in vectors})
+        if missing:
+            print(f"vector error: no such case: {', '.join(missing)}", file=sys.stderr)
+            return 2
+    if not vectors:
+        print("vector error: no vectors found", file=sys.stderr)
+        return 2
+    results = run_all(vectors)
+    failed = [result for result in results if not result.ok]
+    for result in results:
+        if not result.ok or not args.quiet:
+            print(result.report())
+    print(f"{len(results) - len(failed)} passed, {len(failed)} failed")
+    return 1 if failed else 0
+
+
 def actions_summary_text(parsed: dict[str, Any]) -> tuple[str, dict[str, str]]:
     """Job-summary Markdown and step outputs for a bundle (GitHub Actions integration)."""
     manifest = parsed["manifest.json"]
@@ -395,6 +427,12 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--snapshot", help="snapshot.json path")
     demand_p.add_argument("--order-only", action="store_true", help="print only the attention order")
     demand_p.set_defaults(func=cmd_demand)
+
+    vectors_p = sub.add_parser("vectors", help="execute conformance vectors from files or directories")
+    vectors_p.add_argument("--path", action="append", default=None, help="vector file or directory (repeatable; default tests/vectors and examples/vectors)")
+    vectors_p.add_argument("--case", action="append", help="run only this case id (repeatable)")
+    vectors_p.add_argument("--quiet", action="store_true", help="print only failures and the summary")
+    vectors_p.set_defaults(func=cmd_vectors)
 
     summary_p = sub.add_parser("actions-summary", help="write a GitHub Actions job summary and step outputs (attention, levels, bands, gauges) for a bundle")
     summary_p.add_argument("--bundle", required=True, help="bundle directory")

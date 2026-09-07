@@ -1,0 +1,318 @@
+{
+  "schema": "devostasis.vectors.v1",
+  "notes": "Conformance cases ORDER-01..15 of the accepted band ordering contract PV-BAND-ORDER-001, as executable delta vectors. Each case states two Vital rows and the transition the comparison must classify. The rows are stated, never evaluated from evidence, because the claim under test is the ordering of bands, not the classification of a band. Structural claims that no pair of bands can express - that no order crosses Vitals, that a non-comparable bundle emits no order, and that gauges establish none - are in tests/conformance/test_band_order.py beside them.",
+  "vectors": [
+    {
+      "case": "ORDER-01",
+      "title": "Clutter improves one rank along its chain",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "clutter", "band": "LIGHT"}]},
+        "current": {"vitals": [{"vital_id": "clutter", "band": "CLEAN"}]}
+      },
+      "expect": {
+        "comparison_status": "COMPARABLE",
+        "vitals": {
+          "clutter": {
+            "transition_class": "IMPROVED",
+            "reason_codes": ["BAND:LIGHT->CLEAN", "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"]
+          }
+        }
+      }
+    },
+    {
+      "case": "ORDER-02",
+      "title": "Clutter worsens across two ranks: the chain is transitive downward",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "clutter", "band": "LIGHT"}]},
+        "current": {"vitals": [{"vital_id": "clutter", "band": "HEAVY"}]}
+      },
+      "expect": {
+        "vitals": {
+          "clutter": {
+            "transition_class": "WORSENED",
+            "reason_codes": ["BAND:LIGHT->HEAVY", "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"]
+          }
+        }
+      }
+    },
+    {
+      "case": "ORDER-03",
+      "title": "Clutter improves across the whole chain: the chain is transitive upward",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "clutter", "band": "HEAVY"}]},
+        "current": {"vitals": [{"vital_id": "clutter", "band": "CLEAN"}]}
+      },
+      "expect": {
+        "vitals": {"clutter": {"transition_class": "IMPROVED", "reason_codes": ["BAND:HEAVY->CLEAN"]}}
+      }
+    },
+    {
+      "case": "ORDER-04",
+      "title": "Flow improves inside a live queue",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "flow", "band": "CONGESTED"}]},
+        "current": {"vitals": [{"vital_id": "flow", "band": "MOVING"}]}
+      },
+      "expect": {
+        "vitals": {
+          "flow": {
+            "transition_class": "IMPROVED",
+            "reason_codes": ["BAND:CONGESTED->MOVING", "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED"]
+          }
+        }
+      }
+    },
+    {
+      "case": "ORDER-05",
+      "title": "Flow worsens inside a live queue",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "flow", "band": "MOVING"}]},
+        "current": {"vitals": [{"vital_id": "flow", "band": "GRIDLOCKED"}]}
+      },
+      "expect": {
+        "vitals": {"flow": {"transition_class": "WORSENED", "reason_codes": ["BAND:MOVING->GRIDLOCKED"]}}
+      }
+    },
+    {
+      "case": "ORDER-06",
+      "title": "A queue that appeared is not a worsening: NO_QUEUE is incomparable with the live bands",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "flow", "band": "NO_QUEUE"}]},
+        "current": {"vitals": [{"vital_id": "flow", "band": "MOVING"}]}
+      },
+      "expect": {
+        "vitals": {
+          "flow": {
+            "transition_class": "CHANGED",
+            "reason_codes": ["BAND:NO_QUEUE->MOVING", "BAND_ORDER_INCOMPARABLE:NO_QUEUE|MOVING"],
+            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+          }
+        }
+      }
+    },
+    {
+      "case": "ORDER-07",
+      "title": "A queue that emptied is not an improvement: NO_QUEUE is descriptive, never positive",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "flow", "band": "CONGESTED"}]},
+        "current": {"vitals": [{"vital_id": "flow", "band": "NO_QUEUE"}]}
+      },
+      "expect": {
+        "vitals": {
+          "flow": {
+            "transition_class": "CHANGED",
+            "reason_codes": ["BAND_ORDER_INCOMPARABLE:CONGESTED|NO_QUEUE"],
+            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+          }
+        }
+      }
+    },
+    {
+      "case": "ORDER-08",
+      "title": "Integrity improves across the established family, transitively over FLAKY",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "integrity", "band": "FAILING"}]},
+        "current": {"vitals": [{"vital_id": "integrity", "band": "CLEAN"}]}
+      },
+      "expect": {
+        "vitals": {
+          "integrity": {
+            "transition_class": "IMPROVED",
+            "reason_codes": ["BAND:FAILING->CLEAN", "BAND_ORDER_APPLIED:CLEAN>FLAKY>FAILING"]
+          }
+        }
+      }
+    },
+    {
+      "case": "ORDER-09",
+      "title": "Integrity worsens inside the established family",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "integrity", "band": "CLEAN"}]},
+        "current": {"vitals": [{"vital_id": "integrity", "band": "FLAKY"}]}
+      },
+      "expect": {
+        "vitals": {"integrity": {"transition_class": "WORSENED", "reason_codes": ["BAND:CLEAN->FLAKY"]}}
+      }
+    },
+    {
+      "case": "ORDER-10",
+      "title": "Integrity orders the sparse family on its own",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "integrity", "band": "SPARSE_MIXED"}]},
+        "current": {"vitals": [{"vital_id": "integrity", "band": "SPARSE"}]}
+      },
+      "expect": {
+        "vitals": {
+          "integrity": {
+            "transition_class": "IMPROVED",
+            "reason_codes": ["BAND_ORDER_APPLIED:SPARSE>SPARSE_MIXED"]
+          }
+        }
+      }
+    },
+    {
+      "case": "ORDER-11",
+      "title": "Integrity declares no order between the sparse and the established family",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "integrity", "band": "SPARSE"}]},
+        "current": {"vitals": [{"vital_id": "integrity", "band": "CLEAN"}]}
+      },
+      "expect": {
+        "vitals": {
+          "integrity": {
+            "transition_class": "CHANGED",
+            "reason_codes": ["BAND_ORDER_INCOMPARABLE:SPARSE|CLEAN"],
+            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+          }
+        }
+      }
+    },
+    {
+      "case": "ORDER-12",
+      "title": "An Integrity evidence state is never ordered against a verdict band",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "integrity", "band": "NO_RECENT_RUNS"}]},
+        "current": {"vitals": [{"vital_id": "integrity", "band": "CLEAN"}]}
+      },
+      "expect": {
+        "vitals": {
+          "integrity": {
+            "transition_class": "CHANGED",
+            "reason_codes": ["BAND_ORDER_INCOMPARABLE:NO_RECENT_RUNS|CLEAN"],
+            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+          }
+        }
+      }
+    },
+    {
+      "case": "ORDER-13",
+      "title": "Pulse, Horizon, Direction and Debt declare no order: every unequal transition stays CHANGED",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {
+          "vitals": [
+            {"vital_id": "pulse", "band": "DORMANT"},
+            {"vital_id": "horizon", "band": "UNDECLARED"},
+            {"vital_id": "direction", "band": "SCATTERED"},
+            {"vital_id": "debt", "band": "PRESENT"}
+          ]
+        },
+        "current": {
+          "vitals": [
+            {"vital_id": "pulse", "band": "SURGING"},
+            {"vital_id": "horizon", "band": "EXTENDED"},
+            {"vital_id": "direction", "band": "FULLY_LINKED"},
+            {"vital_id": "debt", "band": "CLEAR"}
+          ]
+        }
+      },
+      "expect": {
+        "vitals": {
+          "pulse": {"transition_class": "CHANGED", "reason_codes": ["BAND_ORDER_NOT_DECLARED:pulse"]},
+          "horizon": {"transition_class": "CHANGED", "reason_codes": ["BAND_ORDER_NOT_DECLARED:horizon"]},
+          "direction": {"transition_class": "CHANGED", "reason_codes": ["BAND_ORDER_NOT_DECLARED:direction"]},
+          "debt": {"transition_class": "CHANGED", "reason_codes": ["BAND_ORDER_NOT_DECLARED:debt"]}
+        }
+      }
+    },
+    {
+      "case": "ORDER-14",
+      "title": "An order compares measurements: a degraded evaluation or an inexact band stays CHANGED",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {
+          "vitals": [
+            {"vital_id": "clutter", "band": "HEAVY"},
+            {"vital_id": "flow", "band": "GRIDLOCKED"}
+          ]
+        },
+        "current": {
+          "vitals": [
+            {"vital_id": "clutter", "band": "CLEAN", "evaluation_status": "DEGRADED", "band_semantics": "CONSERVATIVE_LOWER_BOUND"},
+            {"vital_id": "flow", "band": "MOVING", "evaluation_status": "AVAILABLE", "band_semantics": "CONSERVATIVE_LOWER_BOUND"}
+          ]
+        }
+      },
+      "expect": {
+        "vitals": {
+          "clutter": {
+            "transition_class": "CHANGED",
+            "reason_codes": ["BAND_ORDER_NOT_ELIGIBLE:EVALUATION_NOT_AVAILABLE"],
+            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+          },
+          "flow": {
+            "transition_class": "CHANGED",
+            "reason_codes": ["BAND_ORDER_NOT_ELIGIBLE:BAND_SEMANTICS_NOT_EXACT"],
+            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+          }
+        }
+      }
+    },
+    {
+      "case": "ORDER-15",
+      "title": "The rule version boundary, observability transitions and an unchanged band all keep precedence over the order",
+      "kind": "delta",
+      "source_unit": "PV-BAND-ORDER-001",
+      "given": {
+        "previous": {
+          "vitals": [
+            {"vital_id": "clutter", "band": "HEAVY", "rule_id": "clutter.bands.v0"},
+            {"vital_id": "flow", "band": "GRIDLOCKED"},
+            {"vital_id": "integrity", "band": null},
+            {"vital_id": "pulse", "band": "STEADY", "derived": {"activity_events_28d": 10}}
+          ]
+        },
+        "current": {
+          "vitals": [
+            {"vital_id": "clutter", "band": "CLEAN", "rule_id": "clutter.bands.v1"},
+            {"vital_id": "flow", "band": null},
+            {"vital_id": "integrity", "band": "CLEAN"},
+            {"vital_id": "pulse", "band": "STEADY", "derived": {"activity_events_28d": 12}}
+          ]
+        }
+      },
+      "expect": {
+        "vitals": {
+          "clutter": {
+            "transition_class": "INCOMPARABLE",
+            "reason_codes": ["RULE_VERSION_BOUNDARY:clutter.bands.v0->clutter.bands.v1"],
+            "reason_codes_absent": ["BAND_ORDER_APPLIED"],
+            "metric_deltas": {}
+          },
+          "flow": {"transition_class": "OBSERVABILITY_LOST", "reason_codes": ["BAND_NO_LONGER_OBSERVABLE"]},
+          "integrity": {"transition_class": "OBSERVABILITY_GAINED", "reason_codes": ["BAND_BECAME_OBSERVABLE"]},
+          "pulse": {
+            "transition_class": "UNCHANGED",
+            "metric_deltas": {"activity_events_28d": {"previous": 10, "current": 12, "change": 2}}
+          }
+        }
+      }
+    }
+  ]
+}

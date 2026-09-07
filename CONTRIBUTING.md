@@ -61,8 +61,12 @@ previous one.
    repository "looking right" is not an argument.
 4. **Conformance cases keep their identifiers.** Tests are named after the
    research case they implement (C1..C7, T1..T9, R1..R57, V1-01..V1-15,
-   ART-01..ART-22, RPT-1..RPT-10). A new rule needs a new case with a new
-   identifier; identifiers are never reused.
+   ART-01..ART-22, RPT-1..RPT-10, ORDER-01..15). A new rule needs a new case
+   with a new identifier; identifiers are never reused. A case can be a pytest
+   function or an executable vector under `tests/vectors`
+   ([docs/spec/vectors.md](docs/spec/vectors.md)); either way it is cited in
+   `docs/spec/conformance.md`, and a citation that does not resolve fails the
+   build.
 5. **Neutral bands stay neutral.** Direction `FULLY_LINKED` and Debt `PRESENT`
    are facts, not verdicts. Renderers never alias them into ALIGNED, ON_TRACK,
    HEALTHY or similar words, and never introduce colours or numbers that imply
@@ -78,9 +82,12 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
-The test suite needs no network. Run the real adapter against a repository
-you can read with `devostasis observe --repo owner/name` (a token is taken
-from `DEVOSTASIS_GITHUB_TOKEN`, `GITHUB_TOKEN`, `GH_TOKEN` or `gh auth token`).
+The test suite needs no network, and it runs every conformance vector as an
+ordinary test. `devostasis vectors` runs the same corpus from the command
+line, and `devostasis vectors --case ORDER-07` runs one case. Run the real
+adapter against a repository you can read with
+`devostasis observe --repo owner/name` (a token is taken from
+`DEVOSTASIS_GITHUB_TOKEN`, `GITHUB_TOKEN`, `GH_TOKEN` or `gh auth token`).
 
 ## Pull request checklist
 

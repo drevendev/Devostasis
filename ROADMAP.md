@@ -13,7 +13,7 @@ standing obligations (interrupt anything)
 Phase A  observe ourselves honestly            closed
         │
         ▼
-Phase B  durability and coverage               3 of 7 done
+Phase B  durability and coverage               4 of 7 done
         │
         ▼
 Phase C  reach: other providers and instruments
@@ -43,10 +43,8 @@ statement; the fix belongs in this repository, not in the rule.
 
 | Item | Owner of the next step | Blocker |
 | --- | --- | --- |
-| B5 band ordering | **this repository** | none: the contract is accepted and adoption is authorized |
-| B1 vector runner | **this repository** | none |
 | B1 vectors | research process | `PV-TEST-001`, READY in their queue, not yet produced |
-| B7 first outside consumer | this repository, then the owner | B5 adoption, then the owner picking a repository |
+| B7 first outside consumer | **the owner** | picking a repository; B5 has landed, so the consumer surface no longer moves |
 | B3 durable revision history | research process | `PV-HIST-001` is PENDING behind their current queue |
 | C1 GitLab adapter | research process | GitLab adapter requirements not yet produced |
 | C2 uncollected GitHub surfaces | this repository | each surface needs a contract decision first |
@@ -56,9 +54,9 @@ statement; the fix belongs in this repository, not in the rule.
 | PyPI publication | owner | needs an owner decision that the API surface is stable |
 | Compatibility policy | research process and owner | no contract defines what a breaking change is |
 | `PV-CAL-004` predictive validity | elapsed time | needs calendar days of bundles, not more bundles (see the self-review) |
-| Judgements owed to us | research process | four open, listed below |
+| Judgements owed to us | research process | five open, listed below |
 
-Four judgements the research process owes this repository, all of them about
+Five judgements the research process owes this repository, all of them about
 work already shipped:
 
 | Unit | About | State |
@@ -66,9 +64,13 @@ work already shipped:
 | `PV-REV-REGISTERS-001` | whether a `Target: <id>` marker is auditable enough under G7, and whether a bulk-editable register is gameable | READY |
 | `PV-REV-FLEET-001` | whether `devostasis.fleet.v1` is right to declare no cross-project ordering | PENDING |
 | `PV-REV-DIRECTION-CLOSED-TARGET-001` | calibration finding 9: closing a delivered target un-links the work that delivered it | PENDING |
+| `PV-SPEC-001` | the conformance review of every adoption since the specification was last reviewed, now including B5 | **due**: B5 was adopted in 0.1.8 |
 | [issue #9](https://github.com/drevendev/Devostasis/issues/9) | activity declaring an interval wider than its evidence | filed, not yet indexed |
 
-`PV-SPEC-001` becomes due the moment B5 is adopted.
+One judgement is ours to ask for rather than to wait on: `ORDER-01..15` are
+this repository's enumeration of the rules the accepted ordering contract
+states, so `PV-SPEC-001` reviews whether the enumeration covers the contract,
+not only whether the code matches the enumeration.
 
 ## Phase A: observe ourselves honestly — closed
 
@@ -84,43 +86,36 @@ share for Direction, and its own attention order is actionable.
 
 ## Phase B: make it trustworthy over time
 
-### B5. Band ordering — next, and unblocked
-
-`PV-BAND-ORDER-001` is accepted and adoption is authorized. Ordering is per
-Vital only, never across Vitals, projects or into an aggregate.
-
-| Vital | Order |
-| --- | --- |
-| Clutter | `CLEAN > LIGHT > CLUTTERED > HEAVY`, transitively |
-| Flow | `MOVING > CONGESTED > GRIDLOCKED` for a live queue; `NO_QUEUE` incomparable with all of them |
-| Integrity | `CLEAN > FLAKY > FAILING` and `SPARSE > SPARSE_MIXED`; no order across the two families or with evidence states |
-| Pulse, Horizon, Direction, Debt | none: every unequal transition stays `CHANGED` |
-
-`IMPROVED` and `WORSENED` are eligible only when the pair is `COMPARABLE`, the
-`rule_id` is unchanged and both evaluations are `AVAILABLE` and exact.
-Observability transitions and `RULE_VERSION_BOUNDARY` keep precedence, and
-gauges never establish an order. Conformance `ORDER-01..15`.
-
-Adoption bumps the delta contract and changes bundle identities once, and it
-triggers `PV-SPEC-001`.
-
-### B1. Executable conformance vectors — half unblocked
+### B1. Executable conformance vectors — the format is built, the vectors are owed
 
 The specification names **70 conformance cases with no test behind them**
 (T2..T9, R1, R2, R4..R53, ART-05, ART-08..ART-11, ART-15, RPT-4..RPT-6,
-RPT-9) against 79 rows that do cite one. The vectors are the research
-process's `PV-TEST-001`, READY but not yet produced. The runner and the vector
-format are ours and blocked by nothing; defining the format first means their
-vectors arrive executable rather than needing translation.
+RPT-9) against 79 rows that do cite one. That number has not moved, and it is
+the half of B1 this repository cannot deliver: the vectors are the research
+process's `PV-TEST-001`, READY but not yet produced.
 
-### B7. First outside repository integrates self-observation — blocked by B5
+The half that was ours shipped in 0.1.8: `devostasis.vectors.v1`, a runner, a
+`devostasis vectors` command and a published schema
+([vectors.md](docs/spec/vectors.md)). A case is a JSON document that states
+evidence and expected result; the `vital` kind evaluates one Vital over raw
+observation envelopes, the `delta` kind compares two snapshots. It fails
+closed, so an unknown kind or a malformed vector is a red build rather than a
+case that silently did not run, and `ORDER-01..15` are already carried that
+way. Two more kinds are foreseeable and deliberately absent until a case needs
+them: bundle-level identity cases (`ART-*`) and store cases (`RPT-4..RPT-6`,
+`RPT-9`) that need a fixture store rather than a snapshot pair.
 
-Last on purpose: B5 is the final change to the consumer surface, so an
+Closing B1 needs the vectors themselves. Until then debt D-1 stays open, and
+the specification keeps saying that "conformance" covers about half of what it
+names.
+
+### B7. First outside repository integrates self-observation — the owner's move
+
+Last on purpose: B5 was the final change to the consumer surface, so an
 adopter after it builds on something that will not move under them. One job in
 one workflow, its own `GITHUB_TOKEN`, no secret. The point is not the number
 of adopters but the first feedback from a consumer who did not write the
-contract. After B5 lands, the remaining blocker is the owner choosing a
-repository.
+contract. The only remaining blocker is the owner choosing a repository.
 
 ### B3. Durable revision history across bundles — blocked by research
 
@@ -139,6 +134,20 @@ fixture for the store. Ours, and covered by B1's format.
 
 ### Done
 
+- **B5** (0.1.8): the band ordering of `PV-BAND-ORDER-001`, adopted.
+  `delta.json` is `devostasis.delta.v2`, emits `IMPROVED` and `WORSENED` where
+  a Vital declares an order over the pair, and names the ordering it applied.
+  Every row that could have been ordered and was not says why. Ordering is per
+  Vital only: Clutter `CLEAN > LIGHT > CLUTTERED > HEAVY`, Flow
+  `MOVING > CONGESTED > GRIDLOCKED` for a live queue with `NO_QUEUE`
+  incomparable, Integrity `CLEAN > FLAKY > FAILING` and
+  `SPARSE > SPARSE_MIXED` with no order across the families or with the
+  evidence states; Pulse, Horizon, Direction and Debt declare none. A direction
+  needs a `COMPARABLE` pair, an unchanged `rule_id` and `AVAILABLE`/`EXACT`
+  evidence on both sides; observability transitions and
+  `RULE_VERSION_BOUNDARY` keep precedence and gauges establish no order.
+  Conformance `ORDER-01..15`, executable. It moved bundle identity once and
+  made `PV-SPEC-001` due.
 - **B2** (0.1.5): a project is located by `immutable_project_id`; a rename or
   transfer relocates the directory once and is recorded, and two projects are
   never merged into one directory. Closed debt D-3.
@@ -167,10 +176,12 @@ built on it would have broken on our release, not theirs.
 | `observe-self.yml` inputs and outputs | stable since 0.1.1 |
 | `snapshot.json` bands and evaluation states | stable since 0.1.0 |
 | machine-readable fleet index | `devostasis.fleet.v1`, stable since 0.1.4 |
-| `delta.json` transition classes | **moving**: B5 adds `IMPROVED` and `WORSENED` |
+| `delta.json` transition classes | `devostasis.delta.v2`, stable since 0.1.8 |
 
-One row is still moving, and after B5 none is. "The base is implemented" is
-therefore an observable condition, not a feeling.
+No row is moving. "The base is implemented" was stated as an observable
+condition rather than a feeling, and the condition is now met: the next change
+to any of these surfaces is a breaking change to somebody, which is exactly
+why B7 comes next and why the compatibility policy is now the gap that matters.
 
 ## Phase C: reach
 
@@ -261,7 +272,11 @@ triggering should stop now that the release chain is quiet.
 **Half of the named conformance surface is unproven.** 79 table rows cite a
 test; 70 named cases have none. The specification says so and the roadmap
 admits it, so nothing is being hidden, but "conformance" currently covers
-about half of what it names. This is debt D-1 and target B1.
+about half of what it names. This is debt D-1 and target B1. Since 0.1.8 the
+missing half is missing evidence, not missing machinery: a case can be written
+as a vector and executed, and the fifteen ordering cases are carried that way.
+Building the runner did not prove one of the 70, and counting it as progress on
+D-1 would be counting the tooling as the test.
 
 **Provider neutrality is a design intent, not a demonstrated property.** Every
 provider-neutral contract has exactly one implemented provider. The GitLab
@@ -270,13 +285,13 @@ second adapter exists, "provider-neutral" should be read as "designed to be",
 and the first GitLab implementation should be expected to find contract
 defects rather than to confirm the design.
 
-**Bundle identity moved three times in one day** (0.1.2 receipt and rule
-versions, 0.1.6 receipt v2, 0.1.7 evidence shape), and B5 will move it a
-fourth time. Every one was justified and comparability held throughout, but
-for a system whose product is durable comparable history that cadence is a
-cost paid by whoever reads the store. Fewer, larger releases would be
-cheaper, and after B5 the consumer surface is frozen, which is the natural
-place to slow down.
+**Bundle identity moved four times in two days** (0.1.2 receipt and rule
+versions, 0.1.6 receipt v2, 0.1.7 evidence shape, 0.1.8 delta v2). Every one
+was justified and comparability held throughout, but for a system whose product
+is durable comparable history that cadence is a cost paid by whoever reads the
+store. The fourth was the last planned one: the consumer surface is now frozen,
+which is the natural place to slow down, and a fifth move would need a reason
+strong enough to state here.
 
 **The engine still has one consumer, and it wrote the contracts.** This is the
 largest untested assumption in the project. It is deferred deliberately rather

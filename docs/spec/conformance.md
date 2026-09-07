@@ -1,7 +1,11 @@
 # Conformance cases
 
 Identifiers come from the research units that defined them and are never
-reused. "Test" names the pytest function that implements the case.
+reused. "Test" names the pytest function that implements the case, or the
+executable vector that does: `vector:<CASE>` is the vector with that case id in
+`tests/vectors/`, run by `devostasis vectors` and by the test suite
+([vectors.md](vectors.md)). Every vector in the corpus is cited here and every
+citation resolves; both directions are a test (`test_spec_drift.py`).
 
 ## Observation contract (PV-OBS-001)
 
@@ -109,12 +113,51 @@ reused. "Test" names the pytest function that implements the case.
 | ART-23 | member profile derived from the stored config | `test_art_23_member_profile_derives_from_the_stored_config` |
 | ART-24 | replay only from a validated stored config | `test_art_24_replay_happens_only_from_a_validated_stored_config` |
 | ART-25 | stored config schema verification | `test_art_25_stored_config_is_schema_validated_before_any_semantic_use`, `test_legacy_effective_config_v1_is_still_verifiable` |
-| RPT-2 | interval from previous successful bundle | `test_second_run_is_comparable_with_unchanged_and_changed_transitions` |
+| RPT-2 | interval from previous successful bundle | `test_second_run_is_comparable_with_unchanged_and_ordered_transitions` |
 | RPT-7 | rename and transfer continuity by immutable project id | `test_rpt_7_a_renamed_repository_keeps_one_history`, `test_a_transfer_to_another_owner_is_the_same_event`, `test_an_old_name_reused_by_a_new_repository_is_a_new_project`, `test_a_locator_held_by_another_project_fails_closed`, `test_without_an_immutable_id_the_locator_is_the_identity` |
 | rule boundary | a Vital with a changed rule id is INCOMPARABLE on its own | `test_rule_version_boundary_makes_one_vital_incomparable_inside_a_comparable_bundle` |
 | CONFIG_IDENTITY_UNCLASSIFIED | unknown config fails closed | `test_unclassified_configuration_input_fails_closed` |
 
+## Band ordering (PV-BAND-ORDER-001)
+
+Fifteen cases of the accepted ordering contract, executable as vectors. The
+structural claims that no pair of bands can express are beside them in
+`tests/conformance/test_band_order.py`.
+
+| Case | Meaning | Test |
+| --- | --- | --- |
+| ORDER-01 | Clutter improves one rank along its chain | `vector:ORDER-01` |
+| ORDER-02 | Clutter worsens across two ranks: the chain is transitive downward | `vector:ORDER-02` |
+| ORDER-03 | Clutter improves across the whole chain: transitive upward | `vector:ORDER-03` |
+| ORDER-04 | Flow improves inside a live queue | `vector:ORDER-04` |
+| ORDER-05 | Flow worsens inside a live queue | `vector:ORDER-05` |
+| ORDER-06 | a queue that appeared is not a worsening | `vector:ORDER-06` |
+| ORDER-07 | a queue that emptied is not an improvement | `vector:ORDER-07` |
+| ORDER-08 | Integrity improves across the established family | `vector:ORDER-08` |
+| ORDER-09 | Integrity worsens inside the established family | `vector:ORDER-09` |
+| ORDER-10 | Integrity orders the sparse family on its own | `vector:ORDER-10` |
+| ORDER-11 | no order between the sparse and the established family | `vector:ORDER-11` |
+| ORDER-12 | an evidence state is never ordered against a verdict band | `vector:ORDER-12` |
+| ORDER-13 | Pulse, Horizon, Direction and Debt declare no order | `vector:ORDER-13` |
+| ORDER-14 | a degraded evaluation or an inexact band stays CHANGED | `vector:ORDER-14` |
+| ORDER-15 | rule boundary, observability and an unchanged band keep precedence | `vector:ORDER-15` |
+| ordering is per Vital | no order crosses Vitals, and the delta declares no aggregate | `test_no_order_is_declared_across_vitals`, `test_the_delta_declares_the_ordering_contract_it_applied_and_no_aggregate` |
+| ordering needs a comparable pair | a BASELINE, HISTORY_GAP or INCOMPARABLE comparison reports no direction | `test_a_bundle_that_is_not_comparable_never_reports_a_direction` |
+| gauges establish no order | a gauge that moved inside a band is UNCHANGED | `test_a_gauge_that_moved_inside_one_band_is_not_a_direction` |
+| ordered bands are emittable | every ordered band is one its Vital emits, and the unordered ones are exactly the descriptive and evidence states | `test_every_ordered_band_is_a_band_its_vital_can_emit`, `test_the_bands_left_unordered_are_exactly_the_descriptive_and_evidence_states` |
+
+## The vector runner (target B1)
+
+| Case | Meaning | Test |
+| --- | --- | --- |
+| runner | a wrong expectation fails, a correct one passes | `test_a_wrong_expectation_fails_and_says_what_it_expected`, `test_a_correct_vector_passes` |
+| fail closed | an unknown kind, key, vital or duplicate case id is an error, never a skip | `test_a_vector_that_cannot_run_is_rejected_at_load_time`, `test_two_files_may_not_claim_the_same_case_id`, `test_a_missing_path_is_an_error_not_an_empty_run` |
+| evidence is contract-checked | an envelope that violates the observation contract fails the vector | `test_an_envelope_that_violates_the_observation_contract_is_a_failure_not_a_pass` |
+| published schema | the schema and the validator agree on the shape | `test_the_published_vector_schema_and_the_runner_agree_on_the_shape` |
+| corpus | every vector in the corpus runs, and every declared kind is exercised | `test_conformance_vector`, `test_every_kind_the_format_declares_is_exercised_by_the_corpus` |
+
 Cases not yet implemented as tests (T2..T9, R1, R2, R4..R53, ART-05,
-ART-08..ART-11, ART-15, RPT-4..RPT-9) are listed in the ROADMAP under the
-synthetic fixture suite; PV-TEST-001 will deliver them as executable JSON
-vectors.
+ART-08..ART-11, ART-15, RPT-4..RPT-6, RPT-9) are listed in the ROADMAP under the
+synthetic fixture suite. PV-TEST-001 will deliver them as executable JSON
+vectors in the format of [vectors.md](vectors.md); the runner that will execute
+them exists and is proved by the cases above.
