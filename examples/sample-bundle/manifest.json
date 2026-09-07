@@ -6,7 +6,7 @@
     }
   ],
   "artifact_contract_version": "devostasis.bundle.v2",
-  "bundle_id": "1d5b23059ebf3217d8a82da64dd7ada5475ae9c7e3b030816a254d8d09dfe7c8",
+  "bundle_id": "97b976666ce312b08f21b2d07b4408e94efa4673e8686b1a00f376e314bd74b4",
   "bundle_identity_contract": "PV-BUNDLE-ID-002",
   "canonical_member_profile": {
     "activity_json": "ENABLED",
@@ -34,7 +34,7 @@
     "ci_unit_contract_version": "PV-CI-UNIT-004",
     "comparison_status": "BASELINE",
     "config_version": "example-1",
-    "delta_digest": "sha256:676f867bf439661449730559459d3f9291d666b9f6fcc593c37e5ea35818b3b4",
+    "delta_digest": "sha256:a36c8ad814fc8ae9c9e2d0b31f7764fc7a5ca959a39017922a389994029cf8f8",
     "demand_contract": "devostasis.demand.v2",
     "demand_digest": "sha256:615dbc00bee70964a95bded568a13b56d8a77d18cf5db1f6e6a54ddba4b6acca",
     "effective_config_contract": "PV-EFFECTIVE-CONFIG-001",
@@ -60,12 +60,12 @@
   },
   "members": {
     "activity.json": "sha256:d80fa63f29071d59425dad060211db5fbf6d165248c23b18169b06c37a1a0595",
-    "delta.json": "sha256:676f867bf439661449730559459d3f9291d666b9f6fcc593c37e5ea35818b3b4",
+    "delta.json": "sha256:a36c8ad814fc8ae9c9e2d0b31f7764fc7a5ca959a39017922a389994029cf8f8",
     "demand.json": "sha256:615dbc00bee70964a95bded568a13b56d8a77d18cf5db1f6e6a54ddba4b6acca",
     "effective-config.json": "sha256:cc472c9ad93f6721ecc9a3fc14f3067ccc85af33c2acceb4489982a44eb370ac",
     "gauges.json": "sha256:9625ff34cc358d9343d865f6900a20c357b400f47be23a414775c21261bbc628",
     "observations.json": "sha256:8be202ed47fbf0fc95288df179037b061e02192f6a48f6507b6cab5eaad0ce98",
-    "report.md": "sha256:be4d91a2527da504a226590b8b220345c013d0be34489cf3b188dc673d2e5259",
+    "report.md": "sha256:69b26cc5ffa75ea9623aba7b86a615b6df8846ce3b8285544fc88157eb6991b0",
     "snapshot.json": "sha256:07de42e0921951df648bdb858b437b613a5406358d0ec832ab4043372a55f0fa"
   },
   "observation_contract_version": "RAW-OBS-V0",
@@ -167,7 +167,7 @@
     "example": true,
     "tool": {
       "name": "devostasis",
-      "version": "0.1.7"
+      "version": "0.1.8"
     }
   },
   "schema": "devostasis.manifest.v1",

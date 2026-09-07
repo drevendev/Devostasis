@@ -122,7 +122,7 @@ One successful run of one project writes one immutable bundle:
 | `snapshot.json` | The authoritative machine state: seven Vitals with band, evaluation status, inputs, derived metrics, diagnostics. |
 | `gauges.json` | The 0-100 position of every band on the scale of its phenomenon, under a versioned normalization contract. |
 | `demand.json` | One demand level per Vital and the attention order, for consumers that decide where to work. |
-| `delta.json` | Deterministic comparison with the previous bundle: `BASELINE`, `COMPARABLE`, `HISTORY_GAP` or `INCOMPARABLE`, plus per-Vital transitions. |
+| `delta.json` | Deterministic comparison with the previous bundle: `BASELINE`, `COMPARABLE`, `HISTORY_GAP` or `INCOMPARABLE`, plus per-Vital transitions, including `IMPROVED` and `WORSENED` where the Vital declares a band ordering. |
 | `activity.json` | Normalized activity since the previous successful bundle: revisions, change requests, work items, verification, releases, capability changes. |
 | `observations.json` | Every raw observation with its status, coverage and evidence references, so the snapshot can be recomputed. |
 | `effective-config.json` | The exact configuration that shaped the bundle, in canonical form. |
@@ -153,7 +153,7 @@ comes first is the consumer's policy, and no accepted contract defines it.
 Requires Python 3.12 or newer. The runtime uses the standard library only.
 
 ```bash
-pip install git+https://github.com/drevendev/devostasis@v0.1.7
+pip install git+https://github.com/drevendev/devostasis@v0.1.8
 ```
 
 Observe one repository (a GitHub token is read from `DEVOSTASIS_GITHUB_TOKEN`,
@@ -178,6 +178,13 @@ devostasis verify --bundle history/projects/github.com/owner/name/latest
 devostasis render --bundle history/projects/github.com/owner/name/latest
 ```
 
+Execute the conformance vectors of a checkout
+([docs/spec/vectors.md](docs/spec/vectors.md)):
+
+```bash
+devostasis vectors --path tests/vectors
+```
+
 A minimal configuration:
 
 ```json
@@ -198,7 +205,7 @@ secret at all, and branch its next steps on the demand levels:
 ```yaml
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.7
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.8
   decide:
     needs: vitals
     runs-on: ubuntu-latest
@@ -236,6 +243,10 @@ A complete synthetic bundle is checked in under
   healthy defaults.
 - Direction `FULLY_LINKED` and Debt `PRESENT` are neutral facts. The renderer
   never relabels them as aligned, on track, healthy or unhealthy.
+- A changed band is `IMPROVED` or `WORSENED` only where that Vital declares
+  an ordering: Clutter's chain, Flow's live queue, and Integrity's two verdict
+  families. Everything else is `CHANGED`, and the row says why. An order is
+  never declared across Vitals or across projects, and never becomes a score.
 - Comparisons are only ever `COMPARABLE` when both bundles share the same
   contract versions and the same semantic configuration. A missing or corrupt
   previous bundle yields `HISTORY_GAP`, never "unchanged".

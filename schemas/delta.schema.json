@@ -1,11 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/drevendev/devostasis/schemas/delta.schema.json",
-  "title": "Previous-vs-current delta (devostasis.delta.v1)",
+  "title": "Previous-vs-current delta (devostasis.delta.v2)",
   "type": "object",
-  "required": ["schema", "comparison_status", "previous_bundle_id", "previous_observed_at", "current_observed_at", "incomparable_reasons", "vitals"],
+  "required": ["schema", "band_order_contract", "band_order_version", "comparison_status", "previous_bundle_id", "previous_observed_at", "current_observed_at", "incomparable_reasons", "vitals"],
   "properties": {
-    "schema": { "const": "devostasis.delta.v1" },
+    "schema": { "const": "devostasis.delta.v2" },
+    "band_order_contract": { "const": "PV-BAND-ORDER-001" },
+    "band_order_version": { "const": "devostasis.band-order.v1" },
     "comparison_status": { "enum": ["BASELINE", "COMPARABLE", "HISTORY_GAP", "INCOMPARABLE"] },
     "previous_bundle_id": { "type": ["string", "null"] },
     "previous_observed_at": { "type": ["string", "null"] },
@@ -24,7 +26,7 @@
           "current_band": { "type": ["string", "null"] },
           "previous_evaluation_status": { "type": ["string", "null"] },
           "current_evaluation_status": { "type": ["string", "null"] },
-          "transition_class": { "enum": ["BASELINE", "UNCHANGED", "CHANGED", "OBSERVABILITY_GAINED", "OBSERVABILITY_LOST", "INCOMPARABLE"] },
+          "transition_class": { "enum": ["BASELINE", "UNCHANGED", "CHANGED", "IMPROVED", "WORSENED", "OBSERVABILITY_GAINED", "OBSERVABILITY_LOST", "INCOMPARABLE"] },
           "metric_deltas": {
             "type": "object",
             "additionalProperties": {

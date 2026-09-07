@@ -3,7 +3,58 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## 0.1.7 (review/0.1.7, unreleased)
+## 0.1.8 (release/0.1.8, unreleased)
+
+Roadmap targets B5 and B1: the first accepted band ordering, and the format
+and runner that make a conformance case executable. No threshold, window or
+gauge changed, and no rule was retuned.
+
+- **Band ordering (target B5, `PV-BAND-ORDER-001`).** Three Vitals now declare
+  which of two of *their own* bands is better: Clutter
+  `CLEAN > LIGHT > CLUTTERED > HEAVY`, Flow `MOVING > CONGESTED > GRIDLOCKED`
+  for a live queue, Integrity `CLEAN > FLAKY > FAILING` and
+  `SPARSE > SPARSE_MIXED`. `delta.json` therefore emits `IMPROVED` and
+  `WORSENED` where the order applies. Pulse, Horizon, Direction and Debt
+  declare no order at all, and neither does `NO_QUEUE` against a live queue or
+  an Integrity evidence state against a verdict: those transitions stay
+  `CHANGED`. No order is declared across Vitals or across projects, and none of
+  this is a step towards an aggregate.
+- **A direction is only ever reported about exact measurements.** The pair must
+  be `COMPARABLE`, the `rule_id` unchanged and both sides `AVAILABLE` with
+  `EXACT` band semantics; a `DEGRADED` band is a bound, and a move between
+  bounds is not an improvement. The rule version boundary and observability
+  transitions keep precedence, and a gauge that moved inside a band is still
+  `UNCHANGED`. Every row that could have been ordered but was not says why:
+  `BAND_ORDER_NOT_DECLARED`, `BAND_ORDER_INCOMPARABLE` or
+  `BAND_ORDER_NOT_ELIGIBLE`.
+- **`devostasis.delta.v2`** carries the two new classes and names the ordering
+  it applied in `band_order_contract` and `band_order_version`, so a stored
+  delta says under which order its classes were decided. This is the fourth
+  and, with the consumer surface now frozen, the last planned move of bundle
+  identity: every row of the consumer surface in the ROADMAP is stable.
+- **Executable conformance vectors (target B1).** A conformance case can now be
+  written as JSON and executed: `devostasis.vectors.v1` with a `vital` kind
+  that evaluates one Vital over raw observation envelopes and a `delta` kind
+  that compares two snapshots, a runner, a `devostasis vectors` command and a
+  published schema ([docs/spec/vectors.md](docs/spec/vectors.md)). It fails
+  closed: an unknown kind, an unknown key, an unknown comparison status, a
+  malformed envelope or a duplicate case id is an error, never a skipped case
+  that looks like a pass. The schema declares the partial evidence envelope a
+  vector actually states, and a test holds it to the envelopes the corpus
+  writes, so the runner and the published schema cannot accept different files.
+- **The ordering ships as fifteen vectors, not as prose.** `ORDER-01..15` live
+  in `tests/vectors/band-order.json`, run inside the ordinary test suite and in
+  CI through the command line, and the conformance table cites them as
+  `vector:ORDER-nn`. A third drift guard now checks both directions: a citation
+  without a vector fails, and a vector nobody cites fails.
+- The vectors of `PV-TEST-001` are still owed by the research process. The 70
+  named cases without a test remain open (debt D-1), but what was missing on
+  our side is now built, so those vectors arrive executable instead of needing
+  translation.
+- **Bookkeeping:** the 0.1.7 section still said "unreleased" after v0.1.7 was
+  tagged and released, which is the exact drift debt D-4 names.
+
+## 0.1.7 (2026-09-06)
 
 A review of what exists, with no new capability. Six defects found and fixed,
 one open question filed, and two guards added so the same classes cannot come

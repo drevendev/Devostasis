@@ -25,7 +25,7 @@ can tell what it is holding without inferring it from the file name:
 | Member | `schema` |
 | --- | --- |
 | `snapshot.json` | `devostasis.snapshot.v1` |
-| `delta.json` | `devostasis.delta.v1` |
+| `delta.json` | `devostasis.delta.v2` (v1 in bundles written before 0.1.8) |
 | `activity.json` | `devostasis.activity.v1` |
 | `observations.json` | `devostasis.observations.v1`, with a receipt of `devostasis.receipt.v2` |
 | `gauges.json` | `devostasis.gauges.v1` |

@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.7
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.8
     with:
       debt-labels: "type:debt"          # optional: issue labels that mark debt items
       # planning-source: file             # optional: targets register instead of milestones
@@ -151,7 +151,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Devostasis
-        run: python -m pip install --quiet "git+https://github.com/drevendev/devostasis@v0.1.7"
+        run: python -m pip install --quiet "git+https://github.com/drevendev/devostasis@v0.1.8"
       - name: Observe every configured project
         id: run
         continue-on-error: true

@@ -20,17 +20,46 @@ previous bundle is `INCOMPARABLE` on its own with the reason
 historical band, and the other six Vitals keep comparing. Coverage deltas
 are still reported because observability facts remain comparable.
 
-## Delta
+## Delta (`devostasis.delta.v2`)
 
 Per Vital: `previous_band`, `current_band`, evaluation statuses,
 `transition_class`, `metric_deltas` (integers and rational records only),
 `coverage_delta` (inputs whose status or freshness changed), `reason_codes`.
+The document names the ordering it applied in `band_order_contract`
+(`PV-BAND-ORDER-001`) and `band_order_version`
+(`devostasis.band-order.v1`), so a stored delta always says under which order
+its classes were decided.
 
-Transition classes: `BASELINE`, `UNCHANGED`, `CHANGED`,
-`OBSERVABILITY_GAINED`, `OBSERVABILITY_LOST`, `INCOMPARABLE`. `IMPROVED` and
-`WORSENED` are reserved for Vitals with an accepted normative band ordering;
-none exists in this version (PV-ORDER-001 is the research unit that decides
-it).
+Transition classes: `BASELINE`, `UNCHANGED`, `CHANGED`, `IMPROVED`,
+`WORSENED`, `OBSERVABILITY_GAINED`, `OBSERVABILITY_LOST`, `INCOMPARABLE`.
+
+### Band ordering (PV-BAND-ORDER-001, `devostasis.band-order.v1`)
+
+An order relates two bands of **one** Vital and nothing else: never two
+Vitals, never two projects, and never an aggregate. The ordering is in
+[vitals.md](vitals.md#band-ordering-pv-band-order-001); this page says when a
+comparison may use it.
+
+A changed band becomes `IMPROVED` or `WORSENED` only when all of these hold:
+
+- the bundle comparison is `COMPARABLE`;
+- the Vital's `rule_id` is unchanged (a rule version boundary is
+  `INCOMPARABLE` and keeps precedence);
+- both sides are `AVAILABLE` with `EXACT` band semantics — an order compares
+  measurements, and a `DEGRADED` band is a bound, so calling a move between
+  bounds an improvement would invent evidence (G2);
+- the two bands sit in the same declared family of that Vital.
+
+Anything else stays `CHANGED`, and the row says why with one reason code:
+`BAND_ORDER_NOT_DECLARED:<vital>` when the Vital declares no order,
+`BAND_ORDER_INCOMPARABLE:<previous>|<current>` when the order does not relate
+the pair, and `BAND_ORDER_NOT_ELIGIBLE:EVALUATION_NOT_AVAILABLE` or
+`:BAND_SEMANTICS_NOT_EXACT` when the evidence is not exact on both sides.
+An ordered row carries `BAND_ORDER_APPLIED:<the family it used>`. Observability
+transitions keep precedence: a band that appeared or disappeared is
+`OBSERVABILITY_GAINED` or `OBSERVABILITY_LOST`, never a direction. Gauges never
+establish an order ([gauges.md](gauges.md)); movement inside a band is
+`UNCHANGED`. Conformance `ORDER-01..15`.
 
 ## Activity interval
 

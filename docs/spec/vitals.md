@@ -258,14 +258,43 @@ A change of `mapping_version` makes history `INCOMPARABLE`.
 Groups: `EXPLICIT_DEBT_REGISTER`, `FORGE_INVENTORY`; dependency
 `DEBT_CLUTTER_MAINTENANCE`.
 
+## Band ordering (PV-BAND-ORDER-001)
+
+`devostasis.band-order.v1` declares, for three Vitals, which of two bands of
+**that Vital** is better. An order is never declared across Vitals, across
+projects, or into an aggregate: the Vitals measure different phenomena over
+shared signals, so "better Clutter" and "better Flow" are not commensurable.
+
+| Vital | Order |
+| --- | --- |
+| Clutter | `CLEAN > LIGHT > CLUTTERED > HEAVY`, one transitive chain |
+| Flow | `MOVING > CONGESTED > GRIDLOCKED` for a live queue; `NO_QUEUE` incomparable with all of them |
+| Integrity | `CLEAN > FLAKY > FAILING` and `SPARSE > SPARSE_MIXED`, two families with no order between them |
+| Pulse, Horizon, Direction, Debt | none |
+
+`NO_QUEUE` is descriptive and never positive: a queue that emptied is a
+different situation, not a better one. Integrity's `UNINSTRUMENTED`,
+`NO_RECENT_RUNS` and `NO_DECISIVE_RUNS` describe what could be observed rather
+than what verification said, so they are ordered against nothing, and a small
+sample that passed (`SPARSE`) is not comparable with an established one
+(`CLEAN`). The four Vitals that declare no order declare none for a reason:
+more activity is not better activity, `EXTENDED` is not better than `VISIBLE`,
+`FULLY_LINKED` is neutral exact traceability, and `PRESENT` debt is a fact
+about a register rather than a verdict.
+
+Where an order applies, a comparison may report `IMPROVED` or `WORSENED`
+instead of `CHANGED`; the eligibility rules and reason codes are in
+[history-and-reports.md](history-and-reports.md#band-ordering-pv-band-order-001-devostasisband-orderv1).
+Gauges never establish an order ([gauges.md](gauges.md)).
+
 ## Cross-Vital contract
 
 Known correlations are metadata, not defects: Horizon and Direction share
 planning targets; Clutter and Flow share change-request inventory; Clutter
 and Debt may share issue inventory; Direction, Flow and Pulse share
 change-request activity. Consumers must not count seven bands as seven
-independent confirmations. No band ordering is declared in this version, so
-comparisons report `CHANGED` rather than improved or worsened.
+independent confirmations, and the per-Vital band ordering above is never a
+step towards combining them.
 
 ## Policy constants
 
