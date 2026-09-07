@@ -67,6 +67,18 @@ class CollectionError(Exception):
     """The subject could not be identified; no observation set can be produced."""
 
 
+class LinkageEvidenceError(CollectionError):
+    """A change request or issue carries linkage evidence that cannot be read.
+
+    Title, body and milestone are where a target link lives. Provider payload of
+    the wrong type there is not an absent link: reading it as one would report a
+    project as unlinked on evidence nobody could parse, which is the silent
+    absence the register and Direction contracts both forbid. It is a
+    ``CollectionError`` so the project fails explicitly, keeping its reason,
+    while every other project in the fleet is still observed.
+    """
+
+
 @dataclass
 class ApiFailure(Exception):
     status_code: int
@@ -388,6 +400,29 @@ def _register_title(where: str, value: Any) -> str:
     return _title(value)
 
 
+def _linkage_text(where: str, item: dict[str, Any], fields: tuple[str, ...]) -> str:
+    """Join the free-text fields a target marker can live in, or refuse to guess."""
+    parts = []
+    for field in fields:
+        value = item.get(field)
+        if value is None or value == "":
+            continue
+        if not isinstance(value, str):
+            raise LinkageEvidenceError(f"{where}: {field} is {type(value).__name__}, not text, so a target marker cannot be read from it")
+        parts.append(value)
+    return "\n".join(parts)
+
+
+def _milestone_ref(where: str, milestone: Any) -> dict[str, str] | None:
+    """A milestone is a target link. Absent is a fact; unreadable is not."""
+    if not milestone:
+        return None
+    if not isinstance(milestone, dict) or milestone.get("number") is None:
+        raise LinkageEvidenceError(f"{where}: milestone {milestone!r} carries no number, so the target it links to cannot be named")
+    state = "CLOSED" if str(milestone.get("state") or "").lower() == "closed" else "OPEN"
+    return {"target_id": str(milestone["number"]), "state": state}
+
+
 def _normalize_date(value: Any) -> str | None:
     """Accept YYYY-MM-DD or RFC 3339; a bare date means midnight UTC."""
     if value is None or value == "":
@@ -607,15 +642,13 @@ class GitHubAdapter:
 
     def _target_refs(self, pull: dict[str, Any], project: ResolvedProject, target_states: dict[str, str] | None) -> list[dict[str, str]]:
         source = project.planning["source"]
+        where = f"change request #{pull.get('number')}"
         if source == "milestones":
-            milestone = pull.get("milestone") or None
-            if not milestone:
-                return []
-            state = "CLOSED" if (milestone.get("state") or "").lower() == "closed" else "OPEN"
-            return [{"target_id": str(milestone["number"]), "state": state}]
+            ref = _milestone_ref(where, pull.get("milestone") or None)
+            return [ref] if ref else []
         if source == "file":
             marker = project.planning.get("link_marker") or "Target:"
-            text = "\n".join(part for part in (pull.get("title"), pull.get("body")) if part)
+            text = _linkage_text(where, pull, ("title", "body"))
             states = target_states or {}
             return [{"target_id": tid, "state": states.get(tid, "UNKNOWN")} for tid in marker_target_ids(text, marker)]
         return []
@@ -700,7 +733,7 @@ class GitHubAdapter:
         for issue in open_raw + recent_raw:
             if issue.get("pull_request"):
                 continue
-            milestone = issue.get("milestone") or None
+            milestone = _milestone_ref(f"issue #{issue.get('number')}", issue.get("milestone") or None)
             merged[int(issue["number"])] = {
                 "number": int(issue["number"]),
                 "id": issue.get("id"),
@@ -710,7 +743,7 @@ class GitHubAdapter:
                 "updated_at": timeutil.normalize_ts(issue.get("updated_at")),
                 "closed_at": timeutil.normalize_ts(issue.get("closed_at")),
                 "labels": sorted(label.get("name", "") for label in (issue.get("labels") or []) if isinstance(label, dict)),
-                "target_id": str(milestone["number"]) if milestone else None,
+                "target_id": milestone["target_id"] if milestone else None,
                 "author": (issue.get("user") or {}).get("login"),
                 "url": issue.get("html_url"),
             }

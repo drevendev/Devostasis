@@ -2,7 +2,9 @@
 
 from datetime import datetime, timezone
 
-from devostasis.adapters.github import GitHubAdapter, GitHubClient, classify_http_error
+import pytest
+
+from devostasis.adapters.github import GitHubAdapter, GitHubClient, LinkageEvidenceError, classify_http_error
 from devostasis.config import single_project
 from devostasis.normalize import CI_CONFIGURED, CI_REVISIONS, INV_BRANCHES, INV_CRS, INV_ISSUES, INV_TARGETS, derive
 from devostasis.observations import AVAILABLE, ERROR, FORBIDDEN, PARTIAL, UNAVAILABLE
@@ -300,3 +302,119 @@ def test_a_successful_response_that_is_not_json_becomes_a_declared_provider_fail
         raise AssertionError("a 200 with a non-JSON body must be a declared failure")
     finally:
         urllib.request.urlopen = original
+
+
+# --------------------------------------------------------------------------- linkage evidence (PV-REV-PR-015)
+
+
+def _pull(number=7, **fields):
+    base = {
+        "number": number,
+        "id": number,
+        "title": "wip",
+        "body": None,
+        "state": "open",
+        "draft": False,
+        "created_at": "2026-08-25T00:00:00Z",
+        "updated_at": "2026-09-01T00:00:00Z",
+        "merged_at": None,
+        "closed_at": None,
+        "milestone": None,
+        "user": {"login": "a"},
+        "html_url": "p7",
+    }
+    base.update(fields)
+    return base
+
+
+def _file_planning_project():
+    return single_project("acme/widget", planning={"source": "file", "path": ".devostasis/targets.json", "link_marker": "Target:"})
+
+
+def _observe(routes, project):
+    return GitHubAdapter(GitHubClient(FakeTransport(routes)), NOW).collect(project)
+
+
+@pytest.mark.parametrize("field, value", [("title", 7), ("title", ["a"]), ("body", {"a": 1}), ("body", 3.5)])
+def test_unreadable_linkage_evidence_is_declared_not_read_as_unlinked(field, value):
+    """`Target: <id>` lives in the title and the body, so payload of the wrong type there is not an absent link."""
+    routes = _routes(**{f"{BASE}/pulls": _paged([_pull(**{field: value})])})
+    try:
+        _observe(routes, _file_planning_project())
+    except LinkageEvidenceError as exc:
+        assert "#7" in str(exc) and field in str(exc)
+    else:
+        raise AssertionError(f"a {type(value).__name__} {field} must not silently become an unlinked change request")
+
+
+def test_a_change_request_with_no_marker_is_unlinked_and_that_is_not_an_error():
+    """The distinction the error exists to preserve: absent evidence is a fact, unreadable evidence is not."""
+    routes = _routes(**{f"{BASE}/pulls": _paged([_pull(title="nothing to see", body="no marker here")])})
+    item = _observe(routes, _file_planning_project()).get(INV_CRS)
+    assert item.status == AVAILABLE
+    assert item.value[0]["target_refs"] == [] and item.value[0]["target_id"] is None
+
+
+def test_a_marker_in_the_body_still_links_after_the_repair():
+    routes = _routes(**{f"{BASE}/pulls": _paged([_pull(title="a change", body="Target: B1")])})
+    item = _observe(routes, _file_planning_project()).get(INV_CRS)
+    assert item.value[0]["target_id"] == "B1"
+
+
+def test_a_milestone_without_a_number_cannot_name_the_target_it_links_to():
+    """Under planning.source=milestones the milestone *is* the link; a malformed one is unreadable evidence."""
+    routes = _routes(**{f"{BASE}/pulls": _paged([_pull(milestone={"state": "open"})])})
+    try:
+        _observe(routes, single_project("acme/widget"))
+    except LinkageEvidenceError as exc:
+        assert "#7" in str(exc)
+    else:
+        raise AssertionError("a milestone with no number must not be read as no milestone")
+
+
+def test_unreadable_linkage_evidence_is_a_collection_error_so_one_project_fails_alone():
+    """It reaches run_project's declared boundary, not run_all's catch-all for the unanticipated."""
+    from devostasis.adapters.github import CollectionError
+
+    assert issubclass(LinkageEvidenceError, CollectionError)
+
+
+# --------------------------------------------------------------------------- register shapes (#12 finding 5)
+
+
+@pytest.mark.parametrize(
+    "document, expected",
+    [
+        ([], "must be an object"),
+        ("not a document", "must be an object"),
+        ({"schema": "devostasis.targets.v1", "targets": {"T-1": "open"}}, "requires a targets list"),
+        ({"schema": "devostasis.targets.v1", "targets": [1]}, "string id"),
+        ({"schema": "devostasis.targets.v1", "targets": [{"id": "T-1", "title": "x", "due": "the third of never"}]}, "invalid date"),
+        ({"schema": "devostasis.targets.v1", "targets": [{"id": "T-1", "title": "x", "due": 20260101}]}, "date must be a string"),
+    ],
+)
+def test_a_register_of_the_wrong_shape_or_with_an_invalid_date_is_an_invalid_register(document, expected):
+    from devostasis.adapters.github import RegisterError, parse_targets_register
+
+    try:
+        parse_targets_register(document)
+    except RegisterError as exc:
+        assert expected in str(exc)
+    else:
+        raise AssertionError(f"{document!r} must not parse as a valid register")
+
+
+def test_an_invalid_date_reaches_the_snapshot_as_an_error_observation():
+    """The whole point of RegisterError: it survives the collector as a status, not as a crash."""
+    import base64
+    import json as json_mod
+
+    register = json_mod.dumps({"schema": "devostasis.targets.v1", "targets": [{"id": "T-1", "title": "x", "due": "the third of never"}]})
+    routes = _routes()
+    routes[f"{BASE}/contents/.devostasis/targets.json"] = (
+        200,
+        {},
+        {"type": "file", "encoding": "base64", "content": base64.b64encode(register.encode("utf-8")).decode("ascii")},
+    )
+    targets = _observe(routes, _file_planning_project()).get(INV_TARGETS)
+    assert targets.status == ERROR and targets.reason_code == "INVALID_REGISTER"

@@ -3,28 +3,6 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## Unreleased
-
-Defect fixes from the external review of 0.1.7 ([#12](https://github.com/drevendev/Devostasis/issues/12), finding 5). No contract, threshold or rule changed.
-
-- **A malformed title no longer ends a fleet run.** `_title` crashed with
-  `IndexError` on a title that is only whitespace and with `AttributeError` on
-  one of the wrong type. Neither is a `RegisterError`, so neither reached the
-  collector's error boundary. `_title` is now total for provider payload - a
-  commit message, change-request or issue title of the wrong type is a missing
-  title - while a register title of the wrong type is a `RegisterError` and
-  reaches the snapshot as `ERROR` / `INVALID_REGISTER`, which is what the
-  register contract says it should be.
-- **A successful response that is not JSON is a declared provider failure.**
-  `UrllibTransport.get` raised `json.JSONDecodeError` out of every handler on
-  an HTTP 200 with an unreadable body. It is now `ApiFailure` with
-  `MALFORMED_RESPONSE`, so it becomes an observation status like every other
-  provider failure.
-- **One project's failure costs one project.** `run_all` had no boundary of its
-  own, so anything `run_project` did not anticipate stopped every project
-  queued behind it, skipped the entity-tag cache write and left the fleet index
-  stale. Each project now fails on its own, keeping its reason and its
-  unsuccessful outcome, so the run still exits non-zero.
 ## 0.1.8 (release/0.1.8, unreleased)
 
 Roadmap targets B5 and B1: the first accepted band ordering, and the format
@@ -75,6 +53,39 @@ gauge changed, and no rule was retuned.
   translation.
 - **Bookkeeping:** the 0.1.7 section still said "unreleased" after v0.1.7 was
   tagged and released, which is the exact drift debt D-4 names.
+
+Alongside the two targets, the defects the external review of 0.1.7 found
+([#12](https://github.com/drevendev/Devostasis/issues/12), finding 5). Each was
+reproduced before it was fixed. No contract, threshold or rule changed.
+
+- **A malformed title no longer ends a fleet run.** `_title` crashed with
+  `IndexError` on a title that is only whitespace and with `AttributeError` on
+  one of the wrong type. Neither is a `RegisterError`, so neither reached the
+  collector's error boundary. `_title` is now total for provider payload — a
+  commit message, change-request or issue title of the wrong type is a missing
+  title — while a register title of the wrong type is a `RegisterError` and
+  reaches the snapshot as `ERROR` / `INVALID_REGISTER`, which is what the
+  register contract says it should be.
+- **Linkage evidence is the exception, and it is now declared.** A title or
+  body of the wrong type is a missing title everywhere except where the target
+  marker lives: `_target_refs` joined the raw fields, so a non-string there
+  raised `TypeError` under `planning.source = file`, and reading it as an
+  absent link would report a project unlinked on evidence nobody could parse.
+  Unreadable title, body or milestone is now `LinkageEvidenceError`, a
+  `CollectionError`, so the project fails explicitly with its reason while the
+  rest of the fleet is still observed. A change request with no marker is
+  still simply unlinked, because absent evidence is a fact and unreadable
+  evidence is not.
+- **A successful response that is not JSON is a declared provider failure.**
+  `UrllibTransport.get` raised `json.JSONDecodeError` out of every handler on
+  an HTTP 200 with an unreadable body. It is now `ApiFailure` with
+  `MALFORMED_RESPONSE`, so it becomes an observation status like every other
+  provider failure.
+- **One project's failure costs one project.** `run_all` had no boundary of its
+  own, so anything `run_project` did not anticipate stopped every project
+  queued behind it, skipped the entity-tag cache write and left the fleet index
+  stale. Each project now fails on its own, keeping its reason and its
+  unsuccessful outcome, so the run still exits non-zero.
 
 ## 0.1.7 (2026-09-06)
 
