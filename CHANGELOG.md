@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## 0.1.8 (release/0.1.8, unreleased)
+## 0.1.8 (2026-09-07)
 
 Roadmap targets B5 and B1: the first accepted band ordering, and the format
 and runner that make a conformance case executable. No threshold, window or
@@ -47,12 +47,80 @@ gauge changed, and no rule was retuned.
   CI through the command line, and the conformance table cites them as
   `vector:ORDER-nn`. A third drift guard now checks both directions: a citation
   without a vector fails, and a vector nobody cites fails.
+- **Those fifteen carry the meanings the contract gives them.** The first
+  version of this release derived the cases from the contract's rules instead
+  of transcribing its `Required conformance cases` section, which moved every
+  identifier from `ORDER-02` onward onto a different claim — a research
+  identifier is never reused, and `conformance.md` says so on the same page.
+  `PV-SPEC-001` found it; the cases are now transcribed, and the two accepted
+  pairs the corpus never executed (`NO_QUEUE` against `GRIDLOCKED`,
+  `SPARSE_MIXED` to `FAILING`) are executed. Semantics did not change: the
+  ordering itself was conformant, and no band, threshold or rule moved.
+  The split, adjacency and precedence cases this implementation wanted beyond
+  the accepted set are kept under local `DEV-ORDER` ids, which belong to no
+  research unit. A fourth guard holds each `ORDER-nn` to the accepted case name
+  and to the band pairs that case names, because the first two guards pass
+  happily while every identifier means something else.
+- **A vector case can state more than one pair.** `given.comparisons` is a
+  list, each entry with its own `expect`, and the case passes only when all of
+  them do. Accepted cases are written that way — "`GRIDLOCKED → CONGESTED →
+  MOVING` follows the WORSENED/IMPROVED direction" is six comparisons, "every
+  unequal Pulse band pair" is twelve — and splitting one across several vectors
+  would split its identifier. `ORDER-01..15` now execute 85 comparisons between
+  them. `devostasis.vectors.v1` is unchanged for the single-pair shape it
+  already had.
 - The vectors of `PV-TEST-001` are still owed by the research process. The 70
   named cases without a test remain open (debt D-1), but what was missing on
   our side is now built, so those vectors arrive executable instead of needing
   translation.
+- **A documented pin that names a tag nobody published is now a red build.**
+  `tests/test_release_pins.py` proves the pins agree with `pyproject.toml`; it
+  cannot prove the tag they name exists, because on a release branch that tag
+  legitimately does not exist yet. Nothing closed the window afterwards, and
+  0.1.8 fell into it: every pin said `v0.1.8` while master carried no such tag,
+  so the install command in the README failed for anyone who ran it. A new
+  `Released pins resolve` workflow runs daily on master and resolves every
+  documented pin against the remote. Daily rather than per push, because the
+  window is legitimate for as long as it takes to tag a merge and not a day
+  longer. The self-observation workflow could never have caught this: it passes
+  `devostasis-ref: ${{ github.sha }}`, which is right for its purpose and means
+  the one live exercise of `observe-self.yml` overrides the input that goes
+  stale (issue #18).
 - **Bookkeeping:** the 0.1.7 section still said "unreleased" after v0.1.7 was
   tagged and released, which is the exact drift debt D-4 names.
+
+Alongside the two targets, the defects the external review of 0.1.7 found
+([#12](https://github.com/drevendev/Devostasis/issues/12), finding 5). Each was
+reproduced before it was fixed. No contract, threshold or rule changed.
+
+- **A malformed title no longer ends a fleet run.** `_title` crashed with
+  `IndexError` on a title that is only whitespace and with `AttributeError` on
+  one of the wrong type. Neither is a `RegisterError`, so neither reached the
+  collector's error boundary. `_title` is now total for provider payload — a
+  commit message, change-request or issue title of the wrong type is a missing
+  title — while a register title of the wrong type is a `RegisterError` and
+  reaches the snapshot as `ERROR` / `INVALID_REGISTER`, which is what the
+  register contract says it should be.
+- **Linkage evidence is the exception, and it is now declared.** A title or
+  body of the wrong type is a missing title everywhere except where the target
+  marker lives: `_target_refs` joined the raw fields, so a non-string there
+  raised `TypeError` under `planning.source = file`, and reading it as an
+  absent link would report a project unlinked on evidence nobody could parse.
+  Unreadable title, body or milestone is now `LinkageEvidenceError`, a
+  `CollectionError`, so the project fails explicitly with its reason while the
+  rest of the fleet is still observed. A change request with no marker is
+  still simply unlinked, because absent evidence is a fact and unreadable
+  evidence is not.
+- **A successful response that is not JSON is a declared provider failure.**
+  `UrllibTransport.get` raised `json.JSONDecodeError` out of every handler on
+  an HTTP 200 with an unreadable body. It is now `ApiFailure` with
+  `MALFORMED_RESPONSE`, so it becomes an observation status like every other
+  provider failure.
+- **One project's failure costs one project.** `run_all` had no boundary of its
+  own, so anything `run_project` did not anticipate stopped every project
+  queued behind it, skipped the entity-tag cache write and left the fleet index
+  stale. Each project now fails on its own, keeping its reason and its
+  unsuccessful outcome, so the run still exits non-zero.
 
 ## 0.1.7 (2026-09-06)
 

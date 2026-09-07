@@ -11,11 +11,26 @@
         "observed_at": "2026-01-01T00:00:00Z",
         "vital": "clutter",
         "observations": [
-          {"observation_id": "forge.issues.open_count", "value": 4},
-          {"observation_id": "forge.issues.stale_open_count_30d", "value": 1},
-          {"observation_id": "forge.change_requests.open_count", "value": 2},
-          {"observation_id": "forge.change_requests.stale_open_count_14d", "value": 0},
-          {"observation_id": "git.nondefault_branches.stale_count_30d", "value": 0}
+          {
+            "observation_id": "forge.issues.open_count",
+            "value": 4
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "value": 1
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 2
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 0
+          }
         ]
       },
       "expect": {
@@ -24,9 +39,22 @@
         "band_semantics": "EXACT",
         "possible_bands": null,
         "rule_id": "clutter.bands.v0",
-        "derived": {"tracked_open_count": 6, "stale_work_count": 1, "stale_branch_count": 0, "stale_work_ratio": {"num": 1, "den": 6}},
-        "diagnostics_absent": ["COMPONENT_UNAVAILABLE", "COMPONENT_UNRESOLVED"],
-        "explanation_contains": ["1 stale work items out of 6 tracked open items"]
+        "derived": {
+          "tracked_open_count": 6,
+          "stale_work_count": 1,
+          "stale_branch_count": 0,
+          "stale_work_ratio": {
+            "num": 1,
+            "den": 6
+          }
+        },
+        "diagnostics_absent": [
+          "COMPONENT_UNAVAILABLE",
+          "COMPONENT_UNRESOLVED"
+        ],
+        "explanation_contains": [
+          "1 stale work items out of 6 tracked open items"
+        ]
       }
     },
     {
@@ -37,20 +65,46 @@
       "given": {
         "vital": "clutter",
         "observations": [
-          {"observation_id": "forge.issues.open_count", "status": "UNAVAILABLE", "reason_code": "ISSUES_DISABLED"},
-          {"observation_id": "forge.issues.stale_open_count_30d", "status": "UNAVAILABLE", "reason_code": "ISSUES_DISABLED"},
-          {"observation_id": "forge.change_requests.open_count", "value": 2},
-          {"observation_id": "forge.change_requests.stale_open_count_14d", "value": 0},
-          {"observation_id": "git.nondefault_branches.stale_count_30d", "value": 0}
+          {
+            "observation_id": "forge.issues.open_count",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 2
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 0
+          }
         ]
       },
       "expect": {
         "band": "CLEAN",
         "evaluation_status": "DEGRADED",
         "band_semantics": "CONSERVATIVE_LOWER_BOUND",
-        "possible_bands": ["CLEAN", "LIGHT", "CLUTTERED", "HEAVY"],
-        "derived_absent": ["issues_open_count"],
-        "diagnostics": ["COMPONENT_UNAVAILABLE:issues:ISSUES_DISABLED"]
+        "possible_bands": [
+          "CLEAN",
+          "LIGHT",
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "derived_absent": [
+          "issues_open_count"
+        ],
+        "diagnostics": [
+          "COMPONENT_UNAVAILABLE:issues:ISSUES_DISABLED"
+        ]
       }
     },
     {
@@ -61,17 +115,103 @@
       "given": {
         "comparison_status": "COMPARABLE",
         "previous_bundle_id": "0000000000000000000000000000000000000000000000000000000000000000",
-        "previous": {"observed_at": "2026-01-01T00:00:00Z", "vitals": [{"vital_id": "clutter", "band": "CLUTTERED"}]},
-        "current": {"observed_at": "2026-01-02T00:00:00Z", "vitals": [{"vital_id": "clutter", "band": "LIGHT"}]}
+        "previous": {
+          "observed_at": "2026-01-01T00:00:00Z",
+          "vitals": [
+            {
+              "vital_id": "clutter",
+              "band": "CLUTTERED"
+            }
+          ]
+        },
+        "current": {
+          "observed_at": "2026-01-02T00:00:00Z",
+          "vitals": [
+            {
+              "vital_id": "clutter",
+              "band": "LIGHT"
+            }
+          ]
+        }
       },
       "expect": {
         "comparison_status": "COMPARABLE",
         "vitals": {
           "clutter": {
             "transition_class": "IMPROVED",
-            "reason_codes": ["BAND:CLUTTERED->LIGHT", "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"]
+            "reason_codes": [
+              "BAND:CLUTTERED->LIGHT",
+              "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"
+            ]
           }
         }
+      }
+    },
+    {
+      "case": "EXAMPLE-DELTA-02",
+      "title": "a case that names several pairs states them all and passes only when every one of them does",
+      "kind": "delta",
+      "given": {
+        "comparisons": [
+          {
+            "title": "one rank better",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "CONGESTED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "MOVING"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "IMPROVED",
+                  "reason_codes": [
+                    "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "title": "and one rank worse",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "CONGESTED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "GRIDLOCKED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "WORSENED",
+                  "reason_codes": [
+                    "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED"
+                  ]
+                }
+              }
+            }
+          }
+        ]
       }
     }
   ]

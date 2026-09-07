@@ -1,0 +1,61 @@
+# Every pin the documentation tells an adopter to use must resolve.
+#
+# tests/test_release_pins.py proves the pins agree with pyproject.toml. It
+# cannot prove the tag they name exists, because on a release branch that tag
+# legitimately does not exist yet: the pins have to name the coming tag for the
+# release commit to be self-consistent, and the tag can only be created once
+# that commit is on master. So there is a window, and nothing closed it.
+#
+# 0.1.8 fell into it. Every pin said v0.1.8, no such tag existed, and the
+# documented install command failed for anyone who tried it (issue #18).
+#
+# This runs on master, daily rather than per push, because the window is
+# legitimate for as long as it takes to tag a merge. A day later it is not.
+
+name: Released pins resolve
+
+on:
+  schedule:
+    - cron: "41 7 * * *"
+  workflow_dispatch:
+  push:
+    branches: ["master"]
+    paths: [".github/workflows/released-pins.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  tags:
+    name: Documented pins name a tag that exists
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect every pin the documentation publishes
+        id: pins
+        run: |
+          {
+            grep -oE 'observe-self\.yml@v[0-9][^[:space:]"'"'"']*' README.md docs/deployment.md .github/workflows/observe-self.yml || true
+            grep -oE 'github\.com/drevendev/devostasis@v[0-9][^[:space:]"'"'"']*' README.md docs/deployment.md || true
+            grep -oE 'default: v[0-9][^[:space:]"'"'"']*' .github/workflows/observe-self.yml || true
+          } | grep -oE 'v[0-9][0-9A-Za-z.+-]*' | sort -u > pins.txt
+          echo "found:"; cat pins.txt
+          test -s pins.txt || { echo "no pins found at all: the patterns have drifted"; exit 1; }
+      - name: Every one of them resolves on the remote
+        run: |
+          status=0
+          while read -r tag; do
+            if git ls-remote --exit-code --tags https://github.com/drevendev/devostasis "refs/tags/$tag" >/dev/null 2>&1; then
+              echo "ok      $tag"
+            else
+              echo "MISSING $tag  (documented, but no such tag exists)"
+              status=1
+            fi
+          done < pins.txt
+          if [ "$status" -ne 0 ]; then
+            echo
+            echo "A pin names a release that was never published. Either tag the merge"
+            echo "on master and publish the release, or move the pins back to the tag"
+            echo "adopters can actually install."
+          fi
+          exit $status

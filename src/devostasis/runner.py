@@ -156,7 +156,24 @@ def run_all(
             continue
         transport = UrllibTransport(token, user_agent=user_agent or "devostasis/0.1 (+https://github.com/drevendev/devostasis)")
         client = GitHubClient(transport, budget=request_budget, cache=cache)
-        outcomes.append(run_project(project, store, client, now))
+        try:
+            outcomes.append(run_project(project, store, client, now))
+        except Exception as exc:  # noqa: BLE001 - one project's data must not end the fleet run
+            # run_project already turns every failure it anticipates into an
+            # unsuccessful outcome. This boundary is for the ones it does not:
+            # a malformed provider payload or a defect in a collector must cost
+            # one project's bundle, not every project queued behind it. The
+            # reason is kept and the outcome stays unsuccessful, so the run
+            # still exits non-zero.
+            outcomes.append(
+                RunOutcome(
+                    project.locator,
+                    False,
+                    error=f"{type(exc).__name__}: {exc}",
+                    requests=client.request_count,
+                    conditional_hits=client.conditional_hits,
+                )
+            )
     if cache is not None:
         cache.save()
     write_fleet_index(store)

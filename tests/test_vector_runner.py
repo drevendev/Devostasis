@@ -155,13 +155,17 @@ def test_the_published_vector_schema_and_the_runner_agree_on_the_shape():
     assert set(vital["given"]["properties"]) == vectors.VITAL_GIVEN_KEYS
     assert set(vital["expect"]["properties"]) == vectors.VITAL_EXPECT_KEYS
     assert set(delta["given"]["properties"]) == vectors.DELTA_GIVEN_KEYS
-    assert set(delta["expect"]["properties"]) == vectors.DELTA_EXPECT_KEYS
+    delta_expect = schema["$defs"]["delta_expect"]
+    assert delta["expect"] == {"$ref": "#/$defs/delta_expect"}, "the two expect shapes must be one definition, not two copies"
+    assert set(delta_expect["properties"]) == vectors.DELTA_EXPECT_KEYS
+    comparison = delta["given"]["properties"]["comparisons"]["items"]
+    assert set(comparison["properties"]) == vectors.DELTA_COMPARISON_KEYS
+    assert comparison["properties"]["expect"] == {"$ref": "#/$defs/delta_expect"}
     row = schema["$defs"]["side"]["properties"]["vitals"]["items"]
     assert set(row["properties"]) == vectors.DELTA_ROW_KEYS
-    assert set(schema["$defs"]["side"]["properties"]["vitals"]["items"]["properties"]) == vectors.DELTA_ROW_KEYS
-    expect_row = delta["expect"]["properties"]["vitals"]["additionalProperties"]
+    expect_row = delta_expect["properties"]["vitals"]["additionalProperties"]
     assert set(expect_row["properties"]) == vectors.DELTA_ROW_EXPECT_KEYS
-    for holder in (delta["given"]["properties"], delta["expect"]["properties"]):
+    for holder in (delta["given"]["properties"], comparison["properties"], delta_expect["properties"]):
         assert set(holder["comparison_status"]["enum"]) == set(vectors.COMPARISON_STATUSES)
 
 

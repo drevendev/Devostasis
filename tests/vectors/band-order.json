@@ -1,317 +1,2913 @@
 {
   "schema": "devostasis.vectors.v1",
-  "notes": "Conformance cases ORDER-01..15 of the accepted band ordering contract PV-BAND-ORDER-001, as executable delta vectors. Each case states two Vital rows and the transition the comparison must classify. The rows are stated, never evaluated from evidence, because the claim under test is the ordering of bands, not the classification of a band. Structural claims that no pair of bands can express - that no order crosses Vitals, that a non-comparable bundle emits no order, and that gauges establish none - are in tests/conformance/test_band_order.py beside them.",
+  "notes": "Conformance cases ORDER-01..15 of the accepted band ordering contract PV-BAND-ORDER-001, transcribed from its Required conformance cases section. Each case keeps the meaning that section gives it: an identifier is never reused and never reinterpreted, so a result claiming ORDER-nn passed executed research case ORDER-nn. A case that names several pairs states them all under comparisons and passes only when every pair does. Rows are stated, never evaluated from evidence, because the claim under test is the ordering of bands and not the classification of a band. Claims that no pair of bands can express - that no cross-Vital comparator exists at all, that the delta declares no aggregate, that a gauge actually moved - are in tests/conformance/test_band_order.py beside these. Extra split, adjacency and precedence cases this implementation wanted beyond the accepted set live in local-band-order.json under DEV-ORDER ids.",
   "vectors": [
     {
       "case": "ORDER-01",
-      "title": "Clutter improves one rank along its chain",
+      "title": "CLUTTER_TRANSITIVE_IMPROVEMENT: HEAVY to LIGHT is IMPROVED, the reverse is WORSENED",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
+      "notes": "Both directions of a pair two ranks apart, so the case proves the transitive closure and not only adjacency.",
       "given": {
-        "previous": {"vitals": [{"vital_id": "clutter", "band": "LIGHT"}]},
-        "current": {"vitals": [{"vital_id": "clutter", "band": "CLEAN"}]}
-      },
-      "expect": {
-        "comparison_status": "COMPARABLE",
-        "vitals": {
-          "clutter": {
-            "transition_class": "IMPROVED",
-            "reason_codes": ["BAND:LIGHT->CLEAN", "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"]
+        "comparisons": [
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "HEAVY"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "LIGHT"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "clutter": {
+                  "transition_class": "IMPROVED",
+                  "reason_codes": [
+                    "BAND:HEAVY->LIGHT",
+                    "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"
+                  ]
+                }
+              }
+            },
+            "title": "HEAVY -> LIGHT"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "LIGHT"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "HEAVY"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "clutter": {
+                  "transition_class": "WORSENED",
+                  "reason_codes": [
+                    "BAND:LIGHT->HEAVY",
+                    "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"
+                  ]
+                }
+              }
+            },
+            "title": "LIGHT -> HEAVY"
           }
-        }
+        ]
       }
     },
     {
       "case": "ORDER-02",
-      "title": "Clutter worsens across two ranks: the chain is transitive downward",
+      "title": "FLOW_LIVE_QUEUE_ORDER: GRIDLOCKED to CONGESTED to MOVING follows the WORSENED/IMPROVED direction",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
       "given": {
-        "previous": {"vitals": [{"vital_id": "clutter", "band": "LIGHT"}]},
-        "current": {"vitals": [{"vital_id": "clutter", "band": "HEAVY"}]}
-      },
-      "expect": {
-        "vitals": {
-          "clutter": {
-            "transition_class": "WORSENED",
-            "reason_codes": ["BAND:LIGHT->HEAVY", "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"]
+        "comparisons": [
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "GRIDLOCKED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "CONGESTED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "IMPROVED",
+                  "reason_codes": [
+                    "BAND:GRIDLOCKED->CONGESTED",
+                    "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED"
+                  ]
+                }
+              }
+            },
+            "title": "GRIDLOCKED -> CONGESTED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "CONGESTED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "MOVING"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "IMPROVED",
+                  "reason_codes": [
+                    "BAND:CONGESTED->MOVING",
+                    "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED"
+                  ]
+                }
+              }
+            },
+            "title": "CONGESTED -> MOVING"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "GRIDLOCKED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "MOVING"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "IMPROVED",
+                  "reason_codes": [
+                    "BAND:GRIDLOCKED->MOVING",
+                    "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED"
+                  ]
+                }
+              }
+            },
+            "title": "GRIDLOCKED -> MOVING"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "MOVING"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "CONGESTED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "WORSENED",
+                  "reason_codes": [
+                    "BAND:MOVING->CONGESTED",
+                    "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED"
+                  ]
+                }
+              }
+            },
+            "title": "MOVING -> CONGESTED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "CONGESTED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "GRIDLOCKED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "WORSENED",
+                  "reason_codes": [
+                    "BAND:CONGESTED->GRIDLOCKED",
+                    "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED"
+                  ]
+                }
+              }
+            },
+            "title": "CONGESTED -> GRIDLOCKED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "MOVING"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "GRIDLOCKED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "WORSENED",
+                  "reason_codes": [
+                    "BAND:MOVING->GRIDLOCKED",
+                    "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED"
+                  ]
+                }
+              }
+            },
+            "title": "MOVING -> GRIDLOCKED"
           }
-        }
+        ]
       }
     },
     {
       "case": "ORDER-03",
-      "title": "Clutter improves across the whole chain: the chain is transitive upward",
+      "title": "FLOW_NO_QUEUE_INCOMPARABLE: NO_QUEUE against MOVING and against GRIDLOCKED is CHANGED",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
+      "notes": "An empty queue can mean completion, inactivity or no change-request work at all, so neither direction is a judgement.",
       "given": {
-        "previous": {"vitals": [{"vital_id": "clutter", "band": "HEAVY"}]},
-        "current": {"vitals": [{"vital_id": "clutter", "band": "CLEAN"}]}
-      },
-      "expect": {
-        "vitals": {"clutter": {"transition_class": "IMPROVED", "reason_codes": ["BAND:HEAVY->CLEAN"]}}
+        "comparisons": [
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "NO_QUEUE"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "MOVING"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_INCOMPARABLE:NO_QUEUE|MOVING"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "NO_QUEUE -> MOVING"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "MOVING"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "NO_QUEUE"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_INCOMPARABLE:MOVING|NO_QUEUE"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "MOVING -> NO_QUEUE"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "NO_QUEUE"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "GRIDLOCKED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_INCOMPARABLE:NO_QUEUE|GRIDLOCKED"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "NO_QUEUE -> GRIDLOCKED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "GRIDLOCKED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "NO_QUEUE"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_INCOMPARABLE:GRIDLOCKED|NO_QUEUE"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "GRIDLOCKED -> NO_QUEUE"
+          }
+        ]
       }
     },
     {
       "case": "ORDER-04",
-      "title": "Flow improves inside a live queue",
+      "title": "INTEGRITY_ESTABLISHED_CHAIN: FAILING to FLAKY to CLEAN is improving, the reverse worsening",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
       "given": {
-        "previous": {"vitals": [{"vital_id": "flow", "band": "CONGESTED"}]},
-        "current": {"vitals": [{"vital_id": "flow", "band": "MOVING"}]}
-      },
-      "expect": {
-        "vitals": {
-          "flow": {
-            "transition_class": "IMPROVED",
-            "reason_codes": ["BAND:CONGESTED->MOVING", "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED"]
+        "comparisons": [
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "FAILING"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "FLAKY"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "IMPROVED",
+                  "reason_codes": [
+                    "BAND:FAILING->FLAKY",
+                    "BAND_ORDER_APPLIED:CLEAN>FLAKY>FAILING"
+                  ]
+                }
+              }
+            },
+            "title": "FAILING -> FLAKY"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "FLAKY"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "IMPROVED",
+                  "reason_codes": [
+                    "BAND:FLAKY->CLEAN",
+                    "BAND_ORDER_APPLIED:CLEAN>FLAKY>FAILING"
+                  ]
+                }
+              }
+            },
+            "title": "FLAKY -> CLEAN"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "FAILING"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "IMPROVED",
+                  "reason_codes": [
+                    "BAND:FAILING->CLEAN",
+                    "BAND_ORDER_APPLIED:CLEAN>FLAKY>FAILING"
+                  ]
+                }
+              }
+            },
+            "title": "FAILING -> CLEAN"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "FLAKY"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "WORSENED",
+                  "reason_codes": [
+                    "BAND:CLEAN->FLAKY",
+                    "BAND_ORDER_APPLIED:CLEAN>FLAKY>FAILING"
+                  ]
+                }
+              }
+            },
+            "title": "CLEAN -> FLAKY"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "FLAKY"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "FAILING"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "WORSENED",
+                  "reason_codes": [
+                    "BAND:FLAKY->FAILING",
+                    "BAND_ORDER_APPLIED:CLEAN>FLAKY>FAILING"
+                  ]
+                }
+              }
+            },
+            "title": "FLAKY -> FAILING"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "FAILING"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "WORSENED",
+                  "reason_codes": [
+                    "BAND:CLEAN->FAILING",
+                    "BAND_ORDER_APPLIED:CLEAN>FLAKY>FAILING"
+                  ]
+                }
+              }
+            },
+            "title": "CLEAN -> FAILING"
           }
-        }
+        ]
       }
     },
     {
       "case": "ORDER-05",
-      "title": "Flow worsens inside a live queue",
+      "title": "INTEGRITY_SPARSE_CHAIN: SPARSE_MIXED to SPARSE is IMPROVED, the reverse is WORSENED",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
       "given": {
-        "previous": {"vitals": [{"vital_id": "flow", "band": "MOVING"}]},
-        "current": {"vitals": [{"vital_id": "flow", "band": "GRIDLOCKED"}]}
-      },
-      "expect": {
-        "vitals": {"flow": {"transition_class": "WORSENED", "reason_codes": ["BAND:MOVING->GRIDLOCKED"]}}
+        "comparisons": [
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "SPARSE_MIXED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "SPARSE"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "IMPROVED",
+                  "reason_codes": [
+                    "BAND:SPARSE_MIXED->SPARSE",
+                    "BAND_ORDER_APPLIED:SPARSE>SPARSE_MIXED"
+                  ]
+                }
+              }
+            },
+            "title": "SPARSE_MIXED -> SPARSE"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "SPARSE"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "SPARSE_MIXED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "WORSENED",
+                  "reason_codes": [
+                    "BAND:SPARSE->SPARSE_MIXED",
+                    "BAND_ORDER_APPLIED:SPARSE>SPARSE_MIXED"
+                  ]
+                }
+              }
+            },
+            "title": "SPARSE -> SPARSE_MIXED"
+          }
+        ]
       }
     },
     {
       "case": "ORDER-06",
-      "title": "A queue that appeared is not a worsening: NO_QUEUE is incomparable with the live bands",
+      "title": "INTEGRITY_CROSS_FAMILY: SPARSE to CLEAN, SPARSE_MIXED to FAILING and NO_RECENT_RUNS to CLEAN are all CHANGED",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
+      "notes": "Crossing evidence-strength families would confound the verification outcome with the amount of evidence. Both sides are AVAILABLE and exact here, so no observability transition takes precedence and CHANGED is the ordering's own answer.",
       "given": {
-        "previous": {"vitals": [{"vital_id": "flow", "band": "NO_QUEUE"}]},
-        "current": {"vitals": [{"vital_id": "flow", "band": "MOVING"}]}
-      },
-      "expect": {
-        "vitals": {
-          "flow": {
-            "transition_class": "CHANGED",
-            "reason_codes": ["BAND:NO_QUEUE->MOVING", "BAND_ORDER_INCOMPARABLE:NO_QUEUE|MOVING"],
-            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+        "comparisons": [
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "SPARSE"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_INCOMPARABLE:SPARSE|CLEAN"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "SPARSE -> CLEAN"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "SPARSE_MIXED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "FAILING"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_INCOMPARABLE:SPARSE_MIXED|FAILING"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "SPARSE_MIXED -> FAILING"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "NO_RECENT_RUNS"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_INCOMPARABLE:NO_RECENT_RUNS|CLEAN"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "NO_RECENT_RUNS -> CLEAN"
           }
-        }
+        ]
       }
     },
     {
       "case": "ORDER-07",
-      "title": "A queue that emptied is not an improvement: NO_QUEUE is descriptive, never positive",
+      "title": "PULSE_NEUTRALITY: every unequal Pulse band pair is CHANGED",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
       "given": {
-        "previous": {"vitals": [{"vital_id": "flow", "band": "CONGESTED"}]},
-        "current": {"vitals": [{"vital_id": "flow", "band": "NO_QUEUE"}]}
-      },
-      "expect": {
-        "vitals": {
-          "flow": {
-            "transition_class": "CHANGED",
-            "reason_codes": ["BAND_ORDER_INCOMPARABLE:CONGESTED|NO_QUEUE"],
-            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+        "comparisons": [
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "DORMANT"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "QUIET"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "DORMANT -> QUIET"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "DORMANT"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "STEADY"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "DORMANT -> STEADY"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "DORMANT"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "SURGING"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "DORMANT -> SURGING"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "QUIET"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "DORMANT"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "QUIET -> DORMANT"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "QUIET"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "STEADY"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "QUIET -> STEADY"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "QUIET"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "SURGING"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "QUIET -> SURGING"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "STEADY"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "DORMANT"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "STEADY -> DORMANT"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "STEADY"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "QUIET"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "STEADY -> QUIET"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "STEADY"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "SURGING"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "STEADY -> SURGING"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "SURGING"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "DORMANT"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "SURGING -> DORMANT"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "SURGING"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "QUIET"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "SURGING -> QUIET"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "SURGING"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "pulse",
+                  "band": "STEADY"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "pulse": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:pulse"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "SURGING -> STEADY"
           }
-        }
+        ]
       }
     },
     {
       "case": "ORDER-08",
-      "title": "Integrity improves across the established family, transitively over FLAKY",
+      "title": "HORIZON_NEUTRALITY: EXTENDED against VISIBLE, DECLARED against UNDECLARED and every other unequal Horizon pair is CHANGED",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
       "given": {
-        "previous": {"vitals": [{"vital_id": "integrity", "band": "FAILING"}]},
-        "current": {"vitals": [{"vital_id": "integrity", "band": "CLEAN"}]}
-      },
-      "expect": {
-        "vitals": {
-          "integrity": {
-            "transition_class": "IMPROVED",
-            "reason_codes": ["BAND:FAILING->CLEAN", "BAND_ORDER_APPLIED:CLEAN>FLAKY>FAILING"]
+        "comparisons": [
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "DECLARED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "UNDECLARED -> DECLARED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "VISIBLE"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "UNDECLARED -> VISIBLE"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "EXTENDED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "UNDECLARED -> EXTENDED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "DECLARED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "DECLARED -> UNDECLARED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "DECLARED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "VISIBLE"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "DECLARED -> VISIBLE"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "DECLARED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "EXTENDED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "DECLARED -> EXTENDED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "VISIBLE"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "VISIBLE -> UNDECLARED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "VISIBLE"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "DECLARED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "VISIBLE -> DECLARED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "VISIBLE"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "EXTENDED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "VISIBLE -> EXTENDED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "EXTENDED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "EXTENDED -> UNDECLARED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "EXTENDED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "DECLARED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "EXTENDED -> DECLARED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "EXTENDED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "horizon",
+                  "band": "VISIBLE"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "horizon": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:horizon"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "EXTENDED -> VISIBLE"
           }
-        }
+        ]
       }
     },
     {
       "case": "ORDER-09",
-      "title": "Integrity worsens inside the established family",
+      "title": "DIRECTION_NEUTRALITY: SCATTERED to FULLY_LINKED is CHANGED and not IMPROVED, and so is the reverse",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
+      "notes": "FULLY_LINKED is explicitly neutral: mass-linking can reach it without proving anything about strategy.",
       "given": {
-        "previous": {"vitals": [{"vital_id": "integrity", "band": "CLEAN"}]},
-        "current": {"vitals": [{"vital_id": "integrity", "band": "FLAKY"}]}
-      },
-      "expect": {
-        "vitals": {"integrity": {"transition_class": "WORSENED", "reason_codes": ["BAND:CLEAN->FLAKY"]}}
+        "comparisons": [
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "NO_ACTIVE_CHANGE"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "NO_ACTIVE_CHANGE -> UNDECLARED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "NO_ACTIVE_CHANGE"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "SCATTERED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "NO_ACTIVE_CHANGE -> SCATTERED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "NO_ACTIVE_CHANGE"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "MIXED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "NO_ACTIVE_CHANGE -> MIXED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "NO_ACTIVE_CHANGE"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "FULLY_LINKED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "NO_ACTIVE_CHANGE -> FULLY_LINKED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "NO_ACTIVE_CHANGE"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "UNDECLARED -> NO_ACTIVE_CHANGE"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "SCATTERED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "UNDECLARED -> SCATTERED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "MIXED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "UNDECLARED -> MIXED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "FULLY_LINKED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "UNDECLARED -> FULLY_LINKED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "SCATTERED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "NO_ACTIVE_CHANGE"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "SCATTERED -> NO_ACTIVE_CHANGE"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "SCATTERED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "SCATTERED -> UNDECLARED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "SCATTERED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "MIXED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "SCATTERED -> MIXED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "SCATTERED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "FULLY_LINKED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "SCATTERED -> FULLY_LINKED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "MIXED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "NO_ACTIVE_CHANGE"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "MIXED -> NO_ACTIVE_CHANGE"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "MIXED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "MIXED -> UNDECLARED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "MIXED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "SCATTERED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "MIXED -> SCATTERED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "MIXED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "FULLY_LINKED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "MIXED -> FULLY_LINKED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "FULLY_LINKED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "NO_ACTIVE_CHANGE"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "FULLY_LINKED -> NO_ACTIVE_CHANGE"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "FULLY_LINKED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "UNDECLARED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "FULLY_LINKED -> UNDECLARED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "FULLY_LINKED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "SCATTERED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "FULLY_LINKED -> SCATTERED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "FULLY_LINKED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "direction",
+                  "band": "MIXED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "direction": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:direction"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "FULLY_LINKED -> MIXED"
+          }
+        ]
       }
     },
     {
       "case": "ORDER-10",
-      "title": "Integrity orders the sparse family on its own",
+      "title": "DEBT_NEUTRALITY: PRESENT against CLEAR is CHANGED, not IMPROVED or WORSENED",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
       "given": {
-        "previous": {"vitals": [{"vital_id": "integrity", "band": "SPARSE_MIXED"}]},
-        "current": {"vitals": [{"vital_id": "integrity", "band": "SPARSE"}]}
-      },
-      "expect": {
-        "vitals": {
-          "integrity": {
-            "transition_class": "IMPROVED",
-            "reason_codes": ["BAND_ORDER_APPLIED:SPARSE>SPARSE_MIXED"]
+        "comparisons": [
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "UNINSTRUMENTED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "PRESENT"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "debt": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:debt"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "UNINSTRUMENTED -> PRESENT"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "UNINSTRUMENTED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "CLEAR"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "debt": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:debt"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "UNINSTRUMENTED -> CLEAR"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "PRESENT"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "UNINSTRUMENTED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "debt": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:debt"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "PRESENT -> UNINSTRUMENTED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "PRESENT"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "CLEAR"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "debt": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:debt"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "PRESENT -> CLEAR"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "CLEAR"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "UNINSTRUMENTED"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "debt": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:debt"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "CLEAR -> UNINSTRUMENTED"
+          },
+          {
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "CLEAR"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "debt",
+                  "band": "PRESENT"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "debt": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_DECLARED:debt"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            },
+            "title": "CLEAR -> PRESENT"
           }
-        }
+        ]
       }
     },
     {
       "case": "ORDER-11",
-      "title": "Integrity declares no order between the sparse and the established family",
+      "title": "DEGRADED_NEVER_ORDERED: a DEGRADED evaluation on either side cannot emit IMPROVED or WORSENED even when both bands lie in one chain",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
       "given": {
-        "previous": {"vitals": [{"vital_id": "integrity", "band": "SPARSE"}]},
-        "current": {"vitals": [{"vital_id": "integrity", "band": "CLEAN"}]}
-      },
-      "expect": {
-        "vitals": {
-          "integrity": {
-            "transition_class": "CHANGED",
-            "reason_codes": ["BAND_ORDER_INCOMPARABLE:SPARSE|CLEAN"],
-            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+        "comparisons": [
+          {
+            "title": "current is DEGRADED",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "HEAVY"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "CLEAN",
+                  "evaluation_status": "DEGRADED",
+                  "band_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "clutter": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_ELIGIBLE:EVALUATION_NOT_AVAILABLE"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "title": "previous is DEGRADED",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "HEAVY",
+                  "evaluation_status": "DEGRADED",
+                  "band_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "clutter": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_ELIGIBLE:EVALUATION_NOT_AVAILABLE"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "title": "AVAILABLE but the band is a bound, not a measurement",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "GRIDLOCKED"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "MOVING",
+                  "band_semantics": "CONSERVATIVE_LOWER_BOUND"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_NOT_ELIGIBLE:BAND_SEMANTICS_NOT_EXACT"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            }
           }
-        }
+        ]
       }
     },
     {
       "case": "ORDER-12",
-      "title": "An Integrity evidence state is never ordered against a verdict band",
+      "title": "UNKNOWN_OBSERVABILITY_PRECEDENCE: a band appearing or disappearing uses the observability transitions, never the order",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
       "given": {
-        "previous": {"vitals": [{"vital_id": "integrity", "band": "NO_RECENT_RUNS"}]},
-        "current": {"vitals": [{"vital_id": "integrity", "band": "CLEAN"}]}
-      },
-      "expect": {
-        "vitals": {
-          "integrity": {
-            "transition_class": "CHANGED",
-            "reason_codes": ["BAND_ORDER_INCOMPARABLE:NO_RECENT_RUNS|CLEAN"],
-            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+        "comparisons": [
+          {
+            "title": "a band that became observable",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": null
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "OBSERVABILITY_GAINED",
+                  "reason_codes": [
+                    "BAND_BECAME_OBSERVABLE"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "title": "a band that stopped being observable",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": "MOVING"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "flow",
+                  "band": null
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "OBSERVABILITY_LOST",
+                  "reason_codes": [
+                    "BAND_NO_LONGER_OBSERVABLE"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "title": "an ordered chain does not override the transition either",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": null
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "clutter": {
+                  "transition_class": "OBSERVABILITY_GAINED",
+                  "reason_codes": [
+                    "BAND_BECAME_OBSERVABLE"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            }
           }
-        }
+        ]
       }
     },
     {
       "case": "ORDER-13",
-      "title": "Pulse, Horizon, Direction and Debt declare no order: every unequal transition stays CHANGED",
+      "title": "RULE_VERSION_BOUNDARY_PRECEDENCE: a changed rule id stays Vital-level INCOMPARABLE even when both bands are in one declared chain",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
       "given": {
-        "previous": {
-          "vitals": [
-            {"vital_id": "pulse", "band": "DORMANT"},
-            {"vital_id": "horizon", "band": "UNDECLARED"},
-            {"vital_id": "direction", "band": "SCATTERED"},
-            {"vital_id": "debt", "band": "PRESENT"}
-          ]
-        },
-        "current": {
-          "vitals": [
-            {"vital_id": "pulse", "band": "SURGING"},
-            {"vital_id": "horizon", "band": "EXTENDED"},
-            {"vital_id": "direction", "band": "FULLY_LINKED"},
-            {"vital_id": "debt", "band": "CLEAR"}
-          ]
-        }
-      },
-      "expect": {
-        "vitals": {
-          "pulse": {"transition_class": "CHANGED", "reason_codes": ["BAND_ORDER_NOT_DECLARED:pulse"]},
-          "horizon": {"transition_class": "CHANGED", "reason_codes": ["BAND_ORDER_NOT_DECLARED:horizon"]},
-          "direction": {"transition_class": "CHANGED", "reason_codes": ["BAND_ORDER_NOT_DECLARED:direction"]},
-          "debt": {"transition_class": "CHANGED", "reason_codes": ["BAND_ORDER_NOT_DECLARED:debt"]}
-        }
+        "comparisons": [
+          {
+            "title": "clutter, an improvement along its own chain",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "HEAVY",
+                  "rule_id": "clutter.bands.v0"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "CLEAN",
+                  "rule_id": "clutter.bands.v1"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "clutter": {
+                  "transition_class": "INCOMPARABLE",
+                  "reason_codes": [
+                    "RULE_VERSION_BOUNDARY:clutter.bands.v0->clutter.bands.v1"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ],
+                  "metric_deltas": {}
+                }
+              }
+            }
+          },
+          {
+            "title": "integrity, a worsening along its own chain",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "CLEAN",
+                  "rule_id": "integrity.bands.v1"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "FAILING",
+                  "rule_id": "integrity.bands.v2"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "INCOMPARABLE",
+                  "reason_codes": [
+                    "RULE_VERSION_BOUNDARY:integrity.bands.v1->integrity.bands.v2"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            }
+          }
+        ]
       }
     },
     {
       "case": "ORDER-14",
-      "title": "An order compares measurements: a degraded evaluation or an inexact band stays CHANGED",
+      "title": "GAUGE_INVARIANCE: moving only a gauge inside unchanged canonical bands leaves UNCHANGED and creates no direction",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
+      "notes": "A gauge is a presentation normalization inside one band. The band-transition layer never reads it, which is why the pair is UNCHANGED in both directions. That gauge_values actually moves for this evidence is asserted in tests/conformance/test_band_order.py, where a gauge can be computed.",
       "given": {
-        "previous": {
-          "vitals": [
-            {"vital_id": "clutter", "band": "HEAVY"},
-            {"vital_id": "flow", "band": "GRIDLOCKED"}
-          ]
-        },
-        "current": {
-          "vitals": [
-            {"vital_id": "clutter", "band": "CLEAN", "evaluation_status": "DEGRADED", "band_semantics": "CONSERVATIVE_LOWER_BOUND"},
-            {"vital_id": "flow", "band": "MOVING", "evaluation_status": "AVAILABLE", "band_semantics": "CONSERVATIVE_LOWER_BOUND"}
-          ]
-        }
-      },
-      "expect": {
-        "vitals": {
-          "clutter": {
-            "transition_class": "CHANGED",
-            "reason_codes": ["BAND_ORDER_NOT_ELIGIBLE:EVALUATION_NOT_AVAILABLE"],
-            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+        "comparisons": [
+          {
+            "title": "clutter, an ordered Vital, with its gauge input moved",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "LIGHT",
+                  "derived": {
+                    "stale_work_count": 1,
+                    "tracked_open_count": 20
+                  }
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "LIGHT",
+                  "derived": {
+                    "stale_work_count": 3,
+                    "tracked_open_count": 20
+                  }
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "clutter": {
+                  "transition_class": "UNCHANGED",
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ],
+                  "metric_deltas": {
+                    "stale_work_count": {
+                      "previous": 1,
+                      "current": 3,
+                      "change": 2
+                    }
+                  }
+                }
+              }
+            }
           },
-          "flow": {
-            "transition_class": "CHANGED",
-            "reason_codes": ["BAND_ORDER_NOT_ELIGIBLE:BAND_SEMANTICS_NOT_EXACT"],
-            "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+          {
+            "title": "the same, in the direction a gauge would call better",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "LIGHT",
+                  "derived": {
+                    "stale_work_count": 3
+                  }
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "LIGHT",
+                  "derived": {
+                    "stale_work_count": 1
+                  }
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "clutter": {
+                  "transition_class": "UNCHANGED",
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED"
+                  ]
+                }
+              }
+            }
           }
-        }
+        ]
       }
     },
     {
       "case": "ORDER-15",
-      "title": "The rule version boundary, observability transitions and an unchanged band all keep precedence over the order",
+      "title": "CROSS_VITAL_PROHIBITION: a rank of one Vital is never compared with a rank of another",
       "kind": "delta",
       "source_unit": "PV-BAND-ORDER-001",
+      "notes": "Clutter and Integrity both emit CLEAN, which is the only way one Vital's chain could leak into another's. The absence of any cross-Vital comparator at all, and of an aggregate in the delta, is structural and asserted in tests/conformance/test_band_order.py.",
       "given": {
-        "previous": {
-          "vitals": [
-            {"vital_id": "clutter", "band": "HEAVY", "rule_id": "clutter.bands.v0"},
-            {"vital_id": "flow", "band": "GRIDLOCKED"},
-            {"vital_id": "integrity", "band": null},
-            {"vital_id": "pulse", "band": "STEADY", "derived": {"activity_events_28d": 10}}
-          ]
-        },
-        "current": {
-          "vitals": [
-            {"vital_id": "clutter", "band": "CLEAN", "rule_id": "clutter.bands.v1"},
-            {"vital_id": "flow", "band": null},
-            {"vital_id": "integrity", "band": "CLEAN"},
-            {"vital_id": "pulse", "band": "STEADY", "derived": {"activity_events_28d": 12}}
-          ]
-        }
-      },
-      "expect": {
-        "vitals": {
-          "clutter": {
-            "transition_class": "INCOMPARABLE",
-            "reason_codes": ["RULE_VERSION_BOUNDARY:clutter.bands.v0->clutter.bands.v1"],
-            "reason_codes_absent": ["BAND_ORDER_APPLIED"],
-            "metric_deltas": {}
+        "comparisons": [
+          {
+            "title": "two Vitals moving in opposite directions are classified independently",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "HEAVY"
+                },
+                {
+                  "vital_id": "flow",
+                  "band": "MOVING"
+                },
+                {
+                  "vital_id": "integrity",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "clutter",
+                  "band": "CLEAN"
+                },
+                {
+                  "vital_id": "flow",
+                  "band": "GRIDLOCKED"
+                },
+                {
+                  "vital_id": "integrity",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "clutter": {
+                  "transition_class": "IMPROVED",
+                  "reason_codes": [
+                    "BAND:HEAVY->CLEAN",
+                    "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"
+                  ]
+                },
+                "flow": {
+                  "transition_class": "WORSENED",
+                  "reason_codes": [
+                    "BAND:MOVING->GRIDLOCKED",
+                    "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED"
+                  ]
+                },
+                "integrity": {
+                  "transition_class": "UNCHANGED"
+                }
+              }
+            }
           },
-          "flow": {"transition_class": "OBSERVABILITY_LOST", "reason_codes": ["BAND_NO_LONGER_OBSERVABLE"]},
-          "integrity": {"transition_class": "OBSERVABILITY_GAINED", "reason_codes": ["BAND_BECAME_OBSERVABLE"]},
-          "pulse": {
-            "transition_class": "UNCHANGED",
-            "metric_deltas": {"activity_events_28d": {"previous": 10, "current": 12, "change": 2}}
+          {
+            "title": "a band another Vital also names is not ordered by that other Vital's chain",
+            "previous": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "CLEAN"
+                },
+                {
+                  "vital_id": "clutter",
+                  "band": "CLEAN"
+                }
+              ]
+            },
+            "current": {
+              "vitals": [
+                {
+                  "vital_id": "integrity",
+                  "band": "SPARSE"
+                },
+                {
+                  "vital_id": "clutter",
+                  "band": "HEAVY"
+                }
+              ]
+            },
+            "expect": {
+              "vitals": {
+                "integrity": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": [
+                    "BAND_ORDER_INCOMPARABLE:CLEAN|SPARSE"
+                  ],
+                  "reason_codes_absent": [
+                    "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"
+                  ]
+                },
+                "clutter": {
+                  "transition_class": "WORSENED",
+                  "reason_codes": [
+                    "BAND:CLEAN->HEAVY",
+                    "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"
+                  ]
+                }
+              }
+            }
           }
-        }
+        ]
       }
     }
   ]

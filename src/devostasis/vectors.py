@@ -23,7 +23,12 @@ and a vector is::
   observation envelopes (``RAW_OBSERVATION_CONTRACT_V0``), so a vector states
   evidence exactly as a collector would emit it.
 * **delta** compares two snapshots given as partial Vital rows and checks the
-  transition classes and reason codes.
+  transition classes and reason codes. An accepted case often names more than
+  one pair — "``GRIDLOCKED -> CONGESTED -> MOVING`` follows WORSENED/IMPROVED
+  direction" is four comparisons — so ``given`` may carry ``comparisons``, a
+  list of pairs each with its own ``expect``, instead of a single
+  ``previous``/``current``. One case id then reports one result over every pair
+  the case names, rather than splitting an accepted identifier across several.
 
 Three rules keep a vector suite honest:
 
@@ -56,7 +61,10 @@ COMPARISON_STATUSES = (BASELINE, COMPARABLE, HISTORY_GAP, INCOMPARABLE)
 
 FILE_KEYS = {"schema", "notes", "vectors"}
 VECTOR_KEYS = {"case", "title", "kind", "source_unit", "notes", "given", "expect"}
-REQUIRED_VECTOR_KEYS = {"case", "title", "kind", "given", "expect"}
+# ``expect`` is required by every kind, but a delta case that states several
+# comparisons carries one expectation per comparison instead of one for the
+# vector, so the kind validators require it rather than this set.
+REQUIRED_VECTOR_KEYS = {"case", "title", "kind", "given"}
 
 VITAL_GIVEN_KEYS = {"vital", "observations", "observed_at", "subject"}
 VITAL_EXPECT_KEYS = {
@@ -73,7 +81,9 @@ VITAL_EXPECT_KEYS = {
 }
 REQUIRED_VITAL_EXPECT_KEYS = {"band", "evaluation_status"}
 
-DELTA_GIVEN_KEYS = {"comparison_status", "previous", "current", "previous_bundle_id", "incomparable_reasons"}
+DELTA_GIVEN_KEYS = {"comparison_status", "previous", "current", "previous_bundle_id", "incomparable_reasons", "comparisons"}
+DELTA_PAIR_KEYS = {"comparison_status", "previous", "current", "previous_bundle_id", "incomparable_reasons"}
+DELTA_COMPARISON_KEYS = DELTA_PAIR_KEYS | {"title", "expect"}
 DELTA_SIDE_KEYS = {"observed_at", "vitals"}
 DELTA_ROW_KEYS = {"vital_id", "band", "evaluation_status", "band_semantics", "rule_id", "derived", "inputs"}
 DELTA_EXPECT_KEYS = {"comparison_status", "vitals"}
@@ -145,12 +155,14 @@ def _require_keys(where: str, data: Any, allowed: set[str], required: set[str]) 
     return data
 
 
-def _validate_vital(where: str, given: dict[str, Any], expect: dict[str, Any]) -> None:
+def _validate_vital(where: str, given: dict[str, Any], expect: Any) -> None:
     _require_keys(f"{where} given", given, VITAL_GIVEN_KEYS, {"vital", "observations"})
     if given["vital"] not in EVALUATORS:
         raise VectorError(f"{where} given: unknown vital {given['vital']!r}")
     if not isinstance(given["observations"], list) or not given["observations"]:
         raise VectorError(f"{where} given: observations must be a non-empty list")
+    if expect is None:
+        raise VectorError(f"{where}: missing keys ['expect']")
     _require_keys(f"{where} expect", expect, VITAL_EXPECT_KEYS, REQUIRED_VITAL_EXPECT_KEYS)
 
 
@@ -161,11 +173,10 @@ def _comparison_status(where: str, holder: dict[str, Any]) -> None:
         raise VectorError(f"{where}: unknown comparison_status {status!r}, known are {list(COMPARISON_STATUSES)}")
 
 
-def _validate_delta(where: str, given: dict[str, Any], expect: dict[str, Any]) -> None:
-    _require_keys(f"{where} given", given, DELTA_GIVEN_KEYS, {"previous", "current"})
-    _comparison_status(f"{where} given", given)
+def _validate_delta_pair(where: str, pair: dict[str, Any], expect: Any) -> None:
+    _comparison_status(f"{where} given", pair)
     for side in ("previous", "current"):
-        rows = _require_keys(f"{where} given.{side}", given[side], DELTA_SIDE_KEYS, {"vitals"})["vitals"]
+        rows = _require_keys(f"{where} given.{side}", pair[side], DELTA_SIDE_KEYS, {"vitals"})["vitals"]
         if not isinstance(rows, list) or not rows:
             raise VectorError(f"{where} given.{side}: vitals must be a non-empty list")
         for row in rows:
@@ -180,6 +191,29 @@ def _validate_delta(where: str, given: dict[str, Any], expect: dict[str, Any]) -
         if vital_id not in CORE_VITAL_IDS:
             raise VectorError(f"{where} expect: unknown vital {vital_id!r}")
         _require_keys(f"{where} expect.{vital_id}", row, DELTA_ROW_EXPECT_KEYS, {"transition_class"})
+
+
+def _validate_delta(where: str, given: dict[str, Any], expect: Any) -> None:
+    _require_keys(f"{where} given", given, DELTA_GIVEN_KEYS, set())
+    if "comparisons" in given:
+        if set(given) & DELTA_PAIR_KEYS:
+            raise VectorError(f"{where} given: comparisons replaces previous/current, it does not extend them")
+        if expect is not None:
+            raise VectorError(f"{where}: a case with comparisons states one expect per comparison, not one for the vector")
+        comparisons = given["comparisons"]
+        if not isinstance(comparisons, list) or len(comparisons) < 2:
+            raise VectorError(f"{where} given: comparisons must be a list of at least two pairs; one pair is previous/current")
+        for index, comparison in enumerate(comparisons):
+            label = f"{where} comparison[{index}]"
+            entry = _require_keys(label, comparison, DELTA_COMPARISON_KEYS, {"previous", "current", "expect"})
+            _validate_delta_pair(label, entry, entry["expect"])
+        return
+    missing = sorted({"previous", "current"} - set(given))
+    if missing:
+        raise VectorError(f"{where} given: missing keys {missing}")
+    if expect is None:
+        raise VectorError(f"{where}: missing keys ['expect']")
+    _validate_delta_pair(where, given, expect)
 
 
 def parse_document(document: Any, path: str = "") -> list[Vector]:
@@ -201,14 +235,14 @@ def parse_document(document: Any, path: str = "") -> list[Vector]:
         if kind not in KINDS:
             raise VectorError(f"{where}[{case}]: unknown kind {kind!r}, known kinds are {list(KINDS)}")
         validator = {"vital": _validate_vital, "delta": _validate_delta}[kind]
-        validator(f"{where}[{case}]", entry["given"], entry["expect"])
+        validator(f"{where}[{case}]", entry["given"], entry.get("expect"))
         parsed.append(
             Vector(
                 case=case,
                 title=entry["title"],
                 kind=kind,
                 given=entry["given"],
-                expect=entry["expect"],
+                expect=entry.get("expect") or {},
                 source_unit=entry.get("source_unit"),
                 notes=entry.get("notes"),
                 path=path,
@@ -330,26 +364,37 @@ def _delta_side(side: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _run_delta(vector: Vector) -> list[str]:
+def _run_comparison(pair: dict[str, Any], expect: dict[str, Any], where: str) -> list[str]:
     failures: list[str] = []
-    given = vector.given
     document = compare(
-        _delta_side(given["current"]),
-        _delta_side(given["previous"]),
-        given.get("comparison_status", COMPARABLE),
-        given.get("previous_bundle_id"),
-        given.get("incomparable_reasons"),
+        _delta_side(pair["current"]),
+        _delta_side(pair["previous"]),
+        pair.get("comparison_status", COMPARABLE),
+        pair.get("previous_bundle_id"),
+        pair.get("incomparable_reasons"),
     )
     rows = {row["vital_id"]: row for row in document["vitals"]}
-    if "comparison_status" in vector.expect:
-        _check_equal("comparison_status", vector.expect["comparison_status"], document["comparison_status"], failures)
-    for vital_id, expect in vector.expect["vitals"].items():
+    if "comparison_status" in expect:
+        _check_equal(f"{where}comparison_status", expect["comparison_status"], document["comparison_status"], failures)
+    for vital_id, row_expect in expect["vitals"].items():
         row = rows[vital_id]
-        _check_equal(f"{vital_id}.transition_class", expect["transition_class"], row["transition_class"], failures)
-        _check_codes(f"{vital_id}.reason_codes", expect.get("reason_codes"), expect.get("reason_codes_absent"), row["reason_codes"], failures)
+        _check_equal(f"{where}{vital_id}.transition_class", row_expect["transition_class"], row["transition_class"], failures)
+        _check_codes(f"{where}{vital_id}.reason_codes", row_expect.get("reason_codes"), row_expect.get("reason_codes_absent"), row["reason_codes"], failures)
         for key in ("metric_deltas", "coverage_delta"):
-            if key in expect:
-                _check_equal(f"{vital_id}.{key}", expect[key], row[key], failures)
+            if key in row_expect:
+                _check_equal(f"{where}{vital_id}.{key}", row_expect[key], row[key], failures)
+    return failures
+
+
+def _run_delta(vector: Vector) -> list[str]:
+    """One case, every pair it names. A case passes only when all of them do."""
+    given = vector.given
+    if "comparisons" not in given:
+        return _run_comparison(given, vector.expect, "")
+    failures: list[str] = []
+    for index, comparison in enumerate(given["comparisons"]):
+        where = f"{comparison.get('title') or index}: "
+        failures.extend(_run_comparison(comparison, comparison["expect"], where))
     return failures
 
 
