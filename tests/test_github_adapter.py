@@ -213,3 +213,90 @@ def test_a_full_page_of_releases_is_partial_not_complete():
     obs, _, _ = _collect(_routes(**{f"{BASE}/releases": (200, {}, short_page)}))
     item = obs.get(INV_RELEASES)
     assert item.status == AVAILABLE and item.reason_code is None and item.coverage["complete"] is True
+
+
+# --------------------------------------------------------------------------- error boundaries (#12 finding 5)
+
+
+def test_a_register_title_that_is_only_whitespace_is_a_register_error_not_a_crash():
+    """`text.strip().splitlines()[0]` raised IndexError, which no boundary caught."""
+    from devostasis.adapters.github import RegisterError, parse_targets_register
+
+    items = parse_targets_register({"schema": "devostasis.targets.v1", "targets": [{"id": "T-1", "title": "   "}]})
+    assert items[0]["title"] == ""
+    try:
+        parse_targets_register({"schema": "devostasis.targets.v1", "targets": [{"id": "T-1", "title": 1}]})
+    except RegisterError as exc:
+        assert "must be a string" in str(exc)
+    else:
+        raise AssertionError("a non-string target title must be an invalid register")
+
+
+def test_a_debt_title_of_the_wrong_type_is_a_register_error():
+    from devostasis.adapters.github import RegisterError, parse_debt_register
+
+    document = {"schema": "devostasis.debt.v1", "items": [{"id": "D-1", "title": ["not", "a", "string"], "opened": "2026-01-01"}]}
+    try:
+        parse_debt_register(document)
+    except RegisterError as exc:
+        assert "D-1" in str(exc)
+    else:
+        raise AssertionError("a non-string debt title must be an invalid register")
+
+
+def test_a_provider_title_of_the_wrong_type_is_a_missing_title_not_a_failed_run():
+    """Commit messages, change-request and issue titles are payload, not contract."""
+    from devostasis.adapters.github import _title
+
+    assert _title(None) == "" and _title("") == "" and _title("   \n  ") == ""
+    assert _title(7) == "" and _title(["a"]) == ""
+    assert _title("  first line\nsecond") == "first line"
+
+
+def test_an_invalid_register_reaches_the_snapshot_as_an_error_observation():
+    """The contract says INVALID_REGISTER, and only a RegisterError can produce it."""
+    import base64
+    import json as json_mod
+
+    register = json_mod.dumps({"schema": "devostasis.targets.v1", "targets": [{"id": "T-1", "title": 1}]})
+    routes = _routes()
+    routes[f"{BASE}/contents/.devostasis/targets.json"] = (
+        200,
+        {},
+        {"type": "file", "encoding": "base64", "content": base64.b64encode(register.encode("utf-8")).decode("ascii")},
+    )
+    client = GitHubClient(FakeTransport(routes))
+    project = single_project("acme/widget", planning={"source": "file", "path": ".devostasis/targets.json"})
+    obs = GitHubAdapter(client, NOW).collect(project)
+    targets = obs.get(INV_TARGETS)
+    assert targets.status == ERROR and targets.reason_code == "INVALID_REGISTER"
+
+
+def test_a_successful_response_that_is_not_json_becomes_a_declared_provider_failure():
+    """HTTP 200 with an unreadable body escaped every handler as a ValueError."""
+    import io
+    import urllib.request
+
+    from devostasis.adapters.github import ApiFailure, UrllibTransport
+
+    class _Response(io.BytesIO):
+        status = 200
+        headers = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    transport = UrllibTransport(token=None)
+    original = urllib.request.urlopen
+    urllib.request.urlopen = lambda request, timeout=None: _Response(b"<html>maintenance</html>")
+    try:
+        transport.get("/repos/acme/widget")
+    except ApiFailure as exc:
+        assert exc.reason_code == "MALFORMED_RESPONSE" and exc.status_code == 200
+    else:
+        raise AssertionError("a 200 with a non-JSON body must be a declared failure")
+    finally:
+        urllib.request.urlopen = original

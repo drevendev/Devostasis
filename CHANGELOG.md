@@ -3,6 +3,29 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
+## Unreleased
+
+Defect fixes from the external review of 0.1.7 ([#12](https://github.com/drevendev/Devostasis/issues/12), finding 5). No contract, threshold or rule changed.
+
+- **A malformed title no longer ends a fleet run.** `_title` crashed with
+  `IndexError` on a title that is only whitespace and with `AttributeError` on
+  one of the wrong type. Neither is a `RegisterError`, so neither reached the
+  collector's error boundary. `_title` is now total for provider payload - a
+  commit message, change-request or issue title of the wrong type is a missing
+  title - while a register title of the wrong type is a `RegisterError` and
+  reaches the snapshot as `ERROR` / `INVALID_REGISTER`, which is what the
+  register contract says it should be.
+- **A successful response that is not JSON is a declared provider failure.**
+  `UrllibTransport.get` raised `json.JSONDecodeError` out of every handler on
+  an HTTP 200 with an unreadable body. It is now `ApiFailure` with
+  `MALFORMED_RESPONSE`, so it becomes an observation status like every other
+  provider failure.
+- **One project's failure costs one project.** `run_all` had no boundary of its
+  own, so anything `run_project` did not anticipate stopped every project
+  queued behind it, skipped the entity-tag cache write and left the fleet index
+  stale. Each project now fails on its own, keeping its reason and its
+  unsuccessful outcome, so the run still exits non-zero.
+
 ## 0.1.7 (review/0.1.7, unreleased)
 
 A review of what exists, with no new capability. Six defects found and fixed,

@@ -141,7 +141,14 @@ class UrllibTransport:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 raw = response.read()
                 headers = {k.lower(): v for k, v in response.headers.items()}
-                return response.status, headers, json.loads(raw.decode("utf-8")) if raw else None
+                try:
+                    body = json.loads(raw.decode("utf-8")) if raw else None
+                except ValueError as exc:
+                    # A successful status with a body we cannot read is a
+                    # provider failure, not a Python error: it has to reach the
+                    # collector as a declared status like every other failure.
+                    raise ApiFailure(response.status, ERROR, "MALFORMED_RESPONSE", f"{path} answered {response.status} with a body that is not JSON: {exc}") from exc
+                return response.status, headers, body
         except urllib.error.HTTPError as exc:
             raw = exc.read()
             headers = {k.lower(): v for k, v in exc.headers.items()} if exc.headers else {}
@@ -358,10 +365,27 @@ def _failure_observation(observation_id: str, value_type: str, exc: Exception, c
     return Observation(observation_id=observation_id, status=ERROR, value_type=value_type, reason_code="NETWORK", notes=str(exc)[:300], **common)
 
 
-def _title(text: str | None) -> str:
-    if not text:
+def _title(text: Any) -> str:
+    """The first line of a provider-supplied title, or ``""`` when there is none.
+
+    Total on purpose. It is called on commit messages, change-request and issue
+    titles, milestone titles and release names, all of which are provider
+    payload: a field of the wrong type, or one that is only whitespace, is a
+    missing title and not a reason to abandon a fleet run. A register is a
+    different case, because its schema declares a string, so
+    :func:`_register_title` rejects anything else as an invalid register.
+    """
+    if not isinstance(text, str):
         return ""
-    return text.strip().splitlines()[0][:160]
+    lines = text.strip().splitlines()
+    return lines[0][:160] if lines else ""
+
+
+def _register_title(where: str, value: Any) -> str:
+    """A register title, or an INVALID_REGISTER error when it is not a string."""
+    if value is not None and not isinstance(value, str):
+        raise RegisterError(f"{where} title must be a string, got {value!r}")
+    return _title(value)
 
 
 def _normalize_date(value: Any) -> str | None:
@@ -416,7 +440,7 @@ def parse_targets_register(document: Any) -> list[dict[str, Any]]:
             {
                 "target_id": target_id,
                 "id": target_id,
-                "title": _title(entry.get("title")),
+                "title": _register_title(f"target {target_id}", entry.get("title")),
                 "state": _register_state(entry.get("state")),
                 "due_at": _normalize_date(entry.get("due")),
                 "open_items": 0,
@@ -450,7 +474,7 @@ def parse_debt_register(document: Any) -> list[dict[str, Any]]:
         items.append(
             {
                 "id": item_id,
-                "title": _title(entry.get("title")),
+                "title": _register_title(f"debt item {item_id}", entry.get("title")),
                 "state": _register_state(entry.get("state")),
                 "opened_at": opened,
                 "updated_at": updated,
