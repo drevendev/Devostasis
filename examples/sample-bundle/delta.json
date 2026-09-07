@@ -1,10 +1,12 @@
 {
+  "band_order_contract": "PV-BAND-ORDER-001",
+  "band_order_version": "devostasis.band-order.v1",
   "comparison_status": "BASELINE",
   "current_observed_at": "2026-09-05T12:00:00Z",
   "incomparable_reasons": [],
   "previous_bundle_id": null,
   "previous_observed_at": null,
-  "schema": "devostasis.delta.v1",
+  "schema": "devostasis.delta.v2",
   "vitals": [
     {
       "coverage_delta": [],

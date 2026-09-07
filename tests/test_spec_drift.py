@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CONFORMANCE = ROOT / "docs" / "spec" / "conformance.md"
 CITATION = re.compile(r"`(test_[a-z0-9_]*\*?)`")
 DEFINITION = re.compile(r"^def (test_[a-z0-9_]+)", re.MULTILINE)
+VECTOR_CITATION = re.compile(r"`vector:([A-Z0-9-]+)`")
 
 
 def _defined_tests() -> set[str]:
@@ -38,6 +39,17 @@ def test_every_test_the_conformance_table_cites_exists():
         if not (any(other.startswith(name[:-1]) for other in defined) if name.endswith("*") else name in defined)
     )
     assert not missing, f"conformance.md cites tests that no longer exist: {missing}"
+
+
+def test_the_conformance_table_and_the_vector_corpus_name_the_same_cases():
+    """A vector nobody cites proves nothing published; a citation without a vector is a claim."""
+    from devostasis import vectors
+
+    corpus = {vector.case for vector in vectors.load([ROOT / "tests" / "vectors"])}
+    cited = set(VECTOR_CITATION.findall(CONFORMANCE.read_text(encoding="utf-8")))
+    assert corpus, "the vector corpus is empty"
+    assert not sorted(cited - corpus), f"conformance.md cites vectors that do not exist: {sorted(cited - corpus)}"
+    assert not sorted(corpus - cited), f"vectors that conformance.md never cites: {sorted(corpus - cited)}"
 
 
 def test_the_specification_index_lists_every_specification_page():

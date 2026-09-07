@@ -8,7 +8,7 @@
       "state": "open",
       "opened": "2026-09-05",
       "updated": "2026-09-06",
-      "cost": "docs/spec/conformance.md names T2-T9, R1-R53, ART-05, ART-08-ART-11, ART-15 and RPT-4-RPT-9 with no test behind them, so the public coverage claim is larger than the proof. Paid down by target B1."
+      "cost": "docs/spec/conformance.md names T2-T9, R1-R53, ART-05, ART-08-ART-11, ART-15 and RPT-4-RPT-9 with no test behind them, so the public coverage claim is larger than the proof. Since 0.1.8 a case can be written as an executable vector and the runner exists (target B1, docs/spec/vectors.md), but not one of the 70 has evidence yet: the vectors are PV-TEST-001 in the research queue. The interest is unchanged until they arrive."
     },
     {
       "id": "D-2",

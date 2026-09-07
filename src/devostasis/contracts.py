@@ -30,6 +30,17 @@ EFFECTIVE_CONFIG_CONTRACT = "PV-EFFECTIVE-CONFIG-001"
 EFFECTIVE_CONFIG_AUTHORITY_CONTRACT = "PV-EFFECTIVE-CONFIG-AUTHORITY-001"
 EFFECTIVE_CONFIG_SCHEMA = "devostasis.effective-config.v2"
 
+# Normative per-Vital band ordering: accepted PV-BAND-ORDER-001, adopted in
+# 0.1.8. Ordering is per Vital only, never across Vitals or projects and never
+# into an aggregate; it is what makes IMPROVED and WORSENED emittable.
+BAND_ORDER_CONTRACT = "PV-BAND-ORDER-001"
+BAND_ORDER_VERSION = "devostasis.band-order.v1"
+
+# Executable conformance vectors: the file format a conformance case is written
+# in and the runner that executes it. The vectors of PV-TEST-001 are authored
+# against this format.
+VECTOR_SCHEMA = "devostasis.vectors.v1"
+
 # Deterministic Markdown renderer (v4 states the demand ordering of demand.v2 and
 # renders exact rational durations).
 RENDERER_VERSION = "devostasis.render.v4"
@@ -52,7 +63,7 @@ CANONICAL_SERIALIZATION_VERSION = "devostasis.canon.v1"
 
 # Schema identifiers of the machine artifacts.
 SNAPSHOT_SCHEMA = "devostasis.snapshot.v1"
-DELTA_SCHEMA = "devostasis.delta.v1"
+DELTA_SCHEMA = "devostasis.delta.v2"
 ACTIVITY_SCHEMA = "devostasis.activity.v1"
 MANIFEST_SCHEMA = "devostasis.manifest.v1"
 OBSERVATIONS_SCHEMA = "devostasis.observations.v1"

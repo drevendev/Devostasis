@@ -3,8 +3,15 @@
 Comparison states: BASELINE (no prior bundle), COMPARABLE, HISTORY_GAP (history
 expected but the previous bundle cannot be loaded or verified) and INCOMPARABLE
 (semantic versions or semantic configuration differ). Only COMPARABLE emits
-UNCHANGED/CHANGED. No Vital declares a normative band ordering in this version,
-so IMPROVED/WORSENED are never emitted: a changed band is CHANGED.
+UNCHANGED/CHANGED/IMPROVED/WORSENED.
+
+A changed band is IMPROVED or WORSENED only where the Vital declares a
+normative order over that pair of bands (``order.py``, PV-BAND-ORDER-001) and
+both sides are exact measurements: the pair is COMPARABLE, the ``rule_id`` is
+unchanged, and both evaluations are AVAILABLE with EXACT band semantics.
+Everything else stays CHANGED and says why in a reason code. Observability
+transitions and the rule version boundary keep precedence over the order, and
+gauges never establish one.
 
 Inside a COMPARABLE bundle a single Vital whose rule version changed since the
 previous bundle is INCOMPARABLE on its own (``RULE_VERSION_BOUNDARY``): a rule
@@ -16,8 +23,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from . import order
 from .canonical import rational_parts
-from .contracts import CORE_VITAL_IDS, DELTA_SCHEMA
+from .contracts import BAND_ORDER_CONTRACT, BAND_ORDER_VERSION, CORE_VITAL_IDS, DELTA_SCHEMA
 
 BASELINE = "BASELINE"
 COMPARABLE = "COMPARABLE"
@@ -27,6 +35,8 @@ INCOMPARABLE = "INCOMPARABLE"
 T_BASELINE = "BASELINE"
 T_UNCHANGED = "UNCHANGED"
 T_CHANGED = "CHANGED"
+T_IMPROVED = order.IMPROVED
+T_WORSENED = order.WORSENED
 T_GAINED = "OBSERVABILITY_GAINED"
 T_LOST = "OBSERVABILITY_LOST"
 T_INCOMPARABLE = "INCOMPARABLE"
@@ -72,7 +82,7 @@ def _coverage_delta(previous: list[dict[str, str]], current: list[dict[str, str]
     return changes
 
 
-def _transition(previous: dict[str, Any], current: dict[str, Any]) -> tuple[str, list[str]]:
+def _transition(vital_id: str, previous: dict[str, Any], current: dict[str, Any]) -> tuple[str, list[str]]:
     reasons: list[str] = []
     p_rule, c_rule = previous.get("rule_id"), current.get("rule_id")
     if p_rule != c_rule:
@@ -89,6 +99,12 @@ def _transition(previous: dict[str, Any], current: dict[str, Any]) -> tuple[str,
         reasons.append(f"BAND:{p_band}->{c_band}")
         if p_eval != c_eval:
             reasons.append(f"EVALUATION_STATUS:{p_eval}->{c_eval}")
+        moved, order_reason = order.classify(vital_id, previous, current)
+        reasons.append(order_reason)
+        if moved == order.IMPROVED:
+            return T_IMPROVED, reasons
+        if moved == order.WORSENED:
+            return T_WORSENED, reasons
         return T_CHANGED, reasons
     if p_eval != c_eval:
         reasons.append(f"EVALUATION_STATUS:{p_eval}->{c_eval}")
@@ -134,7 +150,7 @@ def compare(
             row["transition_class"] = T_INCOMPARABLE
             row["reason_codes"] = ["PREVIOUS_VITAL_MISSING"]
         else:
-            transition, codes = _transition(prev, cur)
+            transition, codes = _transition(vital_id, prev, cur)
             row["transition_class"] = transition
             row["reason_codes"] = codes
             if transition != T_INCOMPARABLE:
@@ -143,6 +159,8 @@ def compare(
         rows.append(row)
     return {
         "schema": DELTA_SCHEMA,
+        "band_order_contract": BAND_ORDER_CONTRACT,
+        "band_order_version": BAND_ORDER_VERSION,
         "comparison_status": comparison_status,
         "previous_bundle_id": previous_bundle_id,
         "previous_observed_at": (previous or {}).get("observed_at") if comparison_status == COMPARABLE else None,

@@ -100,7 +100,7 @@ def test_art_07_immutability(tmp_path):
         store.put_immutable(bundle)
 
 
-def test_second_run_is_comparable_with_unchanged_and_changed_transitions(tmp_path):
+def test_second_run_is_comparable_with_unchanged_and_ordered_transitions(tmp_path):
     store = FilesystemHistoryStore(tmp_path)
     first = build_from_observations(_project(), _obs("2026-09-05T12:00:00Z"), store)
     store.commit(first, first.bands())
@@ -111,7 +111,8 @@ def test_second_run_is_comparable_with_unchanged_and_changed_transitions(tmp_pat
     assert second.manifest["comparison_status"] == "COMPARABLE" and second.manifest["previous_bundle_id"] == first.bundle_id
     delta = json.loads(second.members["delta.json"])
     rows = {row["vital_id"]: row for row in delta["vitals"]}
-    assert rows["flow"]["transition_class"] == "CHANGED" and rows["flow"]["previous_band"] == "MOVING" and rows["flow"]["current_band"] == "CONGESTED"
+    assert rows["flow"]["transition_class"] == "WORSENED" and rows["flow"]["previous_band"] == "MOVING" and rows["flow"]["current_band"] == "CONGESTED"
+    assert "BAND_ORDER_APPLIED:MOVING>CONGESTED>GRIDLOCKED" in rows["flow"]["reason_codes"]
     assert rows["flow"]["metric_deltas"]["open_count"] == {"previous": 2, "current": 12, "change": 10}
     assert rows["pulse"]["transition_class"] == "UNCHANGED"
     activity = json.loads(second.members["activity.json"])

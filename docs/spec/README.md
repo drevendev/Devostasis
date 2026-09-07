@@ -17,6 +17,7 @@ conformance tests.
 | [registers.md](registers.md) | Targets and debt register files, the change-request link marker |
 | [github-adapter.md](github-adapter.md) | What the GitHub adapter collects, how it maps failures and caps, what it does not collect |
 | [conformance.md](conformance.md) | Conformance case identifiers and where each is implemented |
+| [vectors.md](vectors.md) | The executable conformance vector format and its runner |
 | [PROVENANCE.md](PROVENANCE.md) | Contract identifiers and the research units they come from |
 
 Vocabulary used throughout:

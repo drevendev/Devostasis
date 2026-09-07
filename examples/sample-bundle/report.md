@@ -2,7 +2,7 @@
 
 - Observed at: 2026-09-05T12:00:00Z
 - Comparison: BASELINE
-- Bundle: `1d5b23059ebf3217d8a82da64dd7ada5475ae9c7e3b030816a254d8d09dfe7c8`
+- Bundle: `97b976666ce312b08f21b2d07b4408e94efa4673e8686b1a00f376e314bd74b4`
 - Contracts: vitals PV-VITALS-V1-002, observations RAW-OBS-V0, policy devostasis.policy.v1
 
 ```text
