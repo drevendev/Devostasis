@@ -27,9 +27,10 @@ and a vector is::
 
 Three rules keep a vector suite honest:
 
-* **It fails closed.** An unknown ``kind``, an unknown key, a malformed
-  envelope or a duplicate case id is an error, never a skip: a vector that
-  cannot run must never look like a vector that passed.
+* **It fails closed.** An unknown ``kind``, an unknown key, an unknown
+  comparison status, a malformed envelope or a duplicate case id is an error,
+  never a skip: a vector that cannot run must never look like a vector that
+  passed.
 * **It states, never computes.** Expectations are literal values. A vector
   that derived its expectation from the implementation would prove only that
   the implementation equals itself.
@@ -46,11 +47,12 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .contracts import CORE_VITAL_IDS, VECTOR_SCHEMA
-from .delta import COMPARABLE, compare
+from .delta import BASELINE, COMPARABLE, HISTORY_GAP, INCOMPARABLE, compare
 from .observations import Observation, ObservationSet
 from .vitals import EVALUATORS
 
 KINDS = ("vital", "delta")
+COMPARISON_STATUSES = (BASELINE, COMPARABLE, HISTORY_GAP, INCOMPARABLE)
 
 FILE_KEYS = {"schema", "notes", "vectors"}
 VECTOR_KEYS = {"case", "title", "kind", "source_unit", "notes", "given", "expect"}
@@ -152,8 +154,16 @@ def _validate_vital(where: str, given: dict[str, Any], expect: dict[str, Any]) -
     _require_keys(f"{where} expect", expect, VITAL_EXPECT_KEYS, REQUIRED_VITAL_EXPECT_KEYS)
 
 
+def _comparison_status(where: str, holder: dict[str, Any]) -> None:
+    """A comparison status the engine does not know is an error, not a silently different run."""
+    status = holder.get("comparison_status")
+    if status is not None and status not in COMPARISON_STATUSES:
+        raise VectorError(f"{where}: unknown comparison_status {status!r}, known are {list(COMPARISON_STATUSES)}")
+
+
 def _validate_delta(where: str, given: dict[str, Any], expect: dict[str, Any]) -> None:
     _require_keys(f"{where} given", given, DELTA_GIVEN_KEYS, {"previous", "current"})
+    _comparison_status(f"{where} given", given)
     for side in ("previous", "current"):
         rows = _require_keys(f"{where} given.{side}", given[side], DELTA_SIDE_KEYS, {"vitals"})["vitals"]
         if not isinstance(rows, list) or not rows:
@@ -163,6 +173,7 @@ def _validate_delta(where: str, given: dict[str, Any], expect: dict[str, Any]) -
             if row["vital_id"] not in CORE_VITAL_IDS:
                 raise VectorError(f"{where} given.{side}: unknown vital {row['vital_id']!r}")
     rows_expect = _require_keys(f"{where} expect", expect, DELTA_EXPECT_KEYS, {"vitals"})["vitals"]
+    _comparison_status(f"{where} expect", expect)
     if not isinstance(rows_expect, dict) or not rows_expect:
         raise VectorError(f"{where} expect: vitals must be a non-empty object keyed by vital id")
     for vital_id, row in rows_expect.items():

@@ -37,8 +37,11 @@ gauge changed, and no rule was retuned.
   that evaluates one Vital over raw observation envelopes and a `delta` kind
   that compares two snapshots, a runner, a `devostasis vectors` command and a
   published schema ([docs/spec/vectors.md](docs/spec/vectors.md)). It fails
-  closed: an unknown kind, an unknown key, a malformed envelope or a duplicate
-  case id is an error, never a skipped case that looks like a pass.
+  closed: an unknown kind, an unknown key, an unknown comparison status, a
+  malformed envelope or a duplicate case id is an error, never a skipped case
+  that looks like a pass. The schema declares the partial evidence envelope a
+  vector actually states, and a test holds it to the envelopes the corpus
+  writes, so the runner and the published schema cannot accept different files.
 - **The ordering ships as fifteen vectors, not as prose.** `ORDER-01..15` live
   in `tests/vectors/band-order.json`, run inside the ordinary test suite and in
   CI through the command line, and the conformance table cites them as

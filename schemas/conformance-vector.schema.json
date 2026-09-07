@@ -40,7 +40,7 @@
                     "observations": {
                       "type": "array",
                       "minItems": 1,
-                      "items": { "$ref": "observation.schema.json" }
+                      "items": { "$ref": "#/$defs/envelope" }
                     }
                   }
                 },
@@ -85,7 +85,7 @@
                   "required": ["vitals"],
                   "additionalProperties": false,
                   "properties": {
-                    "comparison_status": { "type": "string" },
+                    "comparison_status": { "enum": ["BASELINE", "COMPARABLE", "HISTORY_GAP", "INCOMPARABLE"] },
                     "vitals": {
                       "type": "object",
                       "minProperties": 1,
@@ -112,6 +112,35 @@
     }
   },
   "$defs": {
+    "envelope": {
+      "title": "Observation envelope as a vector states it",
+      "description": "A vector states evidence, not a whole envelope. Only observation_id is required: the runner fills status AVAILABLE, provider, collected_at, source_ref and adapter_version, and the observation contract defaults value_type to count, freshness to FRESH and schema_version to RAW-OBS-V0. The completed envelope is then built through that contract (observation.schema.json), so evidence it rejects fails the vector rather than passing it.",
+      "type": "object",
+      "required": ["observation_id"],
+      "additionalProperties": false,
+      "properties": {
+        "observation_id": { "type": "string", "minLength": 1 },
+        "schema_version": { "const": "RAW-OBS-V0" },
+        "provider": { "type": "string" },
+        "collected_at": { "type": ["string", "null"], "format": "date-time" },
+        "source_ref": { "type": ["string", "null"] },
+        "status": { "enum": ["AVAILABLE", "PARTIAL", "UNAVAILABLE", "FORBIDDEN", "UNKNOWN", "ERROR"] },
+        "freshness": { "enum": ["FRESH", "STALE", "UNKNOWN"] },
+        "value_type": { "enum": ["count", "ratio", "duration", "boolean", "enum", "string", "set", "series", "record"] },
+        "value": {},
+        "coverage": { "type": ["object", "null"] },
+        "evidence_ref": {},
+        "adapter_version": { "type": ["string", "null"] },
+        "reason_code": { "type": ["string", "null"] },
+        "notes": { "type": ["string", "null"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "enum": ["UNAVAILABLE", "FORBIDDEN", "UNKNOWN", "ERROR"] } } },
+          "then": { "properties": { "value": { "type": "null" } } }
+        }
+      ]
+    },
     "side": {
       "type": "object",
       "required": ["vitals"],

@@ -38,3 +38,23 @@ def test_conformance_vector(vector):
 def test_every_kind_the_format_declares_is_exercised_by_the_corpus():
     """A kind nothing exercises is a promise, not a proof."""
     assert {vector.kind for vector in ALL} == set(vectors.KINDS)
+
+
+def test_every_envelope_in_the_corpus_is_one_the_published_schema_accepts():
+    """The runner and the published schema must accept the same evidence.
+
+    Only the key sets are checked here: the runtime carries no JSON Schema
+    validator, so this is the guard that a vector the runner runs is not a
+    vector the schema beside it declares invalid.
+    """
+    from devostasis import canonical
+
+    envelope = canonical.load_file(ROOT / "schemas" / "conformance-vector.schema.json")["$defs"]["envelope"]
+    required, allowed = set(envelope["required"]), set(envelope["properties"])
+    for vector in ALL:
+        if vector.kind != "vital":
+            continue
+        for stated in vector.given["observations"]:
+            keys = set(stated)
+            assert required <= keys, f"{vector.case}: envelope is missing {sorted(required - keys)}"
+            assert keys <= allowed, f"{vector.case}: envelope states {sorted(keys - allowed)}, which the schema does not declare"

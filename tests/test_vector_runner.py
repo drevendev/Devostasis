@@ -158,3 +158,38 @@ def test_the_published_vector_schema_and_the_runner_agree_on_the_shape():
     assert set(delta["expect"]["properties"]) == vectors.DELTA_EXPECT_KEYS
     row = schema["$defs"]["side"]["properties"]["vitals"]["items"]
     assert set(row["properties"]) == vectors.DELTA_ROW_KEYS
+    assert set(schema["$defs"]["side"]["properties"]["vitals"]["items"]["properties"]) == vectors.DELTA_ROW_KEYS
+    expect_row = delta["expect"]["properties"]["vitals"]["additionalProperties"]
+    assert set(expect_row["properties"]) == vectors.DELTA_ROW_EXPECT_KEYS
+    for holder in (delta["given"]["properties"], delta["expect"]["properties"]):
+        assert set(holder["comparison_status"]["enum"]) == set(vectors.COMPARISON_STATUSES)
+
+
+def test_the_schema_publishes_the_partial_envelope_the_runner_actually_accepts():
+    """A vector states evidence, not a whole envelope; the published schema must say so.
+
+    The runner fills status, provider, collected_at, source_ref and adapter_version
+    before handing the envelope to the observation contract, so requiring the full
+    RAW-OBS-V0 envelope here would declare every vector in this repository invalid
+    against the schema that ships beside it.
+    """
+    from devostasis import canonical
+
+    schema = canonical.load_file("schemas/conformance-vector.schema.json")
+    observation = canonical.load_file("schemas/observation.schema.json")
+    envelope = schema["$defs"]["envelope"]
+    assert envelope["required"] == ["observation_id"]
+    assert set(envelope["properties"]) == set(observation["properties"])
+    vital = schema["properties"]["vectors"]["items"]["allOf"][0]["then"]["properties"]
+    assert vital["given"]["properties"]["observations"]["items"] == {"$ref": "#/$defs/envelope"}
+
+
+def test_a_comparison_status_the_engine_does_not_know_is_rejected():
+    """An unrecognised status would silently run a different comparison and still pass."""
+    given = {"previous": {"vitals": [{"vital_id": "flow", "band": "MOVING"}]}, "current": {"vitals": [{"vital_id": "flow", "band": "MOVING"}]}}
+    expect = {"vitals": {"flow": {"transition_class": "UNCHANGED"}}}
+    with pytest.raises(vectors.VectorError) as error:
+        parse(kind="delta", given=dict(given, comparison_status="COMPARABEL"), expect=expect)
+    assert "unknown comparison_status" in str(error.value)
+    with pytest.raises(vectors.VectorError):
+        parse(kind="delta", given=given, expect=dict(expect, comparison_status="COMPARABEL"))

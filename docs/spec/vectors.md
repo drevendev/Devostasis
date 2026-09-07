@@ -37,7 +37,11 @@ envelopes, so a vector states evidence exactly as a collector emits it
 ([observations.md](observations.md)). Envelope defaults: `status` is
 `AVAILABLE`, `value_type` is `count`, freshness is `FRESH`. The envelope is
 built through the ordinary observation contract, so evidence that violates it
-(an `AVAILABLE` without a value, an unknown status) fails the vector.
+(an `AVAILABLE` without a value, an unknown status) fails the vector. The
+published schema declares this partial envelope as `$defs/envelope`: only
+`observation_id` is required, and every key it allows is a key of the full
+`RAW-OBS-V0` envelope, so a vector the runner accepts is never one the schema
+beside it calls invalid.
 
 ```json
 {"case": "EXAMPLE-VITAL-01", "kind": "vital",
@@ -73,7 +77,10 @@ defaults to `AVAILABLE`/`EXACT` when it names a band, to `UNKNOWN` when the
 band is `null`, and to the same `rule_id` on both sides so that no rule version
 boundary is invented. A case that names `rule_id` on one side only is
 therefore a case about a rule version boundary; a case that is not about one
-either omits it everywhere or states it on both sides.
+either omits it everywhere or states it on both sides. `comparison_status`
+defaults to `COMPARABLE` and must be one of `BASELINE`, `COMPARABLE`,
+`HISTORY_GAP` and `INCOMPARABLE`; an unrecognised one is rejected rather than
+run as a comparison the case did not mean.
 
 ```json
 {"case": "EXAMPLE-DELTA-01", "kind": "delta",
@@ -94,9 +101,9 @@ the case does not name are not checked.
 
 ## Rules the runner enforces
 
-- **It fails closed.** An unknown `kind`, an unknown key in a vector, a
-  malformed observation envelope, a missing path or a duplicate case id is an
-  error. A vector that cannot run must never look like a vector that passed,
+- **It fails closed.** An unknown `kind`, an unknown key in a vector, an
+  unknown comparison status, a malformed observation envelope, a missing path
+  or a duplicate case id is an error. A vector that cannot run must never look like a vector that passed,
   and a case family this version cannot execute makes the suite red rather than
   silently skipped.
 - **A vector states, it does not compute.** Expectations are literal values.

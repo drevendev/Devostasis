@@ -151,9 +151,9 @@ structural claims that no pair of bands can express are beside them in
 | Case | Meaning | Test |
 | --- | --- | --- |
 | runner | a wrong expectation fails, a correct one passes | `test_a_wrong_expectation_fails_and_says_what_it_expected`, `test_a_correct_vector_passes` |
-| fail closed | an unknown kind, key, vital or duplicate case id is an error, never a skip | `test_a_vector_that_cannot_run_is_rejected_at_load_time`, `test_two_files_may_not_claim_the_same_case_id`, `test_a_missing_path_is_an_error_not_an_empty_run` |
+| fail closed | an unknown kind, key, vital, comparison status or duplicate case id is an error, never a skip | `test_a_vector_that_cannot_run_is_rejected_at_load_time`, `test_a_comparison_status_the_engine_does_not_know_is_rejected`, `test_two_files_may_not_claim_the_same_case_id`, `test_a_missing_path_is_an_error_not_an_empty_run` |
 | evidence is contract-checked | an envelope that violates the observation contract fails the vector | `test_an_envelope_that_violates_the_observation_contract_is_a_failure_not_a_pass` |
-| published schema | the schema and the validator agree on the shape | `test_the_published_vector_schema_and_the_runner_agree_on_the_shape` |
+| published schema | the schema and the validator agree on the shape, including the partial evidence envelope and the comparison statuses | `test_the_published_vector_schema_and_the_runner_agree_on_the_shape`, `test_the_schema_publishes_the_partial_envelope_the_runner_actually_accepts`, `test_every_envelope_in_the_corpus_is_one_the_published_schema_accepts` |
 | corpus | every vector in the corpus runs, and every declared kind is exercised | `test_conformance_vector`, `test_every_kind_the_format_declares_is_exercised_by_the_corpus` |
 
 Cases not yet implemented as tests (T2..T9, R1, R2, R4..R53, ART-05,
