@@ -99,6 +99,36 @@ may add `reason_codes` (prefix matching, as for diagnostics),
 `reason_codes_absent`, and exact `metric_deltas` and `coverage_delta`. Vitals
 the case does not name are not checked.
 
+An accepted case often names more than one pair — *"`GRIDLOCKED → CONGESTED →
+MOVING` follows the WORSENED/IMPROVED direction"* is six comparisons, and
+*"every unequal Pulse band pair is CHANGED"* is twelve. Splitting such a case
+across several vectors would split its identifier, so `given` may carry
+`comparisons` instead of one `previous`/`current`: a list of pairs, each with
+its own optional `title` and its own `expect`. The case then reports one
+result, and it passes only when every pair passes.
+
+```json
+{"case": "EXAMPLE-DELTA-02", "kind": "delta",
+ "title": "a case that names several pairs states them all",
+ "given": {"comparisons": [
+   {"title": "one rank better",
+    "previous": {"vitals": [{"vital_id": "flow", "band": "CONGESTED"}]},
+    "current": {"vitals": [{"vital_id": "flow", "band": "MOVING"}]},
+    "expect": {"vitals": {"flow": {"transition_class": "IMPROVED"}}}},
+   {"title": "and one rank worse",
+    "previous": {"vitals": [{"vital_id": "flow", "band": "CONGESTED"}]},
+    "current": {"vitals": [{"vital_id": "flow", "band": "GRIDLOCKED"}]},
+    "expect": {"vitals": {"flow": {"transition_class": "WORSENED"}}}}]}}
+```
+
+A comparison takes the same keys as an inline `given` — `comparison_status`,
+`previous_bundle_id`, `incomparable_reasons` — so one case can state pairs that
+differ in more than their bands. `comparisons` replaces `previous`/`current`
+rather than extending them, needs at least two entries, and leaves the vector
+with no `expect` of its own; each of those is an error rather than a quietly
+different run. A failure names the pair by its `title`, so a case with twelve
+comparisons still says which one broke.
+
 ## Rules the runner enforces
 
 - **It fails closed.** An unknown `kind`, an unknown key in a vector, an

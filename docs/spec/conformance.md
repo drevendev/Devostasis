@@ -120,28 +120,49 @@ citation resolves; both directions are a test (`test_spec_drift.py`).
 
 ## Band ordering (PV-BAND-ORDER-001)
 
-Fifteen cases of the accepted ordering contract, executable as vectors. The
-structural claims that no pair of bands can express are beside them in
-`tests/conformance/test_band_order.py`.
+The fifteen cases the accepted contract requires, under the names it gives
+them, executable as vectors. A case that names several pairs executes all of
+them and passes only when every pair does, so a result citing `ORDER-nn` is a
+result about research case `ORDER-nn` and nothing else. The claims that no pair
+of bands can express are beside them in `tests/conformance/test_band_order.py`.
 
 | Case | Meaning | Test |
 | --- | --- | --- |
-| ORDER-01 | Clutter improves one rank along its chain | `vector:ORDER-01` |
-| ORDER-02 | Clutter worsens across two ranks: the chain is transitive downward | `vector:ORDER-02` |
-| ORDER-03 | Clutter improves across the whole chain: transitive upward | `vector:ORDER-03` |
-| ORDER-04 | Flow improves inside a live queue | `vector:ORDER-04` |
-| ORDER-05 | Flow worsens inside a live queue | `vector:ORDER-05` |
-| ORDER-06 | a queue that appeared is not a worsening | `vector:ORDER-06` |
-| ORDER-07 | a queue that emptied is not an improvement | `vector:ORDER-07` |
-| ORDER-08 | Integrity improves across the established family | `vector:ORDER-08` |
-| ORDER-09 | Integrity worsens inside the established family | `vector:ORDER-09` |
-| ORDER-10 | Integrity orders the sparse family on its own | `vector:ORDER-10` |
-| ORDER-11 | no order between the sparse and the established family | `vector:ORDER-11` |
-| ORDER-12 | an evidence state is never ordered against a verdict band | `vector:ORDER-12` |
-| ORDER-13 | Pulse, Horizon, Direction and Debt declare no order | `vector:ORDER-13` |
-| ORDER-14 | a degraded evaluation or an inexact band stays CHANGED | `vector:ORDER-14` |
-| ORDER-15 | rule boundary, observability and an unchanged band keep precedence | `vector:ORDER-15` |
-| ordering is per Vital | no order crosses Vitals, and the delta declares no aggregate | `test_no_order_is_declared_across_vitals`, `test_the_delta_declares_the_ordering_contract_it_applied_and_no_aggregate` |
+| ORDER-01 | `CLUTTER_TRANSITIVE_IMPROVEMENT`: HEAVY→LIGHT is IMPROVED, the reverse WORSENED | `vector:ORDER-01` |
+| ORDER-02 | `FLOW_LIVE_QUEUE_ORDER`: GRIDLOCKED→CONGESTED→MOVING follows the WORSENED/IMPROVED direction | `vector:ORDER-02` |
+| ORDER-03 | `FLOW_NO_QUEUE_INCOMPARABLE`: NO_QUEUE against MOVING and against GRIDLOCKED is CHANGED | `vector:ORDER-03` |
+| ORDER-04 | `INTEGRITY_ESTABLISHED_CHAIN`: FAILING→FLAKY→CLEAN improving, the reverse worsening | `vector:ORDER-04` |
+| ORDER-05 | `INTEGRITY_SPARSE_CHAIN`: SPARSE_MIXED→SPARSE is IMPROVED, the reverse WORSENED | `vector:ORDER-05` |
+| ORDER-06 | `INTEGRITY_CROSS_FAMILY`: SPARSE→CLEAN, SPARSE_MIXED→FAILING and NO_RECENT_RUNS→CLEAN are CHANGED | `vector:ORDER-06` |
+| ORDER-07 | `PULSE_NEUTRALITY`: every unequal Pulse band pair is CHANGED | `vector:ORDER-07` |
+| ORDER-08 | `HORIZON_NEUTRALITY`: every unequal Horizon band pair is CHANGED | `vector:ORDER-08` |
+| ORDER-09 | `DIRECTION_NEUTRALITY`: SCATTERED→FULLY_LINKED is CHANGED, and so is the reverse | `vector:ORDER-09` |
+| ORDER-10 | `DEBT_NEUTRALITY`: PRESENT against CLEAR is CHANGED | `vector:ORDER-10` |
+| ORDER-11 | `DEGRADED_NEVER_ORDERED`: a DEGRADED evaluation on either side emits no direction | `vector:ORDER-11` |
+| ORDER-12 | `UNKNOWN_OBSERVABILITY_PRECEDENCE`: an appearing or disappearing band uses the observability transitions | `vector:ORDER-12` |
+| ORDER-13 | `RULE_VERSION_BOUNDARY_PRECEDENCE`: a changed rule id stays INCOMPARABLE inside a declared chain | `vector:ORDER-13` |
+| ORDER-14 | `GAUGE_INVARIANCE`: a gauge that moved inside unchanged bands stays UNCHANGED | `vector:ORDER-14`, `test_a_gauge_that_moved_inside_one_band_is_not_a_direction` |
+| ORDER-15 | `CROSS_VITAL_PROHIBITION`: no rank of one Vital is compared with a rank of another | `vector:ORDER-15`, `test_no_order_is_declared_across_vitals`, `test_the_delta_declares_the_ordering_contract_it_applied_and_no_aggregate` |
+
+Two of the accepted cases are half structural. ORDER-14 states that *changing
+only a gauge* leaves the classification alone: a vector states bands and
+derived metrics, so it proves that the delta ignores the moved metric, and the
+pytest case beside it computes the gauge and proves it actually moved. ORDER-15
+states that a comparator does not exist, which no pair of bands can express;
+the vector proves that two Vitals moving in opposite directions are classified
+independently and that a band two Vitals share is not ordered by the other
+one's chain, and the pytest cases prove the absence itself.
+
+Beyond the accepted set, this implementation keeps three cases of its own. They
+carry `DEV-ORDER` identifiers, which are local to this repository and belong to
+no research unit, so a result citing one can never be read as evidence about an
+accepted case.
+
+| Case | Meaning | Test |
+| --- | --- | --- |
+| DEV-ORDER-01 | Clutter improves one adjacent rank, not only across the transitive step ORDER-01 states | `vector:DEV-ORDER-01` |
+| DEV-ORDER-02 | Clutter improves across the whole chain, HEAVY→CLEAN | `vector:DEV-ORDER-02` |
+| DEV-ORDER-03 | NO_QUEUE is incomparable with CONGESTED too, the band between the two ORDER-03 names | `vector:DEV-ORDER-03` |
 | ordering needs a comparable pair | a BASELINE, HISTORY_GAP or INCOMPARABLE comparison reports no direction | `test_a_bundle_that_is_not_comparable_never_reports_a_direction` |
 | gauges establish no order | a gauge that moved inside a band is UNCHANGED | `test_a_gauge_that_moved_inside_one_band_is_not_a_direction` |
 | ordered bands are emittable | every ordered band is one its Vital emits, and the unordered ones are exactly the descriptive and evidence states | `test_every_ordered_band_is_a_band_its_vital_can_emit`, `test_the_bands_left_unordered_are_exactly_the_descriptive_and_evidence_states` |

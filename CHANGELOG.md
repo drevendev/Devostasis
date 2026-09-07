@@ -47,6 +47,28 @@ gauge changed, and no rule was retuned.
   CI through the command line, and the conformance table cites them as
   `vector:ORDER-nn`. A third drift guard now checks both directions: a citation
   without a vector fails, and a vector nobody cites fails.
+- **Those fifteen carry the meanings the contract gives them.** The first
+  version of this release derived the cases from the contract's rules instead
+  of transcribing its `Required conformance cases` section, which moved every
+  identifier from `ORDER-02` onward onto a different claim — a research
+  identifier is never reused, and `conformance.md` says so on the same page.
+  `PV-SPEC-001` found it; the cases are now transcribed, and the two accepted
+  pairs the corpus never executed (`NO_QUEUE` against `GRIDLOCKED`,
+  `SPARSE_MIXED` to `FAILING`) are executed. Semantics did not change: the
+  ordering itself was conformant, and no band, threshold or rule moved.
+  The split, adjacency and precedence cases this implementation wanted beyond
+  the accepted set are kept under local `DEV-ORDER` ids, which belong to no
+  research unit. A fourth guard holds each `ORDER-nn` to the accepted case name
+  and to the band pairs that case names, because the first two guards pass
+  happily while every identifier means something else.
+- **A vector case can state more than one pair.** `given.comparisons` is a
+  list, each entry with its own `expect`, and the case passes only when all of
+  them do. Accepted cases are written that way — "`GRIDLOCKED → CONGESTED →
+  MOVING` follows the WORSENED/IMPROVED direction" is six comparisons, "every
+  unequal Pulse band pair" is twelve — and splitting one across several vectors
+  would split its identifier. `ORDER-01..15` now execute 85 comparisons between
+  them. `devostasis.vectors.v1` is unchanged for the single-pair shape it
+  already had.
 - The vectors of `PV-TEST-001` are still owed by the research process. The 70
   named cases without a test remain open (debt D-1), but what was missing on
   our side is now built, so those vectors arrive executable instead of needing

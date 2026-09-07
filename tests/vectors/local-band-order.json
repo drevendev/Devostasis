@@ -1,0 +1,80 @@
+{
+  "schema": "devostasis.vectors.v1",
+  "notes": "Band ordering cases this implementation wanted beyond the accepted set of PV-BAND-ORDER-001. They are not research cases and carry no research identifier: DEV-ORDER ids are local to this repository, so a result citing one can never be mistaken for evidence about an accepted case. The accepted cases are ORDER-01..15 in band-order.json.",
+  "vectors": [
+    {
+      "case": "DEV-ORDER-01",
+      "title": "Clutter improves one rank along its chain: the adjacent step, not only the transitive one",
+      "kind": "delta",
+      "notes": "ORDER-01 states HEAVY -> LIGHT, two ranks apart. A chain could in principle be right about that pair and wrong about an adjacent one.",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "clutter", "band": "LIGHT"}]},
+        "current": {"vitals": [{"vital_id": "clutter", "band": "CLEAN"}]}
+      },
+      "expect": {
+        "comparison_status": "COMPARABLE",
+        "vitals": {
+          "clutter": {
+            "transition_class": "IMPROVED",
+            "reason_codes": ["BAND:LIGHT->CLEAN", "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"]
+          }
+        }
+      }
+    },
+    {
+      "case": "DEV-ORDER-02",
+      "title": "Clutter improves across the whole chain: HEAVY to CLEAN is the widest step the order declares",
+      "kind": "delta",
+      "given": {
+        "previous": {"vitals": [{"vital_id": "clutter", "band": "HEAVY"}]},
+        "current": {"vitals": [{"vital_id": "clutter", "band": "CLEAN"}]}
+      },
+      "expect": {
+        "vitals": {
+          "clutter": {
+            "transition_class": "IMPROVED",
+            "reason_codes": ["BAND:HEAVY->CLEAN", "BAND_ORDER_APPLIED:CLEAN>LIGHT>CLUTTERED>HEAVY"]
+          }
+        }
+      }
+    },
+    {
+      "case": "DEV-ORDER-03",
+      "title": "NO_QUEUE is incomparable with CONGESTED too, not only with the ends of the live chain",
+      "kind": "delta",
+      "notes": "ORDER-03 states NO_QUEUE against MOVING and against GRIDLOCKED. CONGESTED is the band between them.",
+      "given": {
+        "comparisons": [
+          {
+            "title": "a queue that appeared, already congested",
+            "previous": {"vitals": [{"vital_id": "flow", "band": "NO_QUEUE"}]},
+            "current": {"vitals": [{"vital_id": "flow", "band": "CONGESTED"}]},
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": ["BAND_ORDER_INCOMPARABLE:NO_QUEUE|CONGESTED"],
+                  "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+                }
+              }
+            }
+          },
+          {
+            "title": "a congested queue that emptied",
+            "previous": {"vitals": [{"vital_id": "flow", "band": "CONGESTED"}]},
+            "current": {"vitals": [{"vital_id": "flow", "band": "NO_QUEUE"}]},
+            "expect": {
+              "vitals": {
+                "flow": {
+                  "transition_class": "CHANGED",
+                  "reason_codes": ["BAND_ORDER_INCOMPARABLE:CONGESTED|NO_QUEUE"],
+                  "reason_codes_absent": ["BAND_ORDER_APPLIED"]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

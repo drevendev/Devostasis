@@ -13,7 +13,7 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["case", "title", "kind", "given", "expect"],
+        "required": ["case", "title", "kind", "given"],
         "additionalProperties": false,
         "properties": {
           "case": { "type": "string", "minLength": 1, "description": "conformance case identifier; unique across the corpus and never reused" },
@@ -28,6 +28,7 @@
           {
             "if": { "properties": { "kind": { "const": "vital" } } },
             "then": {
+              "required": ["expect"],
               "properties": {
                 "given": {
                   "type": "object",
@@ -70,40 +71,40 @@
               "properties": {
                 "given": {
                   "type": "object",
-                  "required": ["previous", "current"],
+                  "description": "one comparison stated inline, or the comparisons of a case that names more than one pair",
                   "additionalProperties": false,
+                  "oneOf": [
+                    { "required": ["previous", "current"], "not": { "required": ["comparisons"] } },
+                    { "required": ["comparisons"] }
+                  ],
                   "properties": {
                     "comparison_status": { "enum": ["BASELINE", "COMPARABLE", "HISTORY_GAP", "INCOMPARABLE"] },
                     "previous_bundle_id": { "type": ["string", "null"] },
                     "incomparable_reasons": { "type": "array", "items": { "type": "string" } },
                     "previous": { "$ref": "#/$defs/side" },
-                    "current": { "$ref": "#/$defs/side" }
-                  }
-                },
-                "expect": {
-                  "type": "object",
-                  "required": ["vitals"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "comparison_status": { "enum": ["BASELINE", "COMPARABLE", "HISTORY_GAP", "INCOMPARABLE"] },
-                    "vitals": {
-                      "type": "object",
-                      "minProperties": 1,
-                      "additionalProperties": {
+                    "current": { "$ref": "#/$defs/side" },
+                    "comparisons": {
+                      "type": "array",
+                      "minItems": 2,
+                      "description": "an accepted case often names several pairs; each carries its own expect, and the case passes only when all of them do",
+                      "items": {
                         "type": "object",
-                        "required": ["transition_class"],
+                        "required": ["previous", "current", "expect"],
                         "additionalProperties": false,
                         "properties": {
-                          "transition_class": { "enum": ["BASELINE", "UNCHANGED", "CHANGED", "IMPROVED", "WORSENED", "OBSERVABILITY_GAINED", "OBSERVABILITY_LOST", "INCOMPARABLE"] },
-                          "reason_codes": { "type": "array", "items": { "type": "string" } },
-                          "reason_codes_absent": { "type": "array", "items": { "type": "string" } },
-                          "metric_deltas": { "type": "object" },
-                          "coverage_delta": { "type": "array" }
+                          "title": { "type": "string", "description": "which pair of the case this is, used to name a failure" },
+                          "comparison_status": { "enum": ["BASELINE", "COMPARABLE", "HISTORY_GAP", "INCOMPARABLE"] },
+                          "previous_bundle_id": { "type": ["string", "null"] },
+                          "incomparable_reasons": { "type": "array", "items": { "type": "string" } },
+                          "previous": { "$ref": "#/$defs/side" },
+                          "current": { "$ref": "#/$defs/side" },
+                          "expect": { "$ref": "#/$defs/delta_expect" }
                         }
                       }
                     }
                   }
-                }
+                },
+                "expect": { "$ref": "#/$defs/delta_expect" }
               }
             }
           }
@@ -112,6 +113,32 @@
     }
   },
   "$defs": {
+    "delta_expect": {
+      "title": "What one comparison must classify",
+      "description": "The same shape whether a case states one comparison inline or several under comparisons, so the two cannot drift apart.",
+      "type": "object",
+      "required": ["vitals"],
+      "additionalProperties": false,
+      "properties": {
+        "comparison_status": { "enum": ["BASELINE", "COMPARABLE", "HISTORY_GAP", "INCOMPARABLE"] },
+        "vitals": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "required": ["transition_class"],
+            "additionalProperties": false,
+            "properties": {
+              "transition_class": { "enum": ["BASELINE", "UNCHANGED", "CHANGED", "IMPROVED", "WORSENED", "OBSERVABILITY_GAINED", "OBSERVABILITY_LOST", "INCOMPARABLE"] },
+              "reason_codes": { "type": "array", "items": { "type": "string" } },
+              "reason_codes_absent": { "type": "array", "items": { "type": "string" } },
+              "metric_deltas": { "type": "object" },
+              "coverage_delta": { "type": "array" }
+            }
+          }
+        }
+      }
+    },
     "envelope": {
       "title": "Observation envelope as a vector states it",
       "description": "A vector states evidence, not a whole envelope. Only observation_id is required: the runner fills status AVAILABLE, provider, collected_at, source_ref and adapter_version, and the observation contract defaults value_type to count, freshness to FRESH and schema_version to RAW-OBS-V0. The completed envelope is then built through that contract (observation.schema.json), so evidence it rejects fails the vector rather than passing it.",
