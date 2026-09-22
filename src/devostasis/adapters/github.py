@@ -351,9 +351,14 @@ class GitHubClient:
                 body = self.get(path, params)
             except RequestBudgetExhausted:
                 return items, False
-            batch = body.get(items_key, []) if items_key else body
+            if items_key:
+                if not isinstance(body, dict):
+                    raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected an object with {items_key!r} from {path}, got {type(body).__name__}")
+                batch = body.get(items_key, [])
+            else:
+                batch = body
             if not isinstance(batch, list):
-                raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected a list from {path}")
+                raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected a list from {path}, got {type(batch).__name__}")
             items.extend(batch)
             if stop is not None and batch and stop(batch[-1]):
                 return items, True
@@ -905,6 +910,8 @@ class GitHubAdapter:
         limit = MAX_RELEASES
         try:
             raw = self.client.get(path, {"per_page": limit})
+            if not isinstance(raw, list) or not all(isinstance(r, dict) for r in raw):
+                raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected a list of releases from {path}, got {type(raw).__name__}")
         except (ApiFailure, NetworkFailure) as exc:
             obs.add(_failure_observation(INV_RELEASES, "series", exc, common))
             return
@@ -1017,6 +1024,14 @@ class GitHubAdapter:
                 self.notes.append("CI_SURFACE:GITHUB_CHECK_SUITES_SAMPLED")
 
         any_parents = any(parents_by_sha.values())
+        if workflows_failure is not None:
+            # The Actions surface could not be asked at all. When check suites
+            # then supply the evidence, the collection is legitimately
+            # parent-level, but a reader of the receipt must be able to tell
+            # "no Actions runs" from "Actions could not be read", exactly as
+            # CHECK_SUITES_UNAVAILABLE says it for the other surface.
+            reason = workflows_failure.reason_code if isinstance(workflows_failure, ApiFailure) else "NETWORK"
+            self.notes.append(f"WORKFLOWS_UNAVAILABLE:{reason}")
         if workflows_total and workflows_total > 0:
             obs.add(Observation(observation_id=CI_CONFIGURED, status=AVAILABLE, value_type="boolean", value=True, evidence_ref={"workflows_total": workflows_total}, **common_conf))
         elif any_parents:

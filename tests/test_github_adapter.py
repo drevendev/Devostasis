@@ -418,3 +418,45 @@ def test_an_invalid_date_reaches_the_snapshot_as_an_error_observation():
     )
     targets = _observe(routes, _file_planning_project()).get(INV_TARGETS)
     assert targets.status == ERROR and targets.reason_code == "INVALID_REGISTER"
+
+
+# --------------------------------------------------------------------------- malformed payloads and a silent surface switch (review 2026-09-22)
+
+
+def test_a_successful_response_of_the_wrong_shape_costs_one_inventory_not_the_project():
+    """A 200 whose body is not the documented shape used to escape as AttributeError and end the project."""
+    from devostasis.normalize import INV_RELEASES
+
+    obs, _, _ = _collect(_routes(**{f"{BASE}/actions/runs": (200, {}, None)}))
+    revisions = obs.get(CI_REVISIONS)
+    assert revisions.status == ERROR and revisions.reason_code == "UNEXPECTED_PAYLOAD"
+    assert obs.status_of(INV_CRS) == AVAILABLE, "the other inventories were still collected"
+
+    obs, _, _ = _collect(_routes(**{f"{BASE}/actions/runs": (200, {}, {"total_count": 1, "workflow_runs": {"id": 1}})}))
+    assert obs.get(CI_REVISIONS).reason_code == "UNEXPECTED_PAYLOAD"
+
+    obs, _, _ = _collect(_routes(**{f"{BASE}/releases": (200, {}, {"message": "unexpected"})}))
+    releases = obs.get(INV_RELEASES)
+    assert releases.status == ERROR and releases.reason_code == "UNEXPECTED_PAYLOAD"
+    assert obs.status_of(CI_REVISIONS) == AVAILABLE
+
+
+def test_a_failed_workflow_lookup_is_recorded_when_check_suites_supply_the_evidence():
+    """Actions FORBIDDEN, check suites readable: the evidence is parent-level, and the receipt must say why."""
+    actions_suite = {"id": 9, "status": "completed", "conclusion": "success", "app": {"slug": "github-actions"}, "url": "s9", "latest_check_runs_count": 3}
+    routes = _routes(**{
+        f"{BASE}/actions/workflows": (403, {}, {"message": "Resource not accessible by integration"}),
+        f"{BASE}/commits/c1/check-suites": (200, {}, {"total_count": 1, "check_suites": [actions_suite]}),
+        f"{BASE}/commits/c2/check-suites": (200, {}, {"total_count": 0, "check_suites": []}),
+    })
+    obs, transport, _ = _collect(routes)
+    assert not any(path.endswith("/actions/runs") for path, _ in transport.calls), "runs are never asked for without a workflow count"
+    revisions = obs.get(CI_REVISIONS)
+    assert revisions.status == AVAILABLE and revisions.coverage["surface"] == "github_check_suites"
+    assert obs.value_of(CI_CONFIGURED) is True
+    assert "WORKFLOWS_UNAVAILABLE:FORBIDDEN" in obs.receipt.capability_notes
+    assert "CI_SURFACE:GITHUB_CHECK_SUITES_SAMPLED" in obs.receipt.capability_notes
+    assert "CI_SURFACE:GITHUB_ACTIONS_ONLY" not in obs.receipt.capability_notes
+
+    plain, _, _ = _collect(_routes())
+    assert not any(note.startswith("WORKFLOWS_UNAVAILABLE") for note in plain.receipt.capability_notes)

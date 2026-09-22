@@ -153,7 +153,7 @@ comes first is the consumer's policy, and no accepted contract defines it.
 Requires Python 3.12 or newer. The runtime uses the standard library only.
 
 ```bash
-pip install git+https://github.com/drevendev/devostasis@v0.1.8
+pip install git+https://github.com/drevendev/devostasis@v0.1.9
 ```
 
 Observe one repository (a GitHub token is read from `DEVOSTASIS_GITHUB_TOKEN`,
@@ -205,7 +205,7 @@ secret at all, and branch its next steps on the demand levels:
 ```yaml
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.8
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.9
   decide:
     needs: vitals
     runs-on: ubuntu-latest
@@ -255,12 +255,14 @@ A complete synthetic bundle is checked in under
 
 ## Status
 
-Version 0.1.0 is the minimum viable version: GitHub only, seven Vitals,
-immutable bundles, filesystem history store, Markdown report. The
-[ROADMAP](ROADMAP.md) lists what is deliberately deferred: a GitLab adapter,
-consumer demand interfaces for autonomous development systems, additional
-instruments (test state, coverage, deployments), an HTML renderer and a
-calibration corpus.
+Version 0.1.x is the minimum viable engine: GitHub only, seven Vitals,
+immutable bundles, a filesystem history store with a fleet index, a Markdown
+report, the demand interface, gauges, the accepted band ordering and an
+executable conformance vector format. The [ROADMAP](ROADMAP.md) lists what is
+deliberately deferred (a GitLab adapter, additional instruments such as test
+state, coverage and deployments, an HTML renderer, a calibration corpus) and
+which accepted research judgements are still waiting to be adopted. The
+[CHANGELOG](CHANGELOG.md) records every contract and policy version change.
 
 ## Provenance
 

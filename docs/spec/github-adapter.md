@@ -15,7 +15,7 @@ API version `2022-11-28`, page-based pagination with 100 items per page.
 | targets | `GET /milestones?state=all` | 3 pages; skipped when `planning.source = none` |
 | releases | `GET /releases?per_page=30` | 1 page |
 | verification | `GET /actions/workflows` (count), `GET /actions/runs?branch=<default>&created=>=<14d>`, `GET /actions/runs/{id}/attempts/{n}` for reruns | 20 pages, 5 attempts per run, 60 attempt lookups |
-| fallback verification | `GET /commits/{sha}/check-suites` per revision, only when no Actions runs exist | 100 revisions |
+| fallback verification | `GET /commits/{sha}/check-suites` per revision, only when no Actions run was seen: none exists in the window, or the workflow lookup itself failed (recorded as `WORKFLOWS_UNAVAILABLE:<reason>`) | 100 revisions |
 
 A typical small repository costs 10 to 30 requests; a very active one
 (hundreds of merged change requests and more than a thousand default-branch
@@ -38,7 +38,11 @@ enumeration is a lower bound of the true activity and is reported as
 
 A capped pagination yields `PARTIAL` with `PAGINATION_CAPPED`; unresolved
 branch heads yield `PARTIAL` with `BRANCH_HEADS_UNRESOLVED`; incomplete
-attempt history yields `PARTIAL` with `ATTEMPT_HISTORY_INCOMPLETE`.
+attempt history yields `PARTIAL` with `ATTEMPT_HISTORY_INCOMPLETE`. A
+successful response whose body is not the shape the endpoint documents (a
+list expected, an object or nothing returned) is `ERROR` with
+`UNEXPECTED_PAYLOAD` for that inventory alone; it never ends the project's
+collection.
 
 ## `ci.configured`
 
@@ -69,7 +73,7 @@ the ROADMAP with the observation it would feed.
 
 ## Token handling
 
-Order of resolution: `--token`, `DEVOSTASIS_GITHUB_TOKEN`, `GITHUB_TOKEN`,
-`GH_TOKEN`, the configured `token_env`, then `gh auth token`. Without a token
-only public repositories are readable and the unauthenticated rate limit
-applies. The token is sent only to `api.github.com` and is never persisted.
+Order of resolution: `--token`, the configured `token_env`,
+`DEVOSTASIS_GITHUB_TOKEN`, `GITHUB_TOKEN`, `GH_TOKEN`, then `gh auth token`.
+Without a token only public repositories are readable and the unauthenticated
+rate limit applies. The token is sent only to `api.github.com` and is never persisted.
