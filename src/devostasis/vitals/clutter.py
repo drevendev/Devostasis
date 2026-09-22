@@ -3,6 +3,15 @@
 Clutter measures attention burden, not value. Closing valid work only to
 improve Clutter is a known gaming path, so the band stays descriptive and the
 counts stay visible.
+
+A stale branch is residue only when it is known to be one. When the branch
+inventory declares ``git.nondefault_branches.retention_semantics`` as
+``UNCLASSIFIED``, the stale-branch count is an upper bound on the true residue
+(permanent case T7): the band is the one the full count reaches, the result is
+``DEGRADED`` with ``CONSERVATIVE_UPPER_BOUND`` semantics, ``possible_bands``
+holds every band some classified residue between zero and the count reaches,
+and ``CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED`` says why. An inventory that does
+not declare its retention semantics is read as it always was.
 """
 
 from __future__ import annotations
@@ -15,6 +24,8 @@ from .common import (
     EVAL_DEGRADED,
     SEM_EXACT,
     SEM_LOWER,
+    SEM_SUPERSET,
+    SEM_UPPER,
     VitalResult,
     as_int,
     bands_from,
@@ -32,7 +43,11 @@ ISSUES_STALE = "forge.issues.stale_open_count_30d"
 CR_OPEN = "forge.change_requests.open_count"
 CR_STALE = "forge.change_requests.stale_open_count_14d"
 BRANCHES_STALE = "git.nondefault_branches.stale_count_30d"
+BRANCHES_RETENTION = "git.nondefault_branches.retention_semantics"
 IDS = [ISSUES_OPEN, ISSUES_STALE, CR_OPEN, CR_STALE, BRANCHES_STALE]
+
+RETENTION_UNCLASSIFIED = "UNCLASSIFIED"
+PURPOSE_UNCLASSIFIED = "CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED"
 
 SHARED = ["FORGE_INVENTORY", "BRANCH_RESIDUE"]
 GROUPS = ["CLUTTER_FLOW_FORGE"]
@@ -95,6 +110,12 @@ def evaluate(obs: ObservationSet) -> VitalResult:
     tracked_open = cr_open + (issues_open or 0)
     stale_work = cr_stale + (issues_stale or 0)
     band = classify(stale_work, tracked_open, stale_branches)
+    unclassified = (
+        stale_branches is not None
+        and stale_branches > 0
+        and obs.is_good(BRANCHES_RETENTION)
+        and obs.value_of(BRANCHES_RETENTION) == RETENTION_UNCLASSIFIED
+    )
     derived = {
         "tracked_open_count": tracked_open,
         "stale_work_count": stale_work,
@@ -111,6 +132,38 @@ def evaluate(obs: ObservationSet) -> VitalResult:
         + (f"; {stale_branches} stale non-default branches" if stale_branches is not None else "")
         + "."
     )
+    if unclassified:
+        # T7: the count is an upper bound on residue, because none of these
+        # branches is known to be waste. Every classified residue from none to
+        # all of them is admissible, and each is classified with the work items.
+        reachable = {classify(stale_work, tracked_open, residue) for residue in range(0, stale_branches + 1)}
+        possible = [b for b in BANDS if b in reachable]
+        derived["stale_branch_count_semantics"] = "UPPER_BOUND"
+        derived["branch_retention_semantics"] = RETENTION_UNCLASSIFIED
+        if excluded:
+            # Unavailable components pull the true band up, unclassified
+            # branches pull it down: only a superset of both is honest.
+            possible = [b for b in BANDS if b in set(possible) | set(bands_from(BANDS, band))]
+            semantics = SEM_SUPERSET
+            tail = " The branch purpose is unclassified and a component is unavailable, so the band is neither a lower nor an upper bound; the possible bands cover both."
+        else:
+            semantics = SEM_UPPER
+            tail = " The purpose of the stale branches is unclassified, so the band is an upper bound on the residue."
+        return VitalResult(
+            vital_id=VITAL_ID,
+            vital_version=VITAL_VERSION,
+            rule_id=RULE_ID,
+            band=band,
+            evaluation_status=EVAL_DEGRADED,
+            band_semantics=semantics,
+            possible_bands=possible,
+            inputs=input_meta(obs, IDS + [BRANCHES_RETENTION]),
+            derived=derived,
+            shared_signal_groups=SHARED,
+            dependency_group_ids=GROUPS,
+            diagnostics=diagnostics + excluded + [PURPOSE_UNCLASSIFIED],
+            explanation=explanation + tail,
+        )
     if not excluded:
         return VitalResult(
             vital_id=VITAL_ID,

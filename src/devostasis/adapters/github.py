@@ -56,6 +56,7 @@ MAX_BRANCH_HEAD_LOOKUPS = 60
 MAX_ATTEMPT_LOOKUPS = 60
 MAX_ATTEMPTS_PER_RUN = 5
 MAX_SUITE_REVISIONS = 100
+MAX_SUITE_PAGES = 3
 MAX_RELEASES = 30
 MAX_REGISTER_BYTES = 1_000_000
 
@@ -1003,25 +1004,48 @@ class GitHubAdapter:
             if runs_seen:
                 self.notes.append("CHECKS_SURFACE_NOT_COLLECTED")
 
+        # The check-suite surface is sampled per revision, newest first, when
+        # no Actions run was seen. Its coverage is tracked on its own (#12
+        # finding 1): how many revisions were planned and examined, whether
+        # every suite page was read, and why sampling stopped. A truncated
+        # sample, a failed fetch or a spent budget make the series PARTIAL;
+        # the parents already collected are kept, a failure among them stays.
+        suites_planned = 0
         suites_sampled = 0
+        suites_pages_complete = True
+        suites_stop: str | None = None
         suites_failure: Exception | None = None
         if not runs_seen and not runs_failure:
-            for commit in sorted(window_commits, key=lambda c: (c["committed_at"], c["sha"]), reverse=True)[:MAX_SUITE_REVISIONS]:
+            planned = sorted(window_commits, key=lambda c: (c["committed_at"], c["sha"]), reverse=True)
+            suites_planned = len(planned)
+            for commit in planned[:MAX_SUITE_REVISIONS]:
                 suites_sampled += 1
                 try:
-                    body = self.client.get(f"{base}/commits/{commit['sha']}/check-suites", {"per_page": 100})
+                    suites, page_complete = self.client.paginate(f"{base}/commits/{commit['sha']}/check-suites", {}, MAX_SUITE_PAGES, items_key="check_suites")
                 except (ApiFailure, NetworkFailure) as exc:
                     suites_failure = exc
+                    suites_stop = exc.reason_code if isinstance(exc, ApiFailure) else "NETWORK"
                     break
-                for suite in body.get("check_suites", []) or []:
+                if not page_complete:
+                    suites_pages_complete = False
+                    suites_stop = suites_stop or self.client.incomplete_reason()
+                for suite in suites:
+                    if not isinstance(suite, dict):
+                        continue
                     app_slug = (suite.get("app") or {}).get("slug")
                     if app_slug == "github-actions" and workflows_total:
                         continue
                     if suite.get("latest_check_runs_count", 1) == 0:
                         continue
                     parents_by_sha.setdefault(commit["sha"], []).append(github_ci.check_suite_parent(suite))
+                if self.client.budget_exhausted:
+                    suites_stop = suites_stop or BUDGET_EXHAUSTED
+                    break
+            if suites_failure is None and suites_sampled < suites_planned:
+                suites_stop = suites_stop or ("CHECK_SUITE_SAMPLE_CAPPED" if suites_sampled >= MAX_SUITE_REVISIONS else BUDGET_EXHAUSTED)
             if suites_sampled:
                 self.notes.append("CI_SURFACE:GITHUB_CHECK_SUITES_SAMPLED")
+        suites_complete = suites_failure is None and suites_pages_complete and suites_sampled == suites_planned
 
         any_parents = any(parents_by_sha.values())
         if workflows_failure is not None:
@@ -1055,12 +1079,14 @@ class GitHubAdapter:
             reason = suites_failure.reason_code if isinstance(suites_failure, ApiFailure) else "NETWORK"
             self.notes.append(f"CHECK_SUITES_UNAVAILABLE:{reason}")
         records = github_ci.build_revision_records(window_commits, parents_by_sha)
-        complete = runs_complete and attempts_complete and (commits_obs.status == AVAILABLE)
+        complete = runs_complete and attempts_complete and suites_complete and (commits_obs.status == AVAILABLE)
         reason = None
         if not runs_complete:
             reason = self.client.incomplete_reason()
         elif not attempts_complete:
             reason = "ATTEMPT_HISTORY_INCOMPLETE"
+        elif not suites_complete:
+            reason = "CHECK_SUITES_INCOMPLETE"
         elif commits_obs.status != AVAILABLE:
             reason = "REVISIONS_PARTIAL"
         obs.add(
@@ -1074,6 +1100,10 @@ class GitHubAdapter:
                     "window_end": self.observed_at,
                     "runs_complete": runs_complete,
                     "attempts_complete": attempts_complete,
+                    "suites_complete": suites_complete,
+                    "suite_revisions_planned": suites_planned,
+                    "suite_revisions_examined": suites_sampled,
+                    "suites_stop_reason": suites_stop,
                     "outcome_map_version": github_ci.OUTCOME_MAP_VERSION,
                     "surface": "github_actions" if runs_seen else ("github_check_suites" if any_parents else "none"),
                 },

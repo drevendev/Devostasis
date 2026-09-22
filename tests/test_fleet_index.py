@@ -106,7 +106,8 @@ def test_the_fleet_index_is_not_mistaken_for_a_project(tmp_path):
 def test_a_bundle_without_a_demand_member_yields_null_levels(tmp_path):
     """Bundles written before the demand interface existed must not get invented levels."""
     store = _store_with(tmp_path)
-    (store.root / "projects" / "github.com" / "acme" / "widget" / "latest" / "demand.json").unlink()
+    for path in (store.root / "projects" / "github.com" / "acme" / "widget").rglob("demand.json"):
+        path.unlink()  # the immutable bundle and its convenience copy alike (#28: the index reads the immutable one)
     write_fleet_index(store)
     entry = _index(store)["projects"][0]
     assert entry["attention_order"] == []
@@ -117,7 +118,8 @@ def test_a_bundle_without_a_demand_member_yields_null_levels(tmp_path):
 
 def test_an_unreadable_demand_member_degrades_instead_of_failing(tmp_path):
     store = _store_with(tmp_path)
-    (store.root / "projects" / "github.com" / "acme" / "widget" / "latest" / "demand.json").write_text("{ not json", "utf-8")
+    for path in (store.root / "projects" / "github.com" / "acme" / "widget").rglob("demand.json"):
+        path.write_text("{ not json", "utf-8")
     write_fleet_index(store)
     assert _index(store)["projects"][0]["vitals"]["flow"]["level"] is None
 

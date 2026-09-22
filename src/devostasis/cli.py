@@ -13,9 +13,9 @@ from typing import Any
 from . import __version__, canonical, render, timeutil
 from .adapters.cache import ConditionalCache
 from .adapters.github import CollectionError, GitHubClient, UrllibTransport
-from .bundle import load_bundle_dir, verify_dir
+from .bundle import BundleError, load_bundle_dir, verify_dir
 from .config import ConfigError, load_config, single_project
-from .history import FilesystemHistoryStore
+from .history import FilesystemHistoryStore, HistoryStoreError
 from .observations import ObservationSet
 from .runner import build_from_observations, evaluate, observe, run_all, write_fleet_index
 
@@ -186,8 +186,12 @@ def cmd_build(args: argparse.Namespace) -> int:
     project = single_project(f"{obs.subject.get('owner', 'unknown')}/{obs.subject.get('repo', 'unknown')}", **_project_overrides(args))
     derive(obs, project)
     store = FilesystemHistoryStore(args.store)
-    bundle = build_from_observations(project, obs, store)
-    path = store.commit(bundle)
+    try:
+        bundle = build_from_observations(project, obs, store)
+        path = store.commit(bundle)
+    except (BundleError, HistoryStoreError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     write_fleet_index(store)
     print(f"bundle {bundle.bundle_id[:12]} ({bundle.manifest['comparison_status']}) written to {path}")
     print(_bands_line(bundle.bands()))

@@ -97,9 +97,32 @@ surfaces (check suites) do not, which is diagnosed as
 `HISTORY_PROVENANCE_PARENT_LEVEL_ONLY`. Persisting revision history across
 bundles is on the roadmap (PV-HIST-001).
 
+## The newest revision
+
+The newest in-scope revision speaks for the current state. Its verdict is
+read as it was composed: decisive verdicts stand; `VERIFY_UNRESOLVED` makes
+the band a conservative superset over the completions the evidence admits;
+positively observed `NOT_EXECUTED` and `NON_VERIFY_TERMINAL` fall back to the
+latest decisive revision and are diagnosed. `UNKNOWN` is none of those: it is
+the absence of an observation (a `startup_failure`, a conclusion this version
+has never seen), and under `PV-REV-INTEGRITY-UNKNOWN-001` it never inherits an
+older verdict. The Vital is then `UNKNOWN` with no band, the decisive history
+stays visible, and `CURRENT_VERDICT_UNKNOWN:<revision>` names the cause
+(INT-UNKNOWN-01..06, [vitals.md](vitals.md#integrity)).
+
+## Sample strength
+
+One to three decisive revisions are a `SPARSE` sample and carry
+`CI_SPARSE_SAMPLE`; four or more are `ESTABLISHED` (accepted with the exact
+R1 and R2 vectors, PV-REV-TEST-VECTORS-002). The strength is emitted in
+`derived.sample_strength` and never changes a band.
+
 ## Conformance cases implemented
 
 R54 same-revision retry keeps historical failure; R55 retry-count invariance;
 R56 newer revision is distinct; R57 order and surface invariance; the V0.7
 composition precedence; CI-OUTCOME-01..04 outcome mapping; unresolved current
-verification degrades instead of claiming `CLEAN`.
+verification degrades instead of claiming `CLEAN`; INT-UNKNOWN-01..06; T2, R1
+and R2 as vectors ([conformance.md](conformance.md)). The `ci` vector kind
+([vectors.md](vectors.md)) executes a case at the normalization boundary this
+page describes.

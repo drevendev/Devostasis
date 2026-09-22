@@ -5,8 +5,107 @@ contract or a policy always come with a version bump of that contract.
 
 ## 0.1.9 (unreleased)
 
-A review pass, like 0.1.7: no new capability, and no rule, threshold, window
-or gauge changed. Each defect was reproduced before it was fixed.
+Two things in one release. First, the adoption of every research judgement
+that had been delivered and not adopted, which the roadmap's standing
+obligation puts before queued work: one Integrity rule version, two accepted
+diagnostics under existing rules, eight accepted exact vectors and eleven
+cases of two judgements, plus the vector kinds those cases needed. Second,
+the review pass of 2026-09-22 (issue #30). No threshold, window or gauge
+changed; the one band rule that changed did so under an accepted judgement,
+and its `rule_id` moved with it.
+
+- **Integrity rule `integrity.bands.v1+ci-unit-004`.** Three accepted
+  judgements, one rule version, one `RULE_VERSION_BOUNDARY` per project.
+  `PV-REV-INTEGRITY-UNKNOWN-001` (issue #13): a newest in-scope revision whose
+  current verdict is `UNKNOWN` never inherits an older decisive verdict; the
+  Vital is `UNKNOWN` with no band, the decisive history stays in `derived`,
+  and `CURRENT_VERDICT_UNKNOWN:<revision>` names the cause. Positively
+  observed `NOT_EXECUTED` and `NON_VERIFY_TERMINAL` keep the accepted
+  fallback. Before this, four passes and a newest `startup_failure` produced
+  `CLEAN / AVAILABLE / EXACT`, and since 0.1.8 a false `IMPROVED`.
+  `PV-REV-TEST-003` (issue #12 finding 3): a required revision series that is
+  `PARTIAL` is `UNKNOWN` with no band, its counts visible and marked; the
+  `DEGRADED` path with a fixed three-band tail called a superset is gone.
+  `PV-REV-TEST-VECTORS-002` (issue #21): one to three decisive revisions carry
+  `sample_strength = SPARSE` and `CI_SPARSE_SAMPLE`, four or more
+  `ESTABLISHED`. The one degraded path left, a newest revision still being
+  verified, now declares a `possible_bands` derived from the completions the
+  evidence admits: the revision fails, passes, or ends without a verdict.
+  Cases `INT-UNKNOWN-01..06`, `T2`, `R1`, `R2` are executable vectors.
+- **Pulse diagnoses issue-only activity** (`PULSE_ISSUE_ONLY_ACTIVITY`,
+  permanent case T5, issue #22), under `pulse.bands.v1` as the accepted vector
+  requires: provenance, not a judgement about productivity.
+- **Clutter reads unclassified branch purpose as an upper bound** (permanent
+  case T7, issue #22), under `clutter.bands.v0` as the accepted vector
+  requires: when the inventory declares
+  `git.nondefault_branches.retention_semantics = UNCLASSIFIED`, the stale
+  count bounds the residue from above, the result is `DEGRADED /
+  CONSERVATIVE_UPPER_BOUND` with every reachable band listed and
+  `CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED`. The GitHub adapter does not emit the
+  key in this version: doing so would make Clutter `DEGRADED` for every
+  project with a stale branch and take the accepted ordering away from it, so
+  that is a fleet-wide decision left with issue #22, not a default.
+- **The accepted exact vectors are in the corpus** as the research process
+  wrote them: `T2`, `R1`, `R2` (PV-REV-TEST-VECTORS-002), `R4`
+  (PV-REV-TEST-VECTORS-004), `R3` (PV-REV-TEST-VECTORS-005), `T4`, `T5`, `T7`
+  (PV-REV-TEST-VECTORS-007). Seven of the seventy named cases without a test
+  now have one; sixty-three remain.
+- **Two vector kinds and one shape, in answer to the format findings.** The
+  `ci` kind (issue #20) starts at the provider-native normalization: workflow
+  runs, their earlier attempts and check suites as the provider reports them,
+  through the outcome map to canonical revision records and, when the case
+  asks, into Integrity. `R5..R10` can now be materialized at the boundary they
+  are about; `INT-UNKNOWN-02` and `03` already are. The `activity` kind
+  carries `ACT-COV-01..05` of `PV-REV-ACTIVITY-COVERAGE-001` (issue #9), the
+  runtime of which 0.1.7 already had. `variants` lets one case hold several
+  evidence shapes to one expectation, for `vital` and `ci` cases, which is
+  the one-identifier multi-variant mechanism T8 and R9 need (issue #23);
+  `vital` cases may also assert `shared_signal_groups` and
+  `dependency_group_ids` (part of T6). Every kind fails closed as before; a
+  provider without a normalization is an error, never a skip.
+- **An observation not later than the previous bundle is `INCOMPARABLE`**
+  (issue #17, `NON_MONOTONIC_OBSERVATION:<previous>-><current>`). It was
+  `COMPARABLE`, its delta reported `IMPROVED` and `WORSENED` with the
+  direction inverted while citing the accepted order, and `activity.json`
+  carried an interval that ended before it started. The bundle is still
+  written and immutable; it claims no direction and no interval, and
+  `build_activity` refuses a backwards interval outright. Where such a bundle
+  *lands* is the monotonic-write policy of issue #12 finding 6, still to be
+  decided.
+- **The comparison reads the immutable bundle the index names, not
+  `latest/`** (issue #28). A compacted or damaged convenience copy no longer
+  turns the next run into a `HISTORY_GAP`; a copy that names a different
+  bundle than the index is still refused, so finding 6 stays visible. Without
+  an index the newest immutable bundle is found by scanning. The fleet
+  surfaces link to the immutable report when the copy is gone. RPT-3 now
+  corrupts the immutable copy, which is what its sentence always meant.
+- **Verification binds the manifest's metadata to what the identity hashes**
+  (issue #12 finding 4). `semantic_config`, the field the comparison reads,
+  must be the projection of the validated stored config
+  (`SEMANTIC_CONFIG_MISMATCH`); every identity field the manifest repeats must
+  agree with the preimage (`IDENTITY_FIELD_MISMATCH`); the manifest receipt
+  must hash to `source_receipts_digest` and be the receipt inside
+  `observations.json` (`RECEIPT_DIGEST_MISMATCH`, `RECEIPT_COPY_MISMATCH`);
+  and `snapshot.json` must name the evidence the bundle carries
+  (`OBSERVATIONS_DIGEST_MISMATCH`). A manifest of the wrong shape is a
+  problem, not an `AttributeError`. All 254 bundles of the fleet's store still
+  verify.
+- **A build over evidence derived under another configuration is refused**
+  (issue #27, `CONFIG_MISMATCH`). `observe` records the digest of the
+  configuration its aggregates were derived under; `build` with different
+  planning or debt options produced a verified bundle whose effective config
+  said one thing and whose snapshot said another. Only a real digest is
+  compared, so fixtures and examples with placeholders are unaffected.
+- **Check-suite coverage is tracked, paginated and reported** (issue #12
+  finding 1). Suites are read page by page, and the series records how many
+  revisions were planned and examined, whether every page was read and why
+  sampling stopped. Past 100 revisions, past 3 pages, after a failed fetch or
+  a spent budget the series is `PARTIAL / CHECK_SUITES_INCOMPLETE`; the
+  parents already collected are kept and an observed failure stays. The 101st
+  revision and the 101st suite are tests.
+- **The example bundle was regenerated** under the new Integrity rule.
+
+The review pass of 2026-09-22, each defect reproduced before it was fixed:
 
 - **A successful response of the wrong shape costs one inventory, not the
   project.** `GET /actions/runs` answering 200 with no body, or

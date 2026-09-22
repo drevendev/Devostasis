@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +20,10 @@ from .history import FilesystemHistoryStore, HistoryStoreError
 from .observations import ObservationSet
 from .policy import POLICY_VERSION
 from .vitals import build_snapshot, evaluate_all
+
+NON_MONOTONIC_OBSERVATION = "NON_MONOTONIC_OBSERVATION"
+CONFIG_MISMATCH = "CONFIG_MISMATCH"
+_DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 
 
 @dataclass
@@ -50,6 +55,7 @@ def decide_comparison(
     store: FilesystemHistoryStore,
     project: ResolvedProject,
     immutable_project_id: str | None = None,
+    observed_at: str | None = None,
 ) -> tuple[str, str | None, dict[str, Any] | None, dict[str, Any] | None, list[str]]:
     """Return (comparison_status, previous_bundle_id, previous_manifest, previous_snapshot, reasons).
 
@@ -57,6 +63,13 @@ def decide_comparison(
     (RPT-7); without it the locator is the identity and a renamed project
     starts a new BASELINE, which is the honest outcome when nothing proves
     the two names are the same project.
+
+    A pair is only comparable when the current observation is later than the
+    previous one (#17). An observation older than, or as old as, the bundle it
+    would be compared against is ``INCOMPARABLE`` with the reason
+    ``NON_MONOTONIC_OBSERVATION``: the band ordering assumes that "previous"
+    precedes "current" in time, and a delta computed backwards would report
+    every direction inverted while citing the accepted order as its authority.
     """
     latest = store.latest(project.project_key, immutable_project_id)
     if not latest.exists:
@@ -70,14 +83,38 @@ def decide_comparison(
         "semantic_config": project.semantic_config(),
     }
     reasons = delta_mod.compatibility_reasons(current_fields, latest.manifest)
+    previous_observed_at = latest.manifest.get("observed_at")
+    if observed_at is not None and isinstance(previous_observed_at, str):
+        if timeutil.parse_ts(observed_at) <= timeutil.parse_ts(previous_observed_at):
+            reasons.append(f"{NON_MONOTONIC_OBSERVATION}:{previous_observed_at}->{observed_at}")
     if reasons:
         return delta_mod.INCOMPARABLE, latest.bundle_id, latest.manifest, latest.snapshot, reasons
     return delta_mod.COMPARABLE, latest.bundle_id, latest.manifest, latest.snapshot, []
 
 
+def check_receipt_config(project: ResolvedProject, obs: ObservationSet) -> None:
+    """Refuse to build over evidence that was derived under another effective configuration (#27).
+
+    The receipt records the digest of the configuration the aggregates were
+    derived under. A build whose resolved configuration differs would persist
+    a semantic authority that contradicts its own snapshot, and verify. Only a
+    real digest is compared: fixtures and examples carry placeholders.
+    """
+    recorded = obs.receipt.config_hash if obs.receipt is not None else None
+    if not isinstance(recorded, str) or not _DIGEST.fullmatch(recorded):
+        return
+    resolved = project.effective_config_digest()
+    if recorded != resolved:
+        raise BundleError(
+            f"{CONFIG_MISMATCH}: the observations were collected under effective configuration {recorded}, "
+            f"this build resolves {resolved}; pass the planning and debt options the observation used, or observe again"
+        )
+
+
 def build_from_observations(project: ResolvedProject, obs: ObservationSet, store: FilesystemHistoryStore, run_meta: dict[str, Any] | None = None) -> Bundle:
+    check_receipt_config(project, obs)
     snapshot = build_snapshot(obs, evaluate_all(obs))
-    status, previous_id, previous_manifest, previous_snapshot, reasons = decide_comparison(store, project, obs.subject.get("immutable_project_id"))
+    status, previous_id, previous_manifest, previous_snapshot, reasons = decide_comparison(store, project, obs.subject.get("immutable_project_id"), obs.observed_at)
     delta = delta_mod.compare(snapshot, previous_snapshot, status, previous_id, reasons)
     activity = None
     if project.activity_enabled:

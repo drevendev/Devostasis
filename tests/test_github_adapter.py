@@ -135,7 +135,7 @@ def test_c4_pagination_cap_is_partial(monkeypatch):
     assert obs.status_of("git.default_branch.commits.count_28d") == PARTIAL
     bands = {r.vital_id: r for r in evaluate_all(obs)}
     assert bands["pulse"].evaluation_status == "DEGRADED" and bands["pulse"].band_semantics == "CONSERVATIVE_LOWER_BOUND"
-    assert bands["integrity"].evaluation_status == "DEGRADED"
+    assert bands["integrity"].evaluation_status == "UNKNOWN" and bands["integrity"].band is None, "a truncated required series is UNKNOWN (PV-REV-TEST-003)"
 
 
 def test_no_workflows_and_no_check_suites_is_positively_uninstrumented():
@@ -460,3 +460,114 @@ def test_a_failed_workflow_lookup_is_recorded_when_check_suites_supply_the_evide
 
     plain, _, _ = _collect(_routes())
     assert not any(note.startswith("WORKFLOWS_UNAVAILABLE") for note in plain.receipt.capability_notes)
+
+
+# --------------------------------------------------------------------------- check-suite coverage (#12 finding 1)
+
+
+def _window_commits(count):
+    """`count` default-branch commits inside the 14-day Integrity window, newest first in the API order."""
+    return [_commit(f"w{i:03d}", f"2026-09-{5 - (i % 10) // 1 if False else 5:02d}T{(23 - i % 24):02d}:{(59 - i // 24) % 60:02d}:00Z") for i in range(count)]
+
+
+def _suite(suite_id, conclusion="success", app="circleci"):
+    return {"id": suite_id, "status": "completed", "conclusion": conclusion, "app": {"slug": app}, "url": f"s{suite_id}", "latest_check_runs_count": 1}
+
+
+def _suite_routes(commits, suites_by_sha, workflows_total=0):
+    routes = _routes(**{
+        f"{BASE}/commits": _paged(commits),
+        f"{BASE}/actions/workflows": (200, {}, {"total_count": workflows_total, "workflows": []}),
+    })
+    for commit in commits:
+        sha = commit["sha"]
+        suites = suites_by_sha.get(sha, [])
+
+        def handler(params, suites=suites):
+            page = int(params.get("page", 1))
+            per_page = int(params.get("per_page", 100))
+            return 200, {}, {"total_count": len(suites), "check_suites": suites[(page - 1) * per_page: page * per_page]}
+
+        routes[f"{BASE}/commits/{sha}/check-suites"] = handler
+    return routes
+
+
+def test_check_suites_examined_for_every_revision_are_complete_evidence():
+    commits = _window_commits(100)
+    routes = _suite_routes(commits, {c["sha"]: [_suite(i)] for i, c in enumerate(commits)})
+    obs, _, _ = _collect(routes)
+    item = obs.get(CI_REVISIONS)
+    assert item.status == AVAILABLE and item.coverage["suites_complete"] is True
+    assert item.coverage["suite_revisions_planned"] == 100 and item.coverage["suite_revisions_examined"] == 100
+    assert item.coverage["suites_stop_reason"] is None
+
+
+def test_the_hundred_and_first_revision_makes_the_suite_sample_partial():
+    """The exact boundary the review asked for: 101 revisions, suites examined for 100, every one passing."""
+    commits = _window_commits(101)
+    routes = _suite_routes(commits, {c["sha"]: [_suite(i)] for i, c in enumerate(commits)})
+    obs, _, _ = _collect(routes)
+    item = obs.get(CI_REVISIONS)
+    assert item.status == PARTIAL and item.reason_code == "CHECK_SUITES_INCOMPLETE"
+    assert item.coverage["suite_revisions_planned"] == 101 and item.coverage["suite_revisions_examined"] == 100
+    assert item.coverage["suites_stop_reason"] == "CHECK_SUITE_SAMPLE_CAPPED"
+    assert sum(1 for record in item.value if record["parents"]) == 100, "the evidence collected is kept"
+    derive(obs, single_project("acme/widget"))
+    integrity = {r.vital_id: r for r in evaluate_all(obs)}["integrity"]
+    assert integrity.evaluation_status == "UNKNOWN" and integrity.band is None, "a truncated sample is never an exact favourable result"
+
+
+def test_an_access_failure_after_four_revisions_makes_the_sample_partial_and_keeps_what_was_seen():
+    commits = _window_commits(5)
+    suites = {c["sha"]: [_suite(i, "failure" if i == 1 else "success")] for i, c in enumerate(commits)}
+    routes = _suite_routes(commits, suites)
+    routes[f"{BASE}/commits/{commits[4]['sha']}/check-suites"] = (403, {}, {"message": "Resource not accessible by integration"})
+    obs, _, _ = _collect(routes)
+    item = obs.get(CI_REVISIONS)
+    assert item.status == PARTIAL and item.reason_code == "CHECK_SUITES_INCOMPLETE"
+    assert item.coverage["suites_stop_reason"] == "FORBIDDEN" and item.coverage["suite_revisions_examined"] == 5
+    assert "CHECK_SUITES_UNAVAILABLE:FORBIDDEN" in obs.receipt.capability_notes
+    failed = [record for record in item.value if record["history_state"] == "FAILURE_OBSERVED"]
+    assert len(failed) == 1, "an observed failure is retained"
+    assert obs.value_of(CI_CONFIGURED) is True
+
+
+def test_a_second_page_of_suites_is_read_and_a_capped_page_count_is_partial():
+    from devostasis.adapters import github as github_module
+
+    commits = _window_commits(1)
+    sha = commits[0]["sha"]
+    routes = _suite_routes(commits, {sha: [_suite(i) for i in range(100)] + [_suite(100, "failure")]})
+    obs, transport, _ = _collect(routes)
+    item = obs.get(CI_REVISIONS)
+    assert item.status == AVAILABLE, "101 suites over two pages are complete evidence"
+    assert item.value[0]["history_state"] == "FAILURE_OBSERVED", "the failing suite on the second page is seen"
+    assert [params.get("page") for path, params in transport.calls if path.endswith("/check-suites")] == [1, 2]
+
+    original = github_module.MAX_SUITE_PAGES
+    github_module.MAX_SUITE_PAGES = 1
+    try:
+        obs, _, _ = _collect(routes)
+    finally:
+        github_module.MAX_SUITE_PAGES = original
+    item = obs.get(CI_REVISIONS)
+    assert item.status == PARTIAL and item.coverage["suites_complete"] is False
+    assert item.coverage["suites_stop_reason"] == "PAGINATION_CAPPED"
+
+
+def test_a_spent_budget_makes_the_suite_sample_partial():
+    commits = _window_commits(6)
+    routes = _suite_routes(commits, {c["sha"]: [_suite(i)] for i, c in enumerate(commits)})
+    client = GitHubClient(FakeTransport(routes), budget=12)
+    obs = GitHubAdapter(client, NOW).collect(single_project("acme/widget"))
+    item = obs.get(CI_REVISIONS)
+    assert item.status == PARTIAL and item.reason_code in ("CHECK_SUITES_INCOMPLETE", "REQUEST_BUDGET_EXHAUSTED")
+    assert item.coverage["suites_stop_reason"] == "REQUEST_BUDGET_EXHAUSTED"
+    assert item.coverage["suite_revisions_examined"] < 6
+
+
+def test_the_actions_surface_is_untouched_by_suite_coverage():
+    obs, _, _ = _collect(_routes())
+    item = obs.get(CI_REVISIONS)
+    assert item.status == AVAILABLE and item.coverage["surface"] == "github_actions"
+    assert item.coverage["suites_complete"] is True and item.coverage["suite_revisions_planned"] == 0

@@ -2,7 +2,7 @@
 
 - Observed at: 2026-09-05T12:00:00Z
 - Comparison: BASELINE
-- Bundle: `97b976666ce312b08f21b2d07b4408e94efa4673e8686b1a00f376e314bd74b4`
+- Bundle: `75eaace90bb9db59d103a7bf91fe4f69afb6a3683633d72bcdbd93fb4e051d6d`
 - Contracts: vitals PV-VITALS-V1-002, observations RAW-OBS-V0, policy devostasis.policy.v1
 
 ```text
@@ -112,7 +112,7 @@ _What is the state and friction of the current change-request queue?_
 
 _What does automated verification say about recent immutable revisions?_
 
-- Evaluation: AVAILABLE; rule `integrity.bands.v0+ci-unit-004`
+- Evaluation: AVAILABLE; rule `integrity.bands.v1+ci-unit-004`
 - Gauge (verification stability): ██████░░░░ 62
 - Shares signals with: INTEGRITY_ONLY
 
@@ -123,6 +123,7 @@ _What does automated verification say about recent immutable revisions?_
 | failure_ratio_14d | 0.13 (1/8) |
 | revisions_in_window | 8 |
 | revisions_with_verification | 8 |
+| sample_strength | ESTABLISHED |
 
 ### Debt: PRESENT
 

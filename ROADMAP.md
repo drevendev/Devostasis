@@ -55,7 +55,7 @@ statement; the fix belongs in this repository, not in the rule.
 | Compatibility policy | research process and owner | no contract defines what a breaking change is |
 | `PV-CAL-004` predictive validity | elapsed time | needs calendar days of bundles, not more bundles (see the self-review) |
 | Judgements owed to us | research process | four open, listed below |
-| Accepted judgements not yet adopted | **this repository** | five, listed below; the standing obligation says they come before queued work |
+| Accepted judgements not yet adopted | **the owner, then this repository** | one: `PV-REV-RECEIPT-IDENTITY-003` on [#19](https://github.com/drevendev/Devostasis/issues/19), the fifth identity move, which the owner has to want |
 
 Four judgements the research process owes this repository, all of them about
 work already shipped:
@@ -67,17 +67,18 @@ work already shipped:
 | `PV-REV-DIRECTION-CLOSED-TARGET-001` | calibration finding 9: closing a delivered target un-links the work that delivered it | PENDING |
 | `PV-SPEC-001` | the conformance review of every adoption since the specification was last reviewed, now including B5 | **due**: B5 was adopted in 0.1.8 |
 
-Five judgements the research process has already delivered and this
-repository has not adopted. Each is a repair to what is shipped, so under the
-standing obligation above they come before any queued target:
+Delivered judgements and their adoption. Under the standing obligation above
+they came before any queued target; 0.1.9 adopted every one that did not need
+an owner decision:
 
-| Unit | Where | What adoption requires |
+| Unit | Where | State |
 | --- | --- | --- |
-| `PV-REV-INTEGRITY-UNKNOWN-001` | [#13](https://github.com/drevendev/Devostasis/issues/13) | a newest in-scope revision whose verdict is `UNKNOWN` yields `evaluation_status = UNKNOWN` with no guessed band and no fallback to an older pass; cases `INT-UNKNOWN-01..06`; versions the Integrity `rule_id` |
-| `PV-REV-TEST-003` | [#12](https://github.com/drevendev/Devostasis/issues/12) finding 3 | a required revision series that is `PARTIAL` is `UNKNOWN` with no band, not `DEGRADED` with an invented superset |
-| `PV-REV-RECEIPT-IDENTITY-003` | [#19](https://github.com/drevendev/Devostasis/issues/19) | a receipt identity projection without `run_id`, `started_at` and `ended_at`, fresh receipt, observations and manifest lineages, historical verification dispatch; cases `RECEIPT-ID-01..15` and `17..21`; the fifth identity move |
-| `PV-REV-TEST-VECTORS-002` | [#21](https://github.com/drevendev/Devostasis/issues/21) | Integrity emits `sample_strength = SPARSE` and `CI_SPARSE_SAMPLE` for one to three decisive revisions (`R1`, `R2`) |
-| `PV-REV-ACTIVITY-COVERAGE-001` | [#9](https://github.com/drevendev/Devostasis/issues/9) | reading 3 accepted, the runtime is unchanged; `ACT-COV-01..05` as executable cases (a vector kind for the activity member) and the `PROVENANCE.md` entry |
+| `PV-REV-INTEGRITY-UNKNOWN-001` | [#13](https://github.com/drevendev/Devostasis/issues/13) | adopted in 0.1.9: `integrity.bands.v1+ci-unit-004`, cases `INT-UNKNOWN-01..06` executable |
+| `PV-REV-TEST-003` | [#12](https://github.com/drevendev/Devostasis/issues/12) finding 3 | adopted in 0.1.9: a `PARTIAL` required series is `UNKNOWN` with no band |
+| `PV-REV-TEST-VECTORS-002` | [#21](https://github.com/drevendev/Devostasis/issues/21) | adopted in 0.1.9: `sample_strength`, `CI_SPARSE_SAMPLE`, the accepted `T2`/`R1`/`R2` vectors |
+| `PV-REV-ACTIVITY-COVERAGE-001` | [#9](https://github.com/drevendev/Devostasis/issues/9) | adopted in 0.1.9: `ACT-COV-01..05` as `activity` vectors, the `PROVENANCE.md` entry |
+| `PV-REV-TEST-VECTORS-004/005/007` | [#22](https://github.com/drevendev/Devostasis/issues/22) | adopted in 0.1.9: `R3`, `R4`, `T4`, `T5`, `T7` vectors; the T5 diagnostic and the T7 upper-bound path in the evaluators; whether the GitHub adapter emits `retention_semantics` is a fleet-wide decision still open there |
+| `PV-REV-RECEIPT-IDENTITY-003` | [#19](https://github.com/drevendev/Devostasis/issues/19) | **not adopted**: the fifth identity move, a fresh receipt, observations and manifest lineage with historical verification dispatch; it needs the owner to want it, and the contract document to implement from |
 
 One judgement is ours to ask for rather than to wait on: `ORDER-01..15` are
 this repository's enumeration of the rules the accepted ordering contract
@@ -100,11 +101,12 @@ share for Direction, and its own attention order is actionable.
 
 ### B1. Executable conformance vectors — the format is built, the vectors are owed
 
-The specification names **70 conformance cases with no test behind them**
-(T2..T9, R1, R2, R4..R53, ART-05, ART-08..ART-11, ART-15, RPT-4..RPT-6,
-RPT-9) against 79 rows that do cite one. That number has not moved, and it is
-the half of B1 this repository cannot deliver: the vectors are the research
-process's `PV-TEST-001`, READY but not yet produced.
+The specification names **63 conformance cases with no test behind them**
+(T3, T6, T8, T9, R5..R53, ART-05, ART-08..ART-11, ART-15, RPT-4..RPT-6,
+RPT-9). It named 70 until 0.1.9 adopted the seven exact vectors the research
+process has accepted so far (`T2`, `R1`, `R2`, `R3`, `R4`, `T4`, `T5`, `T7`);
+the rest are still the research process's to produce, one accepted family per
+unit.
 
 The half that was ours shipped in 0.1.8: `devostasis.vectors.v1`, a runner, a
 `devostasis vectors` command and a published schema
@@ -113,9 +115,15 @@ evidence and expected result; the `vital` kind evaluates one Vital over raw
 observation envelopes, the `delta` kind compares two snapshots. It fails
 closed, so an unknown kind or a malformed vector is a red build rather than a
 case that silently did not run, and `ORDER-01..15` are already carried that
-way. Two more kinds are foreseeable and deliberately absent until a case needs
-them: bundle-level identity cases (`ART-*`) and store cases (`RPT-4..RPT-6`,
-`RPT-9`) that need a fixture store rather than a snapshot pair.
+way. 0.1.9 added the `ci` kind, which reaches the provider-native
+normalization `R5..R10` are about ([#20](https://github.com/drevendev/Devostasis/issues/20)),
+the `activity` kind for `ACT-COV-01..05`, and `variants`, the one-identifier
+multi-variant shape `T8` and `R9` need
+([#23](https://github.com/drevendev/Devostasis/issues/23)). Two more kinds
+remain deliberately absent until a case needs them: bundle-level identity
+cases (`ART-*`) and store cases (`RPT-4..RPT-6`, `RPT-9`) that need a fixture
+store rather than a snapshot pair; `T3` needs a surface that carries
+`RAW_RUNS` provenance into Integrity, which no accepted contract defines yet.
 
 Closing B1 needs the vectors themselves. Until then debt D-1 stays open, and
 the specification keeps saying that "conformance" covers about half of what it

@@ -7,7 +7,7 @@
 | `BASELINE` | no canonical bundle exists yet for the project |
 | `COMPARABLE` | the latest bundle loads, verifies, and shares `vitals_contract_version`, `observation_contract_version`, `policy_version` and the semantic configuration (planning source, debt mapping) |
 | `HISTORY_GAP` | history is known to exist but the latest bundle cannot be loaded or verified |
-| `INCOMPARABLE` | the latest bundle was produced under different semantics |
+| `INCOMPARABLE` | the latest bundle was produced under different semantics, or the current observation is not later than it (`NON_MONOTONIC_OBSERVATION:<previous>-><current>`, issue #17): an older or simultaneous observation is written and stays immutable, but it claims no direction and no interval |
 
 A current snapshot is always produced when current evidence is sufficient.
 `HISTORY_GAP` and `INCOMPARABLE` never emit `UNCHANGED`; missing prior values
@@ -103,6 +103,16 @@ identical re-put is idempotent, a different one is an `ImmutabilityError`);
 `latest` is a convenience pointer, never authoritative; storage activity is
 never observed as project activity because the store is not a target; a store
 must not be more permissive than its sources.
+
+The previous bundle of a comparison is the immutable bundle the project index
+names (its tail), verified from its own contents; without an index the newest
+immutable bundle is found by scanning `history/` (issue #28). `latest/` is
+republished on every commit and may be compacted or damaged without turning
+the next run into a `HISTORY_GAP`; a `latest/` that names a *different*
+bundle than the index is a store inconsistency and is still refused
+(`latest pointer ... differs from index tail`). `HISTORY_GAP` therefore means
+what its definition says: the previous immutable bundle cannot be loaded or
+verified.
 
 ### Identity and rename continuity (RPT-7)
 
@@ -215,9 +225,11 @@ version that produced it, replaying only from the validated stored config.
 ## Conformance cases implemented
 
 RPT-1 (ART-01) baseline without fake delta; RPT-2 interval from the previous
-successful bundle; RPT-3 (ART-03) history gap; RPT-7 rename and transfer
-continuity keyed by immutable project id, including the fail-closed cases;
-RPT-8 storage isolation by construction; RPT-10 (ART-04) semantic
-incompatibility; per-Vital rule version boundary. RPT-4..RPT-6 and RPT-9,
-including an executable permission-domain fixture, remain open implementation
-work named by PV-REV-REPORT-001.
+successful bundle; RPT-3 (ART-03) history gap, over the immutable bundle;
+RPT-7 rename and transfer continuity keyed by immutable project id, including
+the fail-closed cases; RPT-8 storage isolation by construction; RPT-10
+(ART-04) semantic incompatibility; per-Vital rule version boundary; the
+non-monotonic observation boundary; the immutable authority of the comparison;
+ACT-COV-01..05 as `activity` vectors. RPT-4..RPT-6 and RPT-9, including an
+executable permission-domain fixture, remain open implementation work named by
+PV-REV-REPORT-001.

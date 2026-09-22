@@ -1,0 +1,104 @@
+{
+  "schema": "devostasis.vectors.v1",
+  "notes": "Permanent Pulse cases at the direct evaluator boundary, transcribed from the research materializations the process accepted: R4 from PV-TEST-VECTORS-004 (accepted by PV-REV-TEST-VECTORS-004), R3 from PV-TEST-VECTORS-005 (accepted by PV-REV-TEST-VECTORS-005), T4 and T5 from PV-TEST-VECTORS-007 (accepted by PV-REV-TEST-VECTORS-007). T5 states the accepted issue-only provenance diagnostic (issue #22). Expectations are the accepted ones; none was derived from an implementation.",
+  "vectors": [
+    {
+      "case": "R3",
+      "title": "Zero observed Pulse activity with one supported optional channel unavailable is a conservative DORMANT lower bound",
+      "kind": "vital",
+      "source_unit": "PV-VIT-003",
+      "given": {
+        "vital": "pulse",
+        "observed_at": "2026-09-05T12:00:00Z",
+        "observations": [
+          {"observation_id": "git.default_branch.commits.count_28d", "value": 0},
+          {"observation_id": "git.default_branch.commit_active_days_28d", "value": 0},
+          {"observation_id": "forge.change_requests.updated_count_28d", "value": 0},
+          {"observation_id": "forge.issues.updated_count_28d", "status": "UNAVAILABLE", "reason_code": "ISSUES_DISABLED"}
+        ]
+      },
+      "expect": {
+        "band": "DORMANT",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": ["DORMANT", "QUIET", "STEADY", "SURGING"],
+        "rule_id": "pulse.bands.v1",
+        "derived": {"activity_events_28d": 0, "channel_count": 0}
+      }
+    },
+    {
+      "case": "R4",
+      "title": "Complete fresh zero activity across every Pulse channel is exactly DORMANT",
+      "kind": "vital",
+      "source_unit": "PV-TEST-001",
+      "given": {
+        "vital": "pulse",
+        "observed_at": "2026-09-05T12:00:00Z",
+        "observations": [
+          {"observation_id": "git.default_branch.commits.count_28d", "value": 0},
+          {"observation_id": "git.default_branch.commit_active_days_28d", "value": 0},
+          {"observation_id": "forge.change_requests.updated_count_28d", "value": 0},
+          {"observation_id": "forge.issues.updated_count_28d", "value": 0}
+        ]
+      },
+      "expect": {
+        "band": "DORMANT",
+        "evaluation_status": "AVAILABLE",
+        "band_semantics": "EXACT",
+        "possible_bands": null,
+        "rule_id": "pulse.bands.v1",
+        "derived": {"activity_events_28d": 0, "channel_count": 0},
+        "diagnostics_absent": ["UNOBSERVED_CHANNEL", "REQUIRED_INPUT_PARTIAL", "MISSING_REQUIRED"]
+      }
+    },
+    {
+      "case": "T4",
+      "title": "Unavailable change-request activity keeps Pulse a conservative lower bound",
+      "kind": "vital",
+      "source_unit": "PV-VIT-003",
+      "given": {
+        "vital": "pulse",
+        "observed_at": "2026-09-06T12:00:00Z",
+        "observations": [
+          {"observation_id": "git.default_branch.commits.count_28d", "value": 0},
+          {"observation_id": "git.default_branch.commit_active_days_28d", "value": 0},
+          {"observation_id": "forge.change_requests.updated_count_28d", "status": "UNAVAILABLE", "reason_code": "CHANGE_REQUESTS_UNAVAILABLE"},
+          {"observation_id": "forge.issues.updated_count_28d", "value": 0}
+        ]
+      },
+      "expect": {
+        "band": "DORMANT",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": ["DORMANT", "QUIET", "STEADY", "SURGING"],
+        "rule_id": "pulse.bands.v1",
+        "derived": {"activity_events_28d": 0, "channel_count": 0}
+      }
+    },
+    {
+      "case": "T5",
+      "title": "Issue-only Pulse activity is diagnosed without productivity meaning",
+      "kind": "vital",
+      "source_unit": "PV-VIT-003",
+      "given": {
+        "vital": "pulse",
+        "observed_at": "2026-09-06T12:00:00Z",
+        "observations": [
+          {"observation_id": "git.default_branch.commits.count_28d", "value": 0},
+          {"observation_id": "git.default_branch.commit_active_days_28d", "value": 0},
+          {"observation_id": "forge.change_requests.updated_count_28d", "value": 0},
+          {"observation_id": "forge.issues.updated_count_28d", "value": 1}
+        ]
+      },
+      "expect": {
+        "band": "QUIET",
+        "evaluation_status": "AVAILABLE",
+        "band_semantics": "EXACT",
+        "possible_bands": null,
+        "rule_id": "pulse.bands.v1",
+        "derived": {"activity_events_28d": 1, "channel_count": 1},
+        "diagnostics": ["PULSE_ISSUE_ONLY_ACTIVITY"]
+      }
+    }
+  ]
+}

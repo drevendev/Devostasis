@@ -15,7 +15,7 @@ API version `2022-11-28`, page-based pagination with 100 items per page.
 | targets | `GET /milestones?state=all` | 3 pages; skipped when `planning.source = none` |
 | releases | `GET /releases?per_page=30` | 1 page |
 | verification | `GET /actions/workflows` (count), `GET /actions/runs?branch=<default>&created=>=<14d>`, `GET /actions/runs/{id}/attempts/{n}` for reruns | 20 pages, 5 attempts per run, 60 attempt lookups |
-| fallback verification | `GET /commits/{sha}/check-suites` per revision, only when no Actions run was seen: none exists in the window, or the workflow lookup itself failed (recorded as `WORKFLOWS_UNAVAILABLE:<reason>`) | 100 revisions |
+| fallback verification | `GET /commits/{sha}/check-suites` per revision, paginated, only when no Actions run was seen: none exists in the window, or the workflow lookup itself failed (recorded as `WORKFLOWS_UNAVAILABLE:<reason>`) | 100 revisions, 3 pages each |
 
 A typical small repository costs 10 to 30 requests; a very active one
 (hundreds of merged change requests and more than a thousand default-branch
@@ -43,6 +43,17 @@ successful response whose body is not the shape the endpoint documents (a
 list expected, an object or nothing returned) is `ERROR` with
 `UNEXPECTED_PAYLOAD` for that inventory alone; it never ends the project's
 collection.
+
+The check-suite surface carries its own coverage (issue #12 finding 1). The
+series records how many revisions were planned and examined
+(`suite_revisions_planned`, `suite_revisions_examined`), whether every suite
+page was read (`suites_complete`) and why sampling stopped
+(`suites_stop_reason`: `CHECK_SUITE_SAMPLE_CAPPED` past 100 revisions,
+`PAGINATION_CAPPED` past 3 pages of one revision, `REQUEST_BUDGET_EXHAUSTED`,
+or the failure reason of the fetch that broke off). Any of those makes
+`ci.revision_verdicts_14d` `PARTIAL` with `CHECK_SUITES_INCOMPLETE`; the
+parents already collected are kept, a failure among them stays, and a
+truncated sample is never an exact favourable result.
 
 ## `ci.configured`
 

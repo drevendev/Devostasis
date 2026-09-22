@@ -134,10 +134,11 @@ def test_observability_transitions(tmp_path):
 
 
 def test_rpt_3_history_gap_keeps_current_snapshot_and_infers_no_change(tmp_path):
+    """The previous *immutable* bundle cannot be loaded: that is what HISTORY_GAP means (#28)."""
     store = FilesystemHistoryStore(tmp_path)
     first = build_from_observations(_project(), _obs("2026-09-05T12:00:00Z"), store)
     path = store.commit(first, first.bands())
-    (store.project_dir(first.project_key) / "latest" / "snapshot.json").unlink()
+    (path / "snapshot.json").unlink()
     second = build_from_observations(_project(), _obs("2026-09-06T12:00:00Z"), store)
     assert second.manifest["comparison_status"] == "HISTORY_GAP"
     assert second.manifest["previous_bundle_id"] == first.bundle_id
@@ -145,6 +146,7 @@ def test_rpt_3_history_gap_keeps_current_snapshot_and_infers_no_change(tmp_path)
     assert {row["transition_class"] for row in delta["vitals"]} == {"INCOMPARABLE"}
     assert json.loads(second.members["snapshot.json"])["vitals"][0]["band"] == "EXTENDED"
     assert path.exists()
+    assert any("snapshot.json" in problem for problem in store.latest(first.project_key, "123456").problems)
 
 
 def test_art_04_rpt_10_semantic_config_change_is_incomparable(tmp_path):
@@ -314,3 +316,178 @@ def test_legacy_effective_config_v1_is_still_verifiable(tmp_path):
     assert validate_effective_config(legacy_debt) == []
     assert validate_effective_config(dict(legacy, planning_source="wiki"))
     assert validate_effective_config(dict(legacy, schema="devostasis.effective-config.v0"))
+
+
+# --------------------------------------------------------------------------- #17: an observation is comparable only when it is later than the previous one
+
+
+def test_an_older_observation_is_incomparable_and_claims_no_direction(tmp_path):
+    """#17: written after a newer bundle, an older observation is not a comparable pair.
+
+    Before the repair it was COMPARABLE, its delta reported IMPROVED and
+    WORSENED with the direction inverted, and activity.json carried an
+    interval that ended before it started.
+    """
+    store = FilesystemHistoryStore(tmp_path)
+    newer = build_from_observations(_project(), _obs("2026-09-05T12:00:00Z"), store)
+    store.commit(newer)
+    older_obs = obs_set("2026-09-01T12:00:00Z")
+    full_inputs(older_obs)
+    older_obs.replace(type(older_obs.get("forge.issues.stale_open_count_30d"))(**dict(older_obs.get("forge.issues.stale_open_count_30d").to_dict(), value=9)))
+    older = build_from_observations(_project(), older_obs, store)
+    assert older.manifest["comparison_status"] == "INCOMPARABLE"
+    delta = json.loads(older.members["delta.json"])
+    assert any(reason.startswith("NON_MONOTONIC_OBSERVATION:2026-09-05T12:00:00Z->2026-09-01T12:00:00Z") for reason in delta["incomparable_reasons"])
+    assert {row["transition_class"] for row in delta["vitals"]} == {"INCOMPARABLE"}
+    assert delta["previous_observed_at"] is None
+    activity = json.loads(older.members["activity.json"])
+    assert activity["interval"]["basis"] == "OBSERVATION_WINDOW_28D"
+    assert activity["interval"]["start"] < activity["interval"]["end"]
+
+
+def test_an_observation_at_the_same_instant_is_on_the_same_side_of_the_boundary(tmp_path):
+    store = FilesystemHistoryStore(tmp_path)
+    first = build_from_observations(_project(), _obs("2026-09-05T12:00:00Z"), store)
+    store.commit(first)
+    same = build_from_observations(_project(), _obs("2026-09-05T12:00:00Z"), store)
+    assert same.manifest["comparison_status"] == "INCOMPARABLE"
+    assert any("NON_MONOTONIC_OBSERVATION" in reason for reason in json.loads(same.members["delta.json"])["incomparable_reasons"])
+    later = build_from_observations(_project(), _obs("2026-09-05T12:00:01Z"), store)
+    assert later.manifest["comparison_status"] == "COMPARABLE", "one second later is the normal case, untouched"
+
+
+def test_activity_refuses_an_interval_that_ends_before_it_starts():
+    from devostasis.activity import build_activity
+
+    obs = full_inputs(obs_set("2026-09-01T12:00:00Z"))
+    with pytest.raises(ValueError, match="must start before it ends"):
+        build_activity(obs, {"observed_at": "2026-09-05T12:00:00Z"}, "2026-09-05T12:00:00Z", 50)
+    with pytest.raises(ValueError):
+        build_activity(obs, {"observed_at": "2026-09-01T12:00:00Z"}, "2026-09-01T12:00:00Z", 50)
+
+
+# --------------------------------------------------------------------------- #28: the previous bundle is the immutable one the index names
+
+
+def test_the_comparison_reads_the_immutable_bundle_and_survives_a_compacted_latest_copy(tmp_path):
+    """#28: latest/ is a convenience copy the contract lets a store compact; comparability never depended on it."""
+    import shutil
+
+    store = FilesystemHistoryStore(tmp_path)
+    first = build_from_observations(_project(), _obs("2026-09-05T12:00:00Z"), store)
+    store.commit(first)
+    latest_dir = store.project_dir(first.project_key) / "latest"
+    shutil.rmtree(latest_dir)
+    second = build_from_observations(_project(), _obs("2026-09-06T12:00:00Z"), store)
+    assert second.manifest["comparison_status"] == "COMPARABLE"
+    assert second.manifest["previous_bundle_id"] == first.bundle_id
+    store.commit(second)
+    assert (latest_dir / "manifest.json").exists(), "the copy is republished on the next commit"
+    assert json.loads((latest_dir / "manifest.json").read_text("utf-8"))["bundle_id"] == second.bundle_id
+
+
+def test_a_damaged_latest_copy_is_not_a_history_gap_but_a_divergent_one_is(tmp_path):
+    store = FilesystemHistoryStore(tmp_path)
+    first = build_from_observations(_project(), _obs("2026-09-05T12:00:00Z"), store)
+    store.commit(first)
+    latest_dir = store.project_dir(first.project_key) / "latest"
+    (latest_dir / "snapshot.json").unlink()
+    state = store.latest(first.project_key, "123456")
+    assert state.verified and state.bundle_id == first.bundle_id, "the immutable bundle is intact; a damaged copy is repaired on the next commit"
+
+    other = build_from_observations(_project(), _obs("2026-09-04T12:00:00Z"), FilesystemHistoryStore(tmp_path / "elsewhere"))
+    store.publish_latest(other, store.project_dir(first.project_key))
+    state = store.latest(first.project_key, "123456")
+    assert not state.verified
+    assert any("latest pointer" in problem and "differs from index tail" in problem for problem in state.problems)
+
+
+def test_without_an_index_the_newest_immutable_bundle_is_found_by_scanning(tmp_path):
+    store = FilesystemHistoryStore(tmp_path)
+    first = build_from_observations(_project(), _obs("2026-09-05T12:00:00Z"), store)
+    store.commit(first)
+    second = build_from_observations(_project(), _obs("2026-09-06T12:00:00Z"), store)
+    store.commit(second)
+    (store.project_dir(first.project_key) / "index.json").unlink()
+    state = store.latest(first.project_key)
+    assert state.verified and state.bundle_id == second.bundle_id
+
+
+def test_the_fleet_surfaces_link_to_the_immutable_report_when_the_copy_is_compacted(tmp_path):
+    import shutil
+
+    store = FilesystemHistoryStore(tmp_path)
+    bundle = build_from_observations(_project(), _obs(), store)
+    store.commit(bundle)
+    shutil.rmtree(store.project_dir(bundle.project_key) / "latest")
+    entry = store.all_projects()[0]
+    assert entry["report_path"].endswith(f"/{bundle.bundle_id}/report.md")
+    assert entry["attention_order"], "the attention order is read from the immutable bundle, not from the copy"
+    assert (store.projects_root / entry["report_path"]).exists()
+
+
+# --------------------------------------------------------------------------- #12 finding 4: metadata that decides comparability is bound to the evidence
+
+
+def test_a_manifest_semantic_config_that_is_not_the_projection_of_the_stored_config_fails_verification(tmp_path):
+    store = FilesystemHistoryStore(tmp_path)
+    bundle = build_from_observations(_project(), _obs(), store)
+    forged = dict(bundle.members)
+    manifest = json.loads(forged["manifest.json"])
+    manifest["semantic_config"] = {"planning": {"source": "none", "path": None, "link_marker": "Target:"}, "debt_mapping": None}
+    forged["manifest.json"] = canonical.pretty_json(manifest).encode("utf-8")
+    problems = verify_members(_rehash(forged))
+    assert any(p.startswith("SEMANTIC_CONFIG_MISMATCH") for p in problems)
+
+    path = store.commit(bundle)
+    (path / "manifest.json").write_bytes(forged["manifest.json"])
+    state = store.latest(bundle.project_key, "123456")
+    assert not state.verified, "a bundle whose comparability metadata is forged is not a source for COMPARABLE history"
+    later = build_from_observations(_project(), _obs("2026-09-06T12:00:00Z"), store)
+    assert later.manifest["comparison_status"] == "HISTORY_GAP"
+
+
+def test_every_identity_field_the_manifest_repeats_must_agree_with_the_preimage(tmp_path):
+    bundle = build_from_observations(_project(), _obs(), FilesystemHistoryStore(tmp_path))
+    for key, value in (("observed_at", "2026-01-01T00:00:00Z"), ("comparison_status", "COMPARABLE"), ("config_version", "forged"), ("project_identity", {"provider": "github", "forge_instance": "github.com", "immutable_project_id": "999", "display_locator": "acme/widget", "default_branch": "master"})):
+        forged = dict(bundle.members)
+        manifest = json.loads(forged["manifest.json"])
+        manifest[key] = value
+        forged["manifest.json"] = canonical.pretty_json(manifest).encode("utf-8")
+        problems = verify_members(_rehash(forged))
+        assert any(p.startswith(f"IDENTITY_FIELD_MISMATCH: {key}") for p in problems), key
+
+
+def test_the_receipt_and_the_evidence_are_bound_to_the_identity(tmp_path):
+    bundle = build_from_observations(_project(), _obs(), FilesystemHistoryStore(tmp_path))
+    forged = dict(bundle.members)
+    manifest = json.loads(forged["manifest.json"])
+    manifest["receipt"]["capability_notes"] = ["FORGED"]
+    forged["manifest.json"] = canonical.pretty_json(manifest).encode("utf-8")
+    problems = verify_members(_rehash(forged))
+    assert any(p.startswith("RECEIPT_DIGEST_MISMATCH") for p in problems)
+    assert any(p.startswith("RECEIPT_COPY_MISMATCH") for p in problems), "observations.json still carries the receipt that was hashed"
+
+    forged = dict(bundle.members)
+    observations = json.loads(forged["observations.json"])
+    observations["observations"][0]["value"] = {"forged": True}
+    forged["observations.json"] = canonical.pretty_json(observations).encode("utf-8")
+    problems = verify_members(_rehash(forged))
+    assert any(p.startswith("OBSERVATIONS_DIGEST_MISMATCH") for p in problems), "the snapshot names the evidence it was evaluated over"
+
+
+def test_a_manifest_of_the_wrong_shape_is_a_verification_problem_not_an_exception(tmp_path):
+    bundle = build_from_observations(_project(), _obs(), FilesystemHistoryStore(tmp_path))
+    assert verify_members({"manifest.json": b"[]"}) == ["manifest.json is not an object but list"]
+    forged = dict(bundle.members)
+    manifest = json.loads(forged["manifest.json"])
+    manifest["members"] = ["snapshot.json"]
+    forged["manifest.json"] = canonical.pretty_json(manifest).encode("utf-8")
+    assert verify_members(forged) == ["manifest members is not an object but list"]
+
+
+def test_the_binding_holds_every_bundle_this_version_writes(tmp_path):
+    store = FilesystemHistoryStore(tmp_path)
+    for project in (_project(), _project(observations_member=False), _project(activity={"enabled": False}), _project(debt={"labels": ["debt"], "mapping_version": "1"})):
+        bundle = build_from_observations(project, _obs(), store)
+        assert verify_members(bundle.members) == [], project.effective_config_digest()

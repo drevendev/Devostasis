@@ -237,7 +237,10 @@ A complete synthetic bundle is checked in under
 - Integrity works on immutable revisions, not on runs. One revision
   contributes at most one verdict to the 14-day sample; once a revision was
   observed to fail, that failure stays in its history for the rest of the
-  window even if a retry of the same revision passes.
+  window even if a retry of the same revision passes. A newest revision whose
+  verification outcome is unknown makes the whole Vital `UNKNOWN` rather than
+  inheriting an older pass, and one to three decisive revisions are a sparse
+  sample that says so.
 - `NO_QUEUE` for Flow, `UNDECLARED` for Horizon and Direction, and
   `UNINSTRUMENTED` for Integrity and Debt are descriptive states, never
   healthy defaults.

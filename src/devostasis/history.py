@@ -183,33 +183,84 @@ class FilesystemHistoryStore:
             return {"schema": INDEX_SCHEMA, "project_key": project_key, "bundles": []}
         return index
 
+    def _newest_immutable(self, directory: Path) -> tuple[Path | None, str | None]:
+        """The newest immutable bundle directory when no index names one: scanned, ordered like the index."""
+        newest: tuple[str, str, Path] | None = None
+        for manifest_path in (directory / "history").glob("*/*/*/*/manifest.json"):
+            try:
+                manifest = canonical.load_file(manifest_path)
+            except Exception:  # noqa: BLE001
+                continue
+            if not isinstance(manifest, dict):
+                continue
+            key = (str(manifest.get("observed_at") or ""), str(manifest.get("bundle_id") or ""), manifest_path.parent)
+            if newest is None or key[:2] > newest[:2]:
+                newest = key
+        return (newest[2], newest[1]) if newest else (None, None)
+
     def latest(self, project_key: str, immutable_project_id: str | None = None) -> LatestState:
+        """The newest bundle of a project, read from where the contract says it lives.
+
+        The authority is the immutable bundle the project index names (its
+        tail), verified from its own contents. ``latest/`` is a convenience
+        copy: it is never the source of the comparison, it is republished on
+        every commit, and it may be compacted away. It is still checked when
+        present, because a copy that names a different bundle than the index
+        is a store inconsistency worth refusing to compare across (#12
+        finding 6), and that check keeps its problem text.
+        """
         try:
             location = self.resolve(project_key, immutable_project_id)
         except HistoryStoreError as exc:
             return LatestState(True, False, None, None, None, [str(exc)])
         directory = location.previous_directory or location.directory
         latest_dir = directory / "latest"
-        expected_id = None
         try:
             index = self.read_index(project_key, directory)
-            if index["bundles"]:
-                expected_id = index["bundles"][-1]["bundle_id"]
         except HistoryStoreError as exc:
             return LatestState(True, False, None, None, None, [str(exc)])
-        if not latest_dir.exists() and expected_id is None:
-            return LatestState(False, False, None, None, None, [])
-        members = load_bundle_dir(latest_dir) if latest_dir.exists() else {}
+
+        problems: list[str] = []
+        bundle_dir: Path | None = None
+        expected_id: str | None = None
+        if index["bundles"]:
+            tail = index["bundles"][-1]
+            expected_id = tail.get("bundle_id")
+            bundle_dir = directory / tail["path"] if tail.get("path") else None
+            if bundle_dir is None or not bundle_dir.exists():
+                problems.append(f"immutable bundle {expected_id} named by the index tail is missing at {tail.get('path')}")
+                bundle_dir = None
+        else:
+            bundle_dir, expected_id = self._newest_immutable(directory)
+            if bundle_dir is None:
+                if not latest_dir.exists():
+                    return LatestState(False, False, None, None, None, [])
+                problems.append("a latest copy exists but no immutable bundle and no index name it")
+
+        members = load_bundle_dir(bundle_dir) if bundle_dir is not None else {}
         if not members:
-            return LatestState(True, False, expected_id, None, None, ["latest bundle directory missing or empty"])
-        problems = verify_members(members)
+            if not problems:
+                problems.append(f"immutable bundle directory {bundle_dir} is empty")
+            return LatestState(True, False, expected_id, None, None, problems)
+        problems.extend(verify_members(members))
         try:
             manifest = canonical.loads(members["manifest.json"].decode("utf-8"))
             snapshot = canonical.loads(members["snapshot.json"].decode("utf-8")) if "snapshot.json" in members else None
         except Exception as exc:  # noqa: BLE001
-            return LatestState(True, False, expected_id, None, None, [f"latest bundle unreadable: {exc}"])
+            return LatestState(True, False, expected_id, None, None, problems + [f"immutable bundle unreadable: {exc}"])
+        if not isinstance(manifest, dict):
+            return LatestState(True, False, expected_id, None, None, problems + ["immutable bundle manifest is not an object"])
         if expected_id and manifest.get("bundle_id") != expected_id:
-            problems.append(f"latest pointer {manifest.get('bundle_id')} differs from index tail {expected_id}")
+            problems.append(f"immutable bundle at {bundle_dir} carries {manifest.get('bundle_id')}, the index names {expected_id}")
+
+        if latest_dir.exists():
+            copy = load_bundle_dir(latest_dir)
+            try:
+                copied_id = canonical.loads(copy["manifest.json"].decode("utf-8")).get("bundle_id") if "manifest.json" in copy else None
+            except Exception:  # noqa: BLE001
+                copied_id = None
+            if copied_id is not None and copied_id != manifest.get("bundle_id"):
+                problems.append(f"latest pointer {copied_id} differs from index tail {manifest.get('bundle_id')}")
         return LatestState(True, not problems, manifest.get("bundle_id"), manifest, snapshot, problems)
 
     # ------------------------------------------------------------------ writing
@@ -354,21 +405,35 @@ class FilesystemHistoryStore:
                     "bands": tail.get("bands") or {},
                     "gauges": tail.get("gauges") or {},
                     "top_attention": tail.get("top_attention"),
-                    "demand_rows": self._demand_rows(project_dir),
-                    "attention_order": self._attention_order(project_dir),
-                    "report_path": (project_dir / "latest" / "report.md").relative_to(projects_root).as_posix(),
+                    "demand_rows": self._demand_rows(project_dir, tail),
+                    "attention_order": self._attention_order(project_dir, tail),
+                    "report_path": self._report_path(project_dir, tail, projects_root),
                     "bundle_path": (project_dir / tail["path"]).relative_to(projects_root).as_posix() if tail.get("path") else None,
                 }
             )
         return entries
 
-    def _latest_demand(self, project_dir: Path) -> dict[str, Any] | None:
-        """The demand member of the latest bundle, or None when it is absent or unreadable.
+    @staticmethod
+    def _newest_dir(project_dir: Path, tail: dict[str, Any]) -> Path:
+        """The immutable bundle the index tail names; the convenience copy only when the index names no path."""
+        if tail.get("path"):
+            return project_dir / tail["path"]
+        return project_dir / "latest"
+
+    def _report_path(self, project_dir: Path, tail: dict[str, Any], projects_root: Path) -> str | None:
+        """The report of the newest bundle: the convenience copy when it exists, the immutable one otherwise."""
+        for candidate in (project_dir / "latest" / "report.md", self._newest_dir(project_dir, tail) / "report.md"):
+            if candidate.exists():
+                return candidate.relative_to(projects_root).as_posix()
+        return None
+
+    def _latest_demand(self, project_dir: Path, tail: dict[str, Any]) -> dict[str, Any] | None:
+        """The demand member of the newest bundle, or None when it is absent or unreadable.
 
         Bundles written before the demand interface existed have no such
         member; their rows carry null levels rather than invented ones.
         """
-        path = project_dir / "latest" / "demand.json"
+        path = self._newest_dir(project_dir, tail) / "demand.json"
         if not path.exists():
             return None
         try:
@@ -377,13 +442,13 @@ class FilesystemHistoryStore:
             return None
         return document if isinstance(document, dict) else None
 
-    def _demand_rows(self, project_dir: Path) -> list[dict[str, Any]]:
-        demand = self._latest_demand(project_dir)
+    def _demand_rows(self, project_dir: Path, tail: dict[str, Any]) -> list[dict[str, Any]]:
+        demand = self._latest_demand(project_dir, tail)
         rows = (demand or {}).get("vitals")
         return [row for row in rows if isinstance(row, dict) and row.get("vital_id")] if isinstance(rows, list) else []
 
-    def _attention_order(self, project_dir: Path) -> list[dict[str, Any]]:
-        demand = self._latest_demand(project_dir)
+    def _attention_order(self, project_dir: Path, tail: dict[str, Any]) -> list[dict[str, Any]]:
+        demand = self._latest_demand(project_dir, tail)
         order = (demand or {}).get("attention_order")
         if not isinstance(order, list):
             return []

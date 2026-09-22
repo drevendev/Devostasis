@@ -24,12 +24,52 @@ citation resolves; both directions are a test (`test_spec_drift.py`).
 | Case | Meaning | Test |
 | --- | --- | --- |
 | T1 | configured CI with zero runs is NO_RECENT_RUNS | `test_t1_no_recent_runs_is_neither_clean_nor_uninstrumented` |
-| R3 | zero observed activity with an unavailable channel is DEGRADED DORMANT | `test_r3_zero_activity_with_unavailable_channel_is_degraded_dormant_lower_bound` |
+| T2 | configured false with zero recent revision verification is exactly UNINSTRUMENTED | `vector:T2` |
+| T4 | unavailable change-request activity keeps Pulse a conservative lower bound | `vector:T4` |
+| T5 | issue-only activity is QUIET with the provenance diagnostic `PULSE_ISSUE_ONLY_ACTIVITY` | `vector:T5` |
+| T7 | unclassified stale branches are an upper bound on Clutter burden (`CONSERVATIVE_UPPER_BOUND`, `CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED`) | `vector:T7` |
+| R1 | two deduped revisions, one historical failure, latest success: SPARSE_MIXED with `sample_strength` SPARSE and `CI_SPARSE_SAMPLE` | `vector:R1` |
+| R2 | one deduped failing revision: FAILING, and still a sparse sample | `vector:R2` |
+| R3 | zero observed activity with an unavailable channel is DEGRADED DORMANT | `test_r3_zero_activity_with_unavailable_channel_is_degraded_dormant_lower_bound`, `vector:R3` |
+| R4 | complete fresh zero activity across every Pulse channel is exactly DORMANT | `vector:R4` |
 | V0.7 precedence | unresolved sibling blocks PASS, never hides FAIL | `test_v0_7_unresolved_sibling_blocks_pass_but_not_fail` |
 | R54 | same-revision retry keeps historical failure | `test_r54_same_revision_retry_success_keeps_historical_failure` |
 | R55 | retry-count invariance | `test_r55_retry_count_invariance` |
 | R56 | newer revision is a distinct sample | `test_r56_newer_revision_is_a_distinct_sample` |
 | R57 | order and surface invariance | `test_r57_order_and_surface_invariance` |
+
+## Integrity: the newest revision and the sample (PV-REV-INTEGRITY-UNKNOWN-001, PV-REV-TEST-003, PV-REV-TEST-VECTORS-002)
+
+Rule `integrity.bands.v1+ci-unit-004`, adopted in 0.1.9. The six cases of the
+accepted judgement on issue #13 are executable; two of them start at the
+provider-native normalization, because their subject is that `startup_failure`
+and an unsupported conclusion reach the Vital as `UNKNOWN`.
+
+| Case | Meaning | Test |
+| --- | --- | --- |
+| INT-UNKNOWN-01 | four historical passes plus a newest in-scope UNKNOWN revision evaluate UNKNOWN with no band; the passes stay auditable | `vector:INT-UNKNOWN-01` |
+| INT-UNKNOWN-02 | the same shape with the UNKNOWN produced by `startup_failure`, in either enumeration order | `vector:INT-UNKNOWN-02` |
+| INT-UNKNOWN-03 | the same shape with an unsupported or future conclusion, or none at all | `vector:INT-UNKNOWN-03` |
+| INT-UNKNOWN-04 | a newest positively NOT_EXECUTED revision keeps the accepted fallback | `vector:INT-UNKNOWN-04` |
+| INT-UNKNOWN-05 | a newest positively NON_VERIFY_TERMINAL revision keeps the accepted fallback | `vector:INT-UNKNOWN-05` |
+| INT-UNKNOWN-06 | a newest UNKNOWN over failure-bearing history stays UNKNOWN and the failure is not erased | `vector:INT-UNKNOWN-06` |
+| partial series | a required revision series that is PARTIAL is UNKNOWN with no band, its counts visible (PV-REV-TEST-003) | `test_partial_revision_series_is_unknown_with_its_evidence_preserved` |
+| sample strength | one to three decisive revisions are SPARSE with `CI_SPARSE_SAMPLE`; four are ESTABLISHED | `test_sparse_samples_declare_their_strength_and_established_ones_do_not_carry_the_diagnostic` |
+| unresolved superset | `possible_bands` of a still-verifying newest revision holds every band a completion reaches, never a fixed tail (#12 finding 3) | `test_the_unresolved_superset_is_derived_from_the_completions_the_evidence_admits` |
+
+## Activity coverage (PV-REV-ACTIVITY-COVERAGE-001)
+
+Reading 3 of issue #9, accepted: the interval stays the full canonical gap and
+a shortfall of evidence is disclosed with the exact earliest evidence
+timestamp. Executable as `activity` vectors.
+
+| Case | Meaning | Test |
+| --- | --- | --- |
+| ACT-COV-01 | full-gap interval within the evidence window: no shortfall note | `vector:ACT-COV-01` |
+| ACT-COV-02 | full-gap interval wider than the window: canonical bounds unchanged, note with the exact `evidence_from` | `vector:ACT-COV-02` |
+| ACT-COV-03 | a 97-day gap with 28 days of evidence and one revision states one observed revision with the shortfall, never one revision across 97 days | `vector:ACT-COV-03` |
+| ACT-COV-04 | BASELINE reports the observation window and never a historical overrun | `vector:ACT-COV-04` |
+| ACT-COV-05 | a capped enumeration and an interval shortfall are both disclosed | `vector:ACT-COV-05` |
 
 ## Seven-Vital taxonomy (PV-VIT-010, PV-VIT-012)
 
@@ -117,6 +157,11 @@ citation resolves; both directions are a test (`test_spec_drift.py`).
 | RPT-7 | rename and transfer continuity by immutable project id | `test_rpt_7_a_renamed_repository_keeps_one_history`, `test_a_transfer_to_another_owner_is_the_same_event`, `test_an_old_name_reused_by_a_new_repository_is_a_new_project`, `test_a_locator_held_by_another_project_fails_closed`, `test_without_an_immutable_id_the_locator_is_the_identity` |
 | rule boundary | a Vital with a changed rule id is INCOMPARABLE on its own | `test_rule_version_boundary_makes_one_vital_incomparable_inside_a_comparable_bundle` |
 | CONFIG_IDENTITY_UNCLASSIFIED | unknown config fails closed | `test_unclassified_configuration_input_fails_closed` |
+| non-monotonic observation | an observation not later than the previous bundle is INCOMPARABLE (`NON_MONOTONIC_OBSERVATION`) and claims no direction; activity never runs backwards (#17) | `test_an_older_observation_is_incomparable_and_claims_no_direction`, `test_an_observation_at_the_same_instant_is_on_the_same_side_of_the_boundary`, `test_activity_refuses_an_interval_that_ends_before_it_starts` |
+| immutable authority | the comparison reads the immutable bundle the index names; a compacted or damaged `latest/` is not a history gap, a divergent one is reported (#28) | `test_the_comparison_reads_the_immutable_bundle_and_survives_a_compacted_latest_copy`, `test_a_damaged_latest_copy_is_not_a_history_gap_but_a_divergent_one_is`, `test_without_an_index_the_newest_immutable_bundle_is_found_by_scanning` |
+| metadata binding | `semantic_config` is the projection of the stored config; every identity field the manifest repeats agrees with the preimage; the receipt and the evidence hash to what the identity names; a manifest of the wrong shape is a problem, not an exception (#12 finding 4) | `test_a_manifest_semantic_config_that_is_not_the_projection_of_the_stored_config_fails_verification`, `test_every_identity_field_the_manifest_repeats_must_agree_with_the_preimage`, `test_the_receipt_and_the_evidence_are_bound_to_the_identity`, `test_a_manifest_of_the_wrong_shape_is_a_verification_problem_not_an_exception` |
+| receipt configuration | a build over observations derived under another effective configuration is refused (#27) | `test_build_refuses_observations_collected_under_another_configuration` |
+| check-suite coverage | a sampled, failed or capped check-suite surface is PARTIAL with its coverage recorded, at the 100/101 revision and suite boundaries; collected failures are kept (#12 finding 1) | `test_the_hundred_and_first_revision_makes_the_suite_sample_partial`, `test_an_access_failure_after_four_revisions_makes_the_sample_partial_and_keeps_what_was_seen`, `test_a_second_page_of_suites_is_read_and_a_capped_page_count_is_partial`, `test_a_spent_budget_makes_the_suite_sample_partial` |
 
 ## Band ordering (PV-BAND-ORDER-001)
 
@@ -176,9 +221,17 @@ accepted case.
 | evidence is contract-checked | an envelope that violates the observation contract fails the vector | `test_an_envelope_that_violates_the_observation_contract_is_a_failure_not_a_pass` |
 | published schema | the schema and the validator agree on the shape, including the partial evidence envelope and the comparison statuses | `test_the_published_vector_schema_and_the_runner_agree_on_the_shape`, `test_the_schema_publishes_the_partial_envelope_the_runner_actually_accepts`, `test_every_envelope_in_the_corpus_is_one_the_published_schema_accepts` |
 | corpus | every vector in the corpus runs, and every declared kind is exercised | `test_conformance_vector`, `test_every_kind_the_format_declares_is_exercised_by_the_corpus` |
+| variants | one case over several evidence shapes passes only when every shape does, and a failure names the shape | `test_variants_hold_every_evidence_shape_to_the_one_expectation` |
+| ci kind | provider-native outcomes are normalized before Integrity sees them; a provider without a normalization is rejected | `test_the_ci_kind_normalizes_provider_native_outcomes_before_integrity_sees_them` |
+| activity kind | the interval and the coverage notes of the activity member are checked | `test_the_activity_kind_checks_the_interval_and_the_coverage_it_discloses` |
 
-Cases not yet implemented as tests (T2..T9, R1, R2, R4..R53, ART-05,
+Cases not yet implemented as tests (T3, T6, T8, T9, R5..R53, ART-05,
 ART-08..ART-11, ART-15, RPT-4..RPT-6, RPT-9) are listed in the ROADMAP under the
-synthetic fixture suite. PV-TEST-001 will deliver them as executable JSON
-vectors in the format of [vectors.md](vectors.md); the runner that will execute
-them exists and is proved by the cases above.
+synthetic fixture suite. The research process delivers them as executable JSON
+vectors in the format of [vectors.md](vectors.md), one accepted family per
+unit; the ones accepted so far (T2, R1, R2, R3, R4, T4, T5, T7) are in the
+corpus above. The `ci` kind reaches the normalization boundary R5..R10 are
+about, so that family can be materialized against it (issue #20); `variants`
+and the dependency-group assertions close the T8 and part of the T6 gap of
+issue #23, while T3 and the bundle and store cases still need a surface this
+version does not publish.
