@@ -23,6 +23,7 @@ from .vitals import build_snapshot, evaluate_all
 
 NON_MONOTONIC_OBSERVATION = "NON_MONOTONIC_OBSERVATION"
 CONFIG_MISMATCH = "CONFIG_MISMATCH"
+DUPLICATE_PROJECT_IDENTITY = "DUPLICATE_PROJECT_IDENTITY"
 _DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 
 
@@ -123,12 +124,41 @@ def build_from_observations(project: ResolvedProject, obs: ObservationSet, store
     return build_bundle(project, obs, snapshot, delta, activity, previous_id, status, run_meta)
 
 
-def run_project(project: ResolvedProject, store: FilesystemHistoryStore, client: GitHubClient, now: datetime) -> RunOutcome:
+def run_project(
+    project: ResolvedProject,
+    store: FilesystemHistoryStore,
+    client: GitHubClient,
+    now: datetime,
+    *,
+    admitted: dict[str, str] | None = None,
+) -> RunOutcome:
+    """Observe one project and commit its bundle.
+
+    ``admitted`` maps the immutable identity of every project already observed
+    in this run to the locator that observed it. Two configured locators that
+    the provider resolves to one repository (a case variant, a redirect) are
+    one project: the second is refused before anything is written, so it can
+    neither collect twice nor be mistaken for a rename of the first
+    (PV-AUDIT-PROJECT-LOCATOR-ALIAS-001).
+    """
     started = timeutil.now_utc()
     try:
         obs = observe(project, client, now)
     except CollectionError as exc:
         return RunOutcome(project.locator, False, error=str(exc), requests=client.request_count, conditional_hits=client.conditional_hits)
+    identity = obs.subject.get("immutable_project_id")
+    if admitted is not None and identity not in (None, ""):
+        key = f"{obs.subject.get('forge_instance') or 'github.com'}:{identity}"
+        earlier = admitted.get(key)
+        if earlier is not None and earlier != project.locator:
+            return RunOutcome(
+                project.locator,
+                False,
+                error=f"{DUPLICATE_PROJECT_IDENTITY}: {project.locator} is repository {identity}, already observed in this run as {earlier}; one repository is observed once",
+                requests=client.request_count,
+                conditional_hits=client.conditional_hits,
+            )
+        admitted[key] = project.locator
     try:
         # How the evidence was fetched is provenance, not evidence: it lives in
         # run_meta, which is post-identity, so a cached run and a fresh run of
@@ -188,13 +218,14 @@ def run_all(
     """
     cache = ConditionalCache(Path(cache_dir) / "github-etags.json") if cache_dir else None
     outcomes = []
+    admitted: dict[str, str] = {}
     for project in config.projects:
         if only and project.locator not in only:
             continue
         transport = UrllibTransport(token, user_agent=user_agent or "devostasis/0.1 (+https://github.com/drevendev/devostasis)")
         client = GitHubClient(transport, budget=request_budget, cache=cache)
         try:
-            outcomes.append(run_project(project, store, client, now))
+            outcomes.append(run_project(project, store, client, now, admitted=admitted))
         except Exception as exc:  # noqa: BLE001 - one project's data must not end the fleet run
             # run_project already turns every failure it anticipates into an
             # unsuccessful outcome. This boundary is for the ones it does not:

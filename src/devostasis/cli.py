@@ -155,16 +155,22 @@ def cmd_run(args: argparse.Namespace) -> int:
     token, source = resolve_token(args.token, config.token_env)
     print(f"token: {source}", file=sys.stderr)
     store = FilesystemHistoryStore(args.store or config.store_path)
-    outcomes = run_all(
-        config,
-        store,
-        token,
-        _now(args.now),
-        only=(args.project or None) if not args.repo else None,
-        user_agent=config.user_agent,
-        request_budget=args.request_budget,
-        cache_dir=args.cache,
-    )
+    try:
+        outcomes = run_all(
+            config,
+            store,
+            token,
+            _now(args.now),
+            only=(args.project or None) if not args.repo else None,
+            user_agent=config.user_agent,
+            request_budget=args.request_budget,
+            cache_dir=args.cache,
+        )
+    except HistoryStoreError as exc:
+        # The bundles of this run are committed; what could not be produced is
+        # the fleet surface, and a stale one must not pass for a fresh one.
+        print(f"store error: {exc}", file=sys.stderr)
+        return 1
     failed = 0
     for outcome in outcomes:
         if outcome.ok:
@@ -189,10 +195,10 @@ def cmd_build(args: argparse.Namespace) -> int:
     try:
         bundle = build_from_observations(project, obs, store)
         path = store.commit(bundle)
+        write_fleet_index(store)
     except (BundleError, HistoryStoreError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    write_fleet_index(store)
     print(f"bundle {bundle.bundle_id[:12]} ({bundle.manifest['comparison_status']}) written to {path}")
     print(_bands_line(bundle.bands()))
     return 0
@@ -230,7 +236,11 @@ def cmd_render(args: argparse.Namespace) -> int:
 
 
 def cmd_index(args: argparse.Namespace) -> int:
-    path = write_fleet_index(FilesystemHistoryStore(args.store))
+    try:
+        path = write_fleet_index(FilesystemHistoryStore(args.store))
+    except HistoryStoreError as exc:
+        print(f"store error: {exc}", file=sys.stderr)
+        return 1
     if path is None:
         print("no projects in store")
         return 0

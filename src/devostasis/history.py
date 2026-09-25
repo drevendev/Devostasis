@@ -21,14 +21,34 @@ the directory is relocated once to the new locator and the rename is recorded
 in the project index, so history stays one chain instead of silently splitting
 into an old orphan and a new BASELINE.
 
-Fail-closed rule: if the locator a project now claims is already occupied by a
-different project, nothing is written. That is the case of a repository being
-renamed and its old name immediately reused, which would otherwise merge two
-projects' histories into one directory.
+Fail-closed rules:
+
+* if the locator a project now claims is already occupied by a different
+  project, nothing is written. That is the case of a repository being renamed
+  and its old name immediately reused, which would otherwise merge two
+  projects' histories into one directory;
+* a locator derives a store path only when it is a ``<forge>/<owner>/<repo>``
+  triple of plain name characters, strictly beneath ``projects/``; a component
+  pathlib would read as a parent reference, a drive or an absolute path is
+  refused rather than normalized away (PV-AUDIT-STORE-PATH-001);
+* the index tail is followed only when it names the canonical history path of
+  the bundle id it claims, inside this project's ``history/`` tree, and the
+  bundle found there must belong to this project: a tail that points elsewhere
+  is a store inconsistency, never a comparison against another project's
+  history (review of issue #28's repair);
+* an unreadable or malformed per-project index is an explicit store failure
+  wherever it is met: when proving that an immutable id lives nowhere else
+  (PV-AUDIT-HISTORYSTORE-001) and when the fleet surfaces are generated
+  (PV-AUDIT-FLEET-INDEX-001), corruption is uncertainty, not absence;
+* the index is replaced, never truncated in place, and the previous
+  convenience copy is kept until the new one is in place
+  (PV-AUDIT-HISTORYSTORE-ATOMIC-PUBLICATION-001).
 """
 
 from __future__ import annotations
 
+import os
+import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -38,6 +58,12 @@ from . import canonical
 from .bundle import Bundle, load_bundle_dir, verify_members
 
 INDEX_SCHEMA = "devostasis.index.v1"
+BUNDLE_ID = re.compile(r"[0-9a-f]{64}")
+LOCATOR_PART = re.compile(r"[A-Za-z0-9._-]+")
+
+INDEX_TAIL_INVALID = "INDEX_TAIL_INVALID"
+PROJECT_IDENTITY_MISMATCH = "PROJECT_IDENTITY_MISMATCH"
+BUNDLE_BINDING_MISMATCH = "BUNDLE_BINDING_MISMATCH"
 
 
 class HistoryStoreError(Exception):
@@ -76,6 +102,33 @@ class ResolvedLocation:
         return self.previous_directory is not None and self.previous_directory != self.directory
 
 
+def index_problems(index: Any) -> list[str]:
+    """Shape problems of a per-project index; empty when every entry is one the store could have written."""
+    if not isinstance(index, dict):
+        return [f"index is not an object but {type(index).__name__}"]
+    bundles = index.get("bundles")
+    if not isinstance(bundles, list):
+        return [f"index bundles is not a list but {type(bundles).__name__}"]
+    problems = []
+    for position, entry in enumerate(bundles):
+        if not isinstance(entry, dict):
+            problems.append(f"index entry {position} is not an object but {type(entry).__name__}")
+        elif not isinstance(entry.get("bundle_id"), str) or not BUNDLE_ID.fullmatch(entry["bundle_id"]):
+            problems.append(f"index entry {position} carries no bundle id")
+    return problems
+
+
+def _write_atomic(path: Path, data: bytes) -> None:
+    """Write a complete file beside the target and replace the target in one step.
+
+    A reader sees the previous file or the new one, never a truncated one.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_bytes(data)
+    os.replace(temporary, path)
+
+
 class FilesystemHistoryStore:
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root)
@@ -85,9 +138,14 @@ class FilesystemHistoryStore:
         return self.root / "projects"
 
     def project_dir(self, project_key: str) -> Path:
-        """The directory a locator names. Where a project actually lives is ``resolve``."""
-        parts = [part for part in project_key.split("/") if part and part not in (".", "..")]
-        return self.projects_root.joinpath(*parts)
+        """The directory a locator names, strictly beneath ``projects/``. Where a project actually lives is ``resolve``."""
+        parts = project_key.split("/")
+        if len(parts) != 3 or any(not part or part in (".", "..") or not LOCATOR_PART.fullmatch(part) for part in parts):
+            raise HistoryStoreError(f"project key {project_key!r} is not a <forge>/<owner>/<repo> locator; refusing to derive a store path from it")
+        directory = self.projects_root.joinpath(*parts)
+        if directory.resolve().parent.parent.parent != self.projects_root.resolve():
+            raise HistoryStoreError(f"project key {project_key!r} does not resolve beneath {self.projects_root}; refusing to derive a store path from it")
+        return directory
 
     def index_path(self, project_key: str) -> Path:
         return self.project_dir(project_key) / "index.json"
@@ -103,6 +161,8 @@ class FilesystemHistoryStore:
     @staticmethod
     def _identity_of(index: dict[str, Any] | None) -> str | None:
         identity = (index or {}).get("project_identity") or {}
+        if not isinstance(identity, dict):
+            return None
         value = identity.get("immutable_project_id")
         return str(value) if value not in (None, "") else None
 
@@ -111,19 +171,29 @@ class FilesystemHistoryStore:
         if not path.exists():
             return None
         try:
-            return canonical.load_file(path)
+            index = canonical.load_file(path)
         except Exception as exc:  # noqa: BLE001
             raise HistoryStoreError(f"index unreadable at {directory}: {exc}") from exc
+        problems = index_problems(index)
+        if problems:
+            raise HistoryStoreError(f"index invalid at {directory}: {'; '.join(problems)}")
+        return index
 
     def find_by_identity(self, immutable_project_id: str | None) -> Path | None:
-        """The directory whose recorded identity matches, wherever it currently sits."""
+        """The directory whose recorded identity matches, wherever it currently sits.
+
+        An unreadable candidate index makes the lookup fail rather than
+        continue: absence of a project elsewhere in the store is proven by
+        reading every index, and one that cannot be read may be the project
+        being looked for (PV-AUDIT-HISTORYSTORE-001).
+        """
         if not immutable_project_id:
             return None
         for index_path in self._project_index_paths():
             try:
-                index = canonical.load_file(index_path)
-            except Exception:  # noqa: BLE001
-                continue
+                index = self._read_index_at(index_path.parent)
+            except HistoryStoreError as exc:
+                raise HistoryStoreError(f"{exc}; the identity {immutable_project_id} cannot be proven absent from the store") from exc
             if self._identity_of(index) == str(immutable_project_id) and index.get("bundles"):
                 return index_path.parent
         return None
@@ -183,6 +253,37 @@ class FilesystemHistoryStore:
             return {"schema": INDEX_SCHEMA, "project_key": project_key, "bundles": []}
         return index
 
+    @staticmethod
+    def _tail_dir(directory: Path, tail: dict[str, Any]) -> tuple[Path | None, str | None]:
+        """The immutable directory an index tail names, or why it cannot be followed.
+
+        The store only ever records ``history/YYYY/MM/DD/<bundle_id>``, so
+        that is the only shape followed: an absolute path, a parent reference,
+        a native separator, a basename that is not the claimed bundle id, or a
+        path that resolves outside this project's ``history/`` tree is refused
+        before anything is opened.
+        """
+        bundle_id = tail.get("bundle_id")
+        path = tail.get("path")
+        if not isinstance(bundle_id, str) or not BUNDLE_ID.fullmatch(bundle_id):
+            return None, f"{INDEX_TAIL_INVALID}: index tail bundle_id {bundle_id!r} is not a bundle id"
+        if not isinstance(path, str) or not path:
+            return None, f"{INDEX_TAIL_INVALID}: index tail names no path for bundle {bundle_id}"
+        parts = path.split("/")
+        canonical_shape = (
+            "\\" not in path
+            and len(parts) == 5
+            and parts[0] == "history"
+            and all(part.isdigit() and 2 <= len(part) <= 4 for part in parts[1:4])
+            and parts[4] == bundle_id
+        )
+        if not canonical_shape:
+            return None, f"{INDEX_TAIL_INVALID}: index tail path {path!r} is not the canonical history path of bundle {bundle_id}"
+        candidate = directory.joinpath(*parts)
+        if candidate.resolve().parent.parent.parent.parent != (directory / "history").resolve():
+            return None, f"{INDEX_TAIL_INVALID}: index tail path {path!r} resolves outside {directory / 'history'}"
+        return candidate, None
+
     def _newest_immutable(self, directory: Path) -> tuple[Path | None, str | None]:
         """The newest immutable bundle directory when no index names one: scanned, ordered like the index."""
         newest: tuple[str, str, Path] | None = None
@@ -191,12 +292,26 @@ class FilesystemHistoryStore:
                 manifest = canonical.load_file(manifest_path)
             except Exception:  # noqa: BLE001
                 continue
-            if not isinstance(manifest, dict):
+            if not isinstance(manifest, dict) or manifest_path.parent.name != manifest.get("bundle_id"):
                 continue
             key = (str(manifest.get("observed_at") or ""), str(manifest.get("bundle_id") or ""), manifest_path.parent)
             if newest is None or key[:2] > newest[:2]:
                 newest = key
         return (newest[2], newest[1]) if newest else (None, None)
+
+    def _identity_problem(self, index: dict[str, Any], project_key: str, immutable_project_id: str | None, manifest: dict[str, Any], bundle_dir: Path | None) -> str | None:
+        """Why the loaded bundle is not this project's: the identity the history records, or its locator, disagrees."""
+        recorded = self._identity_of(index)
+        expected = recorded or (str(immutable_project_id) if immutable_project_id not in (None, "") else None)
+        actual = self._identity_of({"project_identity": manifest.get("project_identity")})
+        if expected is not None:
+            if actual != expected:
+                return f"{PROJECT_IDENTITY_MISMATCH}: immutable bundle at {bundle_dir} belongs to project {actual}, this history is project {expected}"
+            return None
+        expected_key = index.get("project_key") or project_key
+        if manifest.get("project_key") != expected_key:
+            return f"{PROJECT_IDENTITY_MISMATCH}: immutable bundle at {bundle_dir} was written for {manifest.get('project_key')!r}, this history is {expected_key!r}"
+        return None
 
     def latest(self, project_key: str, immutable_project_id: str | None = None) -> LatestState:
         """The newest bundle of a project, read from where the contract says it lives.
@@ -208,6 +323,11 @@ class FilesystemHistoryStore:
         present, because a copy that names a different bundle than the index
         is a store inconsistency worth refusing to compare across (#12
         finding 6), and that check keeps its problem text.
+
+        The tail is followed only along the canonical history path of the
+        bundle it names, and the bundle found there must carry this project's
+        identity: a damaged index that points at another project's bundle
+        yields an unverified state, never a comparison against it.
         """
         try:
             location = self.resolve(project_key, immutable_project_id)
@@ -226,8 +346,10 @@ class FilesystemHistoryStore:
         if index["bundles"]:
             tail = index["bundles"][-1]
             expected_id = tail.get("bundle_id")
-            bundle_dir = directory / tail["path"] if tail.get("path") else None
-            if bundle_dir is None or not bundle_dir.exists():
+            bundle_dir, problem = self._tail_dir(directory, tail)
+            if problem is not None:
+                problems.append(problem)
+            elif not bundle_dir.exists():
                 problems.append(f"immutable bundle {expected_id} named by the index tail is missing at {tail.get('path')}")
                 bundle_dir = None
         else:
@@ -252,6 +374,9 @@ class FilesystemHistoryStore:
             return LatestState(True, False, expected_id, None, None, problems + ["immutable bundle manifest is not an object"])
         if expected_id and manifest.get("bundle_id") != expected_id:
             problems.append(f"immutable bundle at {bundle_dir} carries {manifest.get('bundle_id')}, the index names {expected_id}")
+        identity_problem = self._identity_problem(index, project_key, immutable_project_id, manifest, bundle_dir)
+        if identity_problem is not None:
+            problems.append(identity_problem)
 
         if latest_dir.exists():
             copy = load_bundle_dir(latest_dir)
@@ -259,14 +384,46 @@ class FilesystemHistoryStore:
                 copied_id = canonical.loads(copy["manifest.json"].decode("utf-8")).get("bundle_id") if "manifest.json" in copy else None
             except Exception:  # noqa: BLE001
                 copied_id = None
-            if copied_id is not None and copied_id != manifest.get("bundle_id"):
+            if copied_id is not None and copied_id != manifest.get("bundle_id") and not self._is_stale_copy(index, copied_id, manifest):
                 problems.append(f"latest pointer {copied_id} differs from index tail {manifest.get('bundle_id')}")
         return LatestState(True, not problems, manifest.get("bundle_id"), manifest, snapshot, problems)
+
+    @staticmethod
+    def _is_stale_copy(index: dict[str, Any], copied_id: str, tail_manifest: dict[str, Any]) -> bool:
+        """A convenience copy of an indexed bundle not newer than the tail is an interrupted republication, not an inconsistency.
+
+        The index is written before the copy is refreshed, so a failure between
+        the two leaves the previous copy in place; the next commit replaces it.
+        A copy naming a bundle the index does not know, or one observed after
+        the tail, is still a store inconsistency and is refused.
+        """
+        for entry in index.get("bundles") or []:
+            if entry.get("bundle_id") == copied_id:
+                return str(entry.get("observed_at") or "") <= str(tail_manifest.get("observed_at") or "")
+        return False
 
     # ------------------------------------------------------------------ writing
 
     def bundle_identity(self, bundle: Bundle) -> str | None:
         return self._identity_of({"project_identity": bundle.manifest.get("project_identity")})
+
+    @staticmethod
+    def _binding_problems(bundle: Bundle) -> list[str]:
+        """The wrapper must name the bundle its canonical members name, or nothing is routed by it."""
+        problems: list[str] = []
+        try:
+            manifest = canonical.loads(bundle.members["manifest.json"].decode("utf-8"))
+        except Exception as exc:  # noqa: BLE001
+            return [f"{BUNDLE_BINDING_MISMATCH}: manifest.json unreadable: {exc}"]
+        if not isinstance(manifest, dict):
+            return [f"{BUNDLE_BINDING_MISMATCH}: manifest.json is not an object"]
+        if manifest.get("bundle_id") != bundle.bundle_id or bundle.manifest.get("bundle_id") != bundle.bundle_id:
+            problems.append(f"{BUNDLE_BINDING_MISMATCH}: wrapper names bundle {bundle.bundle_id}, the manifest names {manifest.get('bundle_id')}")
+        if manifest.get("project_key") != bundle.project_key:
+            problems.append(f"{BUNDLE_BINDING_MISMATCH}: wrapper routes to {bundle.project_key!r}, the manifest was written for {manifest.get('project_key')!r}")
+        if not BUNDLE_ID.fullmatch(str(bundle.bundle_id)):
+            problems.append(f"{BUNDLE_BINDING_MISMATCH}: {bundle.bundle_id!r} is not a bundle id")
+        return problems
 
     def history_dir(self, bundle: Bundle, directory: Path | None = None) -> Path:
         day = bundle.observed_at[:10].split("-")
@@ -274,6 +431,9 @@ class FilesystemHistoryStore:
         return directory.joinpath("history", *day, bundle.bundle_id)
 
     def put_immutable(self, bundle: Bundle, directory: Path | None = None) -> Path:
+        problems = self._binding_problems(bundle)
+        if problems:
+            raise HistoryStoreError("; ".join(problems))
         target = self.history_dir(bundle, directory)
         if target.exists():
             existing = load_bundle_dir(target)
@@ -290,17 +450,22 @@ class FilesystemHistoryStore:
         return target
 
     def publish_latest(self, bundle: Bundle, directory: Path | None = None) -> Path:
+        """Republish the convenience copy: the previous copy stays until the new one is in place."""
         directory = directory if directory is not None else self.project_dir(bundle.project_key)
         latest_dir = directory / "latest"
         staging = latest_dir.with_name("latest.staging")
-        if staging.exists():
-            shutil.rmtree(staging)
+        retired = latest_dir.with_name("latest.retired")
+        for leftover in (staging, retired):
+            if leftover.exists():
+                shutil.rmtree(leftover)
         staging.mkdir(parents=True)
         for name, data in bundle.members.items():
             (staging / name).write_bytes(data)
         if latest_dir.exists():
-            shutil.rmtree(latest_dir)
+            latest_dir.rename(retired)
         staging.rename(latest_dir)
+        if retired.exists():
+            shutil.rmtree(retired)
         return latest_dir
 
     def update_index(
@@ -344,7 +509,7 @@ class FilesystemHistoryStore:
                 }
             )
             index["renames"] = sorted(renames, key=lambda entry: (entry["observed_at"], entry["bundle_id"]))
-        canonical.write_pretty(directory / "index.json", index)
+        _write_atomic(directory / "index.json", canonical.pretty_json(index).encode("utf-8"))
         return index
 
     def commit(
@@ -354,9 +519,18 @@ class FilesystemHistoryStore:
         gauges: dict[str, int | None] | None = None,
         top_attention: str | None = None,
     ) -> Path:
-        """Relocate on rename, persist immutably, then publish latest and the index."""
+        """Relocate on rename, persist immutably, then the index, then the convenience copy.
+
+        The index is the authority and is written first; the copy is refreshed
+        last, so an interruption between the two leaves a stale copy of an
+        indexed bundle, which the next commit replaces, and never an index
+        that names a bundle the copy contradicts.
+        """
         from .demand import top_attention as _top
 
+        problems = self._binding_problems(bundle)
+        if problems:
+            raise HistoryStoreError("; ".join(problems))
         location = self.resolve(bundle.project_key, self.bundle_identity(bundle))
         renamed_from = None
         if location.relocated:
@@ -364,7 +538,6 @@ class FilesystemHistoryStore:
             self._relocate(location)
         directory = location.directory
         path = self.put_immutable(bundle, directory)
-        self.publish_latest(bundle, directory)
         bands = bands if bands is not None else bundle.bands()
         gauges = gauges if gauges is not None else bundle.gauges()
         if top_attention is None:
@@ -373,82 +546,91 @@ class FilesystemHistoryStore:
             except KeyError:
                 top_attention = None
         self.update_index(bundle, bands, gauges, top_attention, directory, renamed_from)
+        self.publish_latest(bundle, directory)
         return path
 
     # ------------------------------------------------------------------ fleet
 
     def all_projects(self) -> list[dict[str, Any]]:
-        """Latest index entry of every project in the store, for the fleet overview and index."""
+        """Latest index entry of every project in the store, for the fleet overview and index.
+
+        Fails closed: an unreadable or malformed project index, a tail that
+        cannot be followed, or a demand member that is present but unreadable
+        stops the enumeration with a ``HistoryStoreError`` instead of dropping
+        the project from a fleet surface that would then look complete
+        (PV-AUDIT-FLEET-INDEX-001, PV-AUDIT-FLEET-COVERAGE-001).
+        """
         entries = []
         projects_root = self.projects_root
         if not projects_root.exists():
             return entries
         for index_path in self._project_index_paths():
-            try:
-                index = canonical.load_file(index_path)
-            except Exception:  # noqa: BLE001
-                continue
-            if not index.get("bundles"):
+            project_dir = index_path.parent
+            index = self._read_index_at(project_dir)
+            if not index["bundles"]:
                 continue
             tail = index["bundles"][-1]
-            project_dir = index_path.parent
+            bundle_dir, problem = self._tail_dir(project_dir, tail)
+            if problem is not None:
+                raise HistoryStoreError(f"{project_dir}: {problem}")
             identity = index.get("project_identity") or {}
+            if not isinstance(identity, dict):
+                raise HistoryStoreError(f"{project_dir}: index project_identity is not an object")
             entries.append(
                 {
                     "project_key": index.get("project_key"),
                     "locator": identity.get("display_locator") or index.get("project_key"),
                     "immutable_project_id": identity.get("immutable_project_id"),
-                    "observed_at": tail["observed_at"],
+                    "observed_at": tail.get("observed_at"),
                     "bundle_id": tail.get("bundle_id"),
                     "previous_bundle_id": tail.get("previous_bundle_id"),
-                    "comparison_status": tail["comparison_status"],
+                    "comparison_status": tail.get("comparison_status"),
                     "bands": tail.get("bands") or {},
                     "gauges": tail.get("gauges") or {},
                     "top_attention": tail.get("top_attention"),
-                    "demand_rows": self._demand_rows(project_dir, tail),
-                    "attention_order": self._attention_order(project_dir, tail),
-                    "report_path": self._report_path(project_dir, tail, projects_root),
-                    "bundle_path": (project_dir / tail["path"]).relative_to(projects_root).as_posix() if tail.get("path") else None,
+                    "demand_rows": self._demand_rows(bundle_dir),
+                    "attention_order": self._attention_order(bundle_dir),
+                    "report_path": self._report_path(project_dir, bundle_dir, projects_root),
+                    "bundle_path": bundle_dir.relative_to(projects_root).as_posix(),
                 }
             )
         return entries
 
     @staticmethod
-    def _newest_dir(project_dir: Path, tail: dict[str, Any]) -> Path:
-        """The immutable bundle the index tail names; the convenience copy only when the index names no path."""
-        if tail.get("path"):
-            return project_dir / tail["path"]
-        return project_dir / "latest"
-
-    def _report_path(self, project_dir: Path, tail: dict[str, Any], projects_root: Path) -> str | None:
+    def _report_path(project_dir: Path, bundle_dir: Path, projects_root: Path) -> str | None:
         """The report of the newest bundle: the convenience copy when it exists, the immutable one otherwise."""
-        for candidate in (project_dir / "latest" / "report.md", self._newest_dir(project_dir, tail) / "report.md"):
+        for candidate in (project_dir / "latest" / "report.md", bundle_dir / "report.md"):
             if candidate.exists():
                 return candidate.relative_to(projects_root).as_posix()
         return None
 
-    def _latest_demand(self, project_dir: Path, tail: dict[str, Any]) -> dict[str, Any] | None:
-        """The demand member of the newest bundle, or None when it is absent or unreadable.
+    @staticmethod
+    def _latest_demand(bundle_dir: Path) -> dict[str, Any] | None:
+        """The demand member of the newest bundle, or None when the bundle predates the demand interface.
 
         Bundles written before the demand interface existed have no such
-        member; their rows carry null levels rather than invented ones.
+        member; their rows carry null levels rather than invented ones. A
+        member that is present but cannot be read is not such a bundle, and
+        is a store failure rather than a null row.
         """
-        path = self._newest_dir(project_dir, tail) / "demand.json"
+        path = bundle_dir / "demand.json"
         if not path.exists():
             return None
         try:
             document = canonical.load_file(path)
-        except Exception:  # noqa: BLE001
-            return None
-        return document if isinstance(document, dict) else None
+        except Exception as exc:  # noqa: BLE001
+            raise HistoryStoreError(f"demand member unreadable at {path}: {exc}") from exc
+        if not isinstance(document, dict):
+            raise HistoryStoreError(f"demand member at {path} is not an object")
+        return document
 
-    def _demand_rows(self, project_dir: Path, tail: dict[str, Any]) -> list[dict[str, Any]]:
-        demand = self._latest_demand(project_dir, tail)
+    def _demand_rows(self, bundle_dir: Path) -> list[dict[str, Any]]:
+        demand = self._latest_demand(bundle_dir)
         rows = (demand or {}).get("vitals")
         return [row for row in rows if isinstance(row, dict) and row.get("vital_id")] if isinstance(rows, list) else []
 
-    def _attention_order(self, project_dir: Path, tail: dict[str, Any]) -> list[dict[str, Any]]:
-        demand = self._latest_demand(project_dir, tail)
+    def _attention_order(self, bundle_dir: Path) -> list[dict[str, Any]]:
+        demand = self._latest_demand(bundle_dir)
         order = (demand or {}).get("attention_order")
         if not isinstance(order, list):
             return []

@@ -116,12 +116,23 @@ def test_a_bundle_without_a_demand_member_yields_null_levels(tmp_path):
         assert cell["band"] is not None, vital_id
 
 
-def test_an_unreadable_demand_member_degrades_instead_of_failing(tmp_path):
+def test_an_absent_demand_member_is_a_pre_demand_bundle_and_an_unreadable_one_is_a_failure(tmp_path):
+    """A bundle written before the demand interface has no member and gets null levels; a member
+    that is present but unreadable is corruption, and a fleet surface must not pass it off as the
+    legacy case (PV-AUDIT-FLEET-COVERAGE-001)."""
+    from devostasis.history import HistoryStoreError
+
     store = _store_with(tmp_path)
     for path in (store.root / "projects" / "github.com" / "acme" / "widget").rglob("demand.json"):
-        path.write_text("{ not json", "utf-8")
+        path.unlink()
     write_fleet_index(store)
     assert _index(store)["projects"][0]["vitals"]["flow"]["level"] is None
+
+    store = _store_with(tmp_path / "corrupt")
+    for path in (store.root / "projects" / "github.com" / "acme" / "widget" / "history").rglob("demand.json"):
+        path.write_text("{ not json", "utf-8")
+    with pytest.raises(HistoryStoreError, match="demand member unreadable"):
+        write_fleet_index(store)
 
 
 def test_an_empty_store_writes_nothing(tmp_path):
