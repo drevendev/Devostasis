@@ -26,7 +26,7 @@ Phase C  reach: other providers and instruments
 
 | Obligation | Trigger | Response |
 | --- | --- | --- |
-| Research finding | an entry in `ANSWERS_TO_IMPLEMENTER`, an issue labelled `for:researcher`, or an accepted unit this repository has not adopted | adopt it, or record why not, before continuing queued work |
+| Research finding | an entry in `ANSWERS_TO_IMPLEMENTER`, an issue labelled `for:researcher`, or an accepted unit this repository has not adopted | adopt it, or record why not, before continuing queued work. Since 2026-09-20 the research process also runs static audits of this repository and records them on Drive only; [#35](https://github.com/drevendev/Devostasis/issues/35) is their catalogue here, and a session that starts on this repository reads the handoff document first |
 | Calibration contradiction | a bundle that contradicts a rule on real evidence | record it under "Calibration findings"; never change a threshold to make one repository look right |
 | Consumer question | a consumer cannot do something the contract promised | answer it before adding surface |
 
@@ -45,27 +45,28 @@ statement; the fix belongs in this repository, not in the rule.
 | --- | --- | --- |
 | B1 vectors | research process, then this repository | `PV-TEST-001` is being produced as `PV-TEST-VECTORS-00n` units; their findings are [#20](https://github.com/drevendev/Devostasis/issues/20), [#21](https://github.com/drevendev/Devostasis/issues/21), [#22](https://github.com/drevendev/Devostasis/issues/22) and [#23](https://github.com/drevendev/Devostasis/issues/23), and two of them need vector kinds this repository has not built |
 | B7 first outside consumer | **the owner** | picking a repository; B5 has landed, so the consumer surface no longer moves |
-| B3 durable revision history | research process | `PV-HIST-001` is PENDING behind their current queue |
-| C1 GitLab adapter | research process | GitLab adapter requirements not yet produced |
+| B3 durable revision history | **this repository** | `PV-HIST-002` was accepted by `PV-REV-HIST-002` on 2026-09-08 ([#34](https://github.com/drevendev/Devostasis/issues/34)); nothing blocks it but sequencing |
+| C1 GitLab adapter | **this repository, after B7 and the compatibility policy** | the requirements are accepted (`PV-GITLAB-003` by `PV-REV-GITLAB-003`, [#34](https://github.com/drevendev/Devostasis/issues/34)) |
 | C2 uncollected GitHub surfaces | this repository | each surface needs a contract decision first |
-| C3 Instruments | research process | `PV-INSTR-001` and children deferred past Iteration 1 |
+| C3 Instruments | **this repository, after B7 and the compatibility policy** | the envelope, the carrier and four instruments are accepted ([#34](https://github.com/drevendev/Devostasis/issues/34)); the carrier moves the configuration and bundle contracts, which is why the policy comes first |
 | C4 register generators | this repository | none; low value until a second project uses registers |
 | Renderer themes | owner | needs an owner-selected vocabulary per band |
 | PyPI publication | owner | needs an owner decision that the API surface is stable |
-| Compatibility policy | research process and owner | no contract defines what a breaking change is |
+| Compatibility policy | **this repository, then the owner** | `devostasis.contract-compatibility.v1` is accepted (`PV-COMPAT-002` by `PV-REV-COMPAT-002`, [#34](https://github.com/drevendev/Devostasis/issues/34)); adopting it is what makes the Phase C contract moves safe for an adopter |
 | `PV-CAL-004` predictive validity | elapsed time | needs calendar days of bundles, not more bundles (see the self-review) |
-| Judgements owed to us | research process | four open, listed below |
-| Accepted judgements not yet adopted | **the owner, then this repository** | one: `PV-REV-RECEIPT-IDENTITY-003` on [#19](https://github.com/drevendev/Devostasis/issues/19), the fifth identity move, which the owner has to want |
+| Judgements owed to us | delivered | all four, listed below; one of them is a required repair |
+| Accepted judgements not yet adopted | **this repository, and the owner for one** | the Vital repairs of [#33](https://github.com/drevendev/Devostasis/issues/33) (Direction closed-target and incomplete, Debt partial, Horizon partial, Integrity totality, T9), the Phase B and C contracts of [#34](https://github.com/drevendev/Devostasis/issues/34), and `PV-REV-RECEIPT-IDENTITY-003` on [#19](https://github.com/drevendev/Devostasis/issues/19), the fifth identity move, which the owner has to want |
+| Audit handoffs | this repository | about forty `REPAIR REQUIRED` static audits since 2026-09-20, catalogued in [#35](https://github.com/drevendev/Devostasis/issues/35); 0.1.9 repairs the store, transport, decoder and payload families, the timestamp and lineage families are open |
 
-Four judgements the research process owes this repository, all of them about
-work already shipped:
+The four judgements the research process owed this repository about work
+already shipped have all been delivered:
 
-| Unit | About | State |
+| Unit | About | Verdict |
 | --- | --- | --- |
-| `PV-REV-REGISTERS-001` | whether a `Target: <id>` marker is auditable enough under G7, and whether a bulk-editable register is gameable | READY |
-| `PV-REV-FLEET-001` | whether `devostasis.fleet.v1` is right to declare no cross-project ordering | PENDING |
-| `PV-REV-DIRECTION-CLOSED-TARGET-001` | calibration finding 9: closing a delivered target un-links the work that delivered it | PENDING |
-| `PV-SPEC-001` | the conformance review of every adoption since the specification was last reviewed, now including B5 | **due**: B5 was adopted in 0.1.8 |
+| `PV-REV-REGISTERS-001` | whether a `Target: <id>` marker is auditable enough under G7, and whether a bulk-editable register is gameable | ACCEPT (J1..J6, cases REG-01..08): the literal marker satisfies G7; editability stays provenance-visible; no new rule |
+| `PV-REV-FLEET-001` | whether `devostasis.fleet.v1` is right to declare no cross-project ordering | ACCEPT (FLEET-01..10): `aggregate` and `cross_project_order` stay exactly null; a control plane that routes across repositories owns that policy outside Devostasis |
+| `PV-REV-DIRECTION-CLOSED-TARGET-001` | calibration finding 9: closing a delivered target un-links the work that delivered it | REPAIR REQUIRED: Direction linkage must be state-neutral, an active change request linked to a resolvable declared target stays linked when the target closes; versioned Direction rule, cases DIR-CLOSED-01..09; not yet adopted, tracked in [#33](https://github.com/drevendev/Devostasis/issues/33) |
+| `PV-SPEC-001` | the conformance review of every adoption since the specification was last reviewed, including B5 | two passes on 2026-09-07: the 0.1.8 adoption reused the ORDER identifiers (repaired before the tag, #16); the post-repair pass found the runtime conformant and the public status prose stale, which 0.1.9 reconciles in `PROVENANCE.md` and here |
 
 Delivered judgements and their adoption. Under the standing obligation above
 they came before any queued target; 0.1.9 adopted every one that did not need
@@ -77,7 +78,10 @@ an owner decision:
 | `PV-REV-TEST-003` | [#12](https://github.com/drevendev/Devostasis/issues/12) finding 3 | adopted in 0.1.9: a `PARTIAL` required series is `UNKNOWN` with no band |
 | `PV-REV-TEST-VECTORS-002` | [#21](https://github.com/drevendev/Devostasis/issues/21) | adopted in 0.1.9: `sample_strength`, `CI_SPARSE_SAMPLE`, the accepted `T2`/`R1`/`R2` vectors |
 | `PV-REV-ACTIVITY-COVERAGE-001` | [#9](https://github.com/drevendev/Devostasis/issues/9) | adopted in 0.1.9: `ACT-COV-01..05` as `activity` vectors, the `PROVENANCE.md` entry |
-| `PV-REV-TEST-VECTORS-004/005/007` | [#22](https://github.com/drevendev/Devostasis/issues/22) | adopted in 0.1.9: `R3`, `R4`, `T4`, `T5`, `T7` vectors; the T5 diagnostic and the T7 upper-bound path in the evaluators; whether the GitHub adapter emits `retention_semantics` is a fleet-wide decision still open there |
+| `PV-REV-TEST-VECTORS-004/005/007` | [#22](https://github.com/drevendev/Devostasis/issues/22) | adopted in 0.1.9: `R3`, `R4`, `T4`, `T5`, `T7` vectors; the T5 diagnostic and the T7 upper-bound path in the evaluators; whether the GitHub adapter emits `retention_semantics` is a fleet-wide decision still open there, and since the Clutter adoption it also decides whether a capped branch head resolution can ever prove a floor on GitHub |
+| `PV-CLUTTER-INCOMPLETE-001`, `PV-ISSUE-026-RECONCILE-001` | [#26](https://github.com/drevendev/Devostasis/issues/26) | adopted in 0.1.9: `clutter.bands.v1`, cases `CLU-INCOMPLETE-01..20` executable; an incomplete component is a confirmed burden floor, never a manufactured band |
+| `PV-REV-DIRECTION-CLOSED-TARGET-001`, `PV-DEBT-PARTIAL-001`, `PV-HORIZON-PARTIAL-001`, `PV-DIRECTION-INCOMPLETE-001`, `PV-INT-TOTALITY-001`, `PV-TEST-004` | [#33](https://github.com/drevendev/Devostasis/issues/33) | **not adopted**: accepted repairs of four Vitals and the final T9 reconciliation, none of which had an issue here until the review of 2026-09-25 read the registry; each is a versioned rule adoption with named cases |
+| `PV-REV-HIST-002`, `PV-REV-GITLAB-003`, the instrument contracts, `PV-COMPAT-002`, `PV-CONFORMANCE-SURFACE-001`, `PV-RENDER-CLINICAL-001` | [#34](https://github.com/drevendev/Devostasis/issues/34) | **not adopted**: the Phase B and C contracts this roadmap called blocked by research; they are ours now, sequenced after B7 and the compatibility policy |
 | `PV-REV-RECEIPT-IDENTITY-003` | [#19](https://github.com/drevendev/Devostasis/issues/19) | **not adopted**: the fifth identity move, a fresh receipt, observations and manifest lineage with historical verification dispatch; it needs the owner to want it, and the contract document to implement from |
 
 One judgement is ours to ask for rather than to wait on: `ORDER-01..15` are
@@ -137,15 +141,17 @@ one workflow, its own `GITHUB_TOKEN`, no secret. The point is not the number
 of adopters but the first feedback from a consumer who did not write the
 contract. The only remaining blocker is the owner choosing a repository.
 
-### B3. Durable revision history across bundles — blocked by research
+### B3. Durable revision history across bundles — accepted by research, ours to build
 
 Integrity history is reconstructed from what the provider still exposes;
 parent-level surfaces cannot prove earlier failures, which is diagnosed as
 `HISTORY_PROVENANCE_PARENT_LEVEL_ONLY`. Persisting `revision_history_state`
 per revision across bundles closes that gap, with policy provenance and
-replay-or-`INCOMPARABLE` on semantic changes. The contract is `PV-HIST-001`,
-PENDING behind the research queue; building it first would repeat the mistake
-the consumer-surface freeze exists to avoid.
+replay-or-`INCOMPARABLE` on semantic changes. The contract is `PV-HIST-002`,
+accepted by `PV-REV-HIST-002` on 2026-09-08
+([#34](https://github.com/drevendev/Devostasis/issues/34)); it changes
+Integrity's history source, not the consumer surface, so it can go before
+the Phase C contract moves.
 
 ### Also open from the reporting review
 
@@ -212,20 +218,24 @@ why B7 comes next and why the compatibility policy is now the gap that matters.
 Not before Phase B, because each item multiplies the surface Phase B makes
 trustworthy.
 
-- **C1. GitLab adapter** (blocked by research): merge requests, pipelines with
-  in-place retries, epics and iterations as planning targets, under the same
-  provider-neutral observation keys. Until it exists, provider neutrality is a
-  design intent rather than a demonstrated property.
+- **C1. GitLab adapter** (requirements accepted, `PV-GITLAB-003`,
+  [#34](https://github.com/drevendev/Devostasis/issues/34)): merge requests,
+  pipelines with in-place retries, epics and iterations as planning targets,
+  under the same provider-neutral observation keys. Until it exists, provider
+  neutrality is a design intent rather than a demonstrated property.
 - **C2. GitHub surfaces not collected yet** (ours, each needs a contract
   decision): external check apps alongside Actions, legacy commit statuses,
   branch protection and rulesets as an *enforcement* observation, pull request
   to issue to milestone linkage, GitHub Projects fields as planning targets.
-- **C3. Instruments** (blocked by research, deferred past Iteration 1):
-  configurable deterministic instruments separable from the seven Vitals and
-  sharing their availability, freshness, coverage and provenance semantics:
-  test state (`PV-TESTSTATE-001`), coverage (`PV-COV-001`), deployment state
-  (`PV-DEPLOY-001`), normalized work since the previous bundle
-  (`PV-WORK-001`).
+- **C3. Instruments** (envelope, carrier and four instruments accepted,
+  [#34](https://github.com/drevendev/Devostasis/issues/34)): configurable
+  deterministic instruments separable from the seven Vitals and sharing their
+  availability, freshness, coverage and provenance semantics: test state
+  (`PV-TESTSTATE-002`), coverage (`PV-COV-003`), deployment state
+  (`PV-DEPLOY-002`), normalized work since the previous bundle
+  (`PV-WORK-002`), carried by `devostasis.instrument-carrier.v1`, which moves
+  the configuration and bundle contracts and therefore waits for the
+  compatibility policy.
 - **C4. Register generators** (ours, unblocked): scripts that derive
   `targets.json` from a project's own roadmap format, so the register never
   drifts from the roadmap. Worth little until a second project uses registers.
@@ -256,10 +266,13 @@ trustworthy.
   (ours).
 - **Publication to PyPI** (blocked by the owner): needs a decision that the
   API surface is stable.
-- **Versioning and compatibility policy per contract identifier** (blocked by
-  research and the owner): the repository declares 22 contract identifiers and
-  nothing states what a breaking change to one of them is, or what a consumer
-  may rely on across versions.
+- **Versioning and compatibility policy per contract identifier** (accepted,
+  `devostasis.contract-compatibility.v1` by `PV-REV-COMPAT-002`,
+  [#34](https://github.com/drevendev/Devostasis/issues/34)): the repository
+  declares 22 contract identifiers; the accepted policy makes them opaque
+  exact tokens dispatched under an immutable versioned policy, which is what
+  a consumer may rely on across versions. Ours to adopt, before any Phase C
+  contract move.
 
 ## What ends the loop
 

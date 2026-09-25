@@ -13,7 +13,7 @@ vectors and thirty-one cases of three judgements, plus the vector kinds those
 cases needed. Second, the review pass of 2026-09-22 (issue #30). Third, the
 repairs of the research audits of 2026-09-20 to 2026-09-24, which were
 handed off on Drive and had no record in this repository until the review
-of 2026-09-25 catalogued them (the umbrella issue named below). No threshold,
+of 2026-09-25 catalogued them in issue #35. No threshold,
 window or gauge changed; the two band rules that changed did so under
 accepted judgements, and their `rule_id` moved with them.
 
