@@ -34,17 +34,39 @@ and its `rule_id` moved with it.
   Cases `INT-UNKNOWN-01..06`, `T2`, `R1`, `R2` are executable vectors.
 - **Pulse diagnoses issue-only activity** (`PULSE_ISSUE_ONLY_ACTIVITY`,
   permanent case T5, issue #22), under `pulse.bands.v1` as the accepted vector
-  requires: provenance, not a judgement about productivity.
-- **Clutter reads unclassified branch purpose as an upper bound** (permanent
-  case T7, issue #22), under `clutter.bands.v0` as the accepted vector
-  requires: when the inventory declares
-  `git.nondefault_branches.retention_semantics = UNCLASSIFIED`, the stale
-  count bounds the residue from above, the result is `DEGRADED /
-  CONSERVATIVE_UPPER_BOUND` with every reachable band listed and
-  `CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED`. The GitHub adapter does not emit the
-  key in this version: doing so would make Clutter `DEGRADED` for every
-  project with a stale branch and take the accepted ordering away from it, so
-  that is a fleet-wide decision left with issue #22, not a default.
+  requires: provenance, not a judgement about productivity. It is emitted
+  only when every channel was positively observed: with a channel unobserved
+  or a required enumeration capped, "every observed event came from issues"
+  would be a claim about evidence nobody has.
+- **Clutter rule `clutter.bands.v1`: incomplete evidence is a confirmed burden
+  floor, never a manufactured band.** Adopts `PV-CLUTTER-INCOMPLETE-001`
+  (accepted by `PV-REV-CLUTTER-INCOMPLETE-001`, cases `CLU-INCOMPLETE-01..20`,
+  all executable) and the reading `PV-ISSUE-026-RECONCILE-001` gave issue
+  #26. An explicitly `UNAVAILABLE` issue or branch component, or a `PARTIAL`
+  count with an observed subset, no longer yields a band from the rest: the
+  band is the floor the observed facts prove. Observed stale work and
+  classified stale branches prove it; the ratio proves it only over a
+  complete issue and change-request domain; an `UNCLASSIFIED` branch count
+  proves nothing. `HEAVY` is `DEGRADED / EXACT` (terminal), `CLUTTERED` and
+  `LIGHT` are `DEGRADED` lower bounds with a conservative superset, and a
+  floor of nothing is `UNKNOWN` with no band. Before, an unavailable
+  component with nothing else observed produced `DEGRADED CLEAN`, a band
+  made from absence; on the fleet's store that is exactly one project, whose
+  issues are disabled and which has no stale residue: it becomes `UNKNOWN`,
+  which is what the evidence supports. The #26 case, a capped branch head
+  resolution, proves a floor only with explicit `CLASSIFIED` retention
+  semantics (`>= 20` HEAVY exact, `6..19` CLUTTERED, `1..5` LIGHT, zero
+  UNKNOWN); the GitHub adapter does not emit retention semantics, so on
+  GitHub that case stays `UNKNOWN` until issue #22 decides whether it should.
+  Permanent case T7 (issue #22), the `UNCLASSIFIED` upper bound with
+  `CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED`, moves under the same rule id
+  unchanged, and when the work items alone reach the band the full count
+  reaches, that band is `DEGRADED / EXACT` as the contract's section 5 says.
+  One `RULE_VERSION_BOUNDARY` on Clutter per project; no threshold or window
+  moved. The GitHub adapter still does not emit `retention_semantics`:
+  emitting `UNCLASSIFIED` would make Clutter `DEGRADED` for every project with
+  a stale branch and take the accepted ordering away from it, so that is a
+  fleet-wide decision left with issue #22, not a default.
 - **The accepted exact vectors are in the corpus** as the research process
   wrote them: `T2`, `R1`, `R2` (PV-REV-TEST-VECTORS-002), `R4`
   (PV-REV-TEST-VECTORS-004), `R3` (PV-REV-TEST-VECTORS-005), `T4`, `T5`, `T7`

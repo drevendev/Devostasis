@@ -57,6 +57,39 @@ and an unsupported conclusion reach the Vital as `UNKNOWN`.
 | sample strength | one to three decisive revisions are SPARSE with `CI_SPARSE_SAMPLE`; four are ESTABLISHED | `test_sparse_samples_declare_their_strength_and_established_ones_do_not_carry_the_diagnostic` |
 | unresolved superset | `possible_bands` of a still-verifying newest revision holds every band a completion reaches, never a fixed tail (#12 finding 3) | `test_the_unresolved_superset_is_derived_from_the_completions_the_evidence_admits` |
 
+## Clutter: incomplete evidence (PV-CLUTTER-INCOMPLETE-001, PV-ISSUE-026-RECONCILE-001)
+
+Rule `clutter.bands.v1`, adopted in 0.1.9. The twenty cases of the accepted
+contract, transcribed from its `Required conformance fixtures` section; the
+ranges a case names (6..19, 1..5) are stated as variants under the one
+identifier. Cases 13 to 16 are the accepted answer to issue #26.
+
+| Case | Meaning | Test |
+| --- | --- | --- |
+| CLU-INCOMPLETE-01 | an unavailable issue inventory cannot manufacture CLEAN | `vector:CLU-INCOMPLETE-01` |
+| CLU-INCOMPLETE-02 | an unavailable issue inventory with one confirmed stale change request is a LIGHT lower bound | `vector:CLU-INCOMPLETE-02` |
+| CLU-INCOMPLETE-03 | an absolute stale-work count of five proves CLUTTERED while the ratio over an unavailable denominator proves nothing | `vector:CLU-INCOMPLETE-03` |
+| CLU-INCOMPLETE-04 | an absolute stale-work count of twenty-five is HEAVY and exact | `vector:CLU-INCOMPLETE-04` |
+| CLU-INCOMPLETE-05 | an unavailable branch inventory cannot manufacture CLEAN | `vector:CLU-INCOMPLETE-05` |
+| CLU-INCOMPLETE-06 | an unavailable branch inventory above a complete LIGHT core is a LIGHT lower bound | `vector:CLU-INCOMPLETE-06` |
+| CLU-INCOMPLETE-07 | a complete issue and change-request ratio domain is admissible proof when only the branch inventory is unavailable | `vector:CLU-INCOMPLETE-07` |
+| CLU-INCOMPLETE-08 | a ratio-only trigger is not proof when the issue denominator is unavailable | `vector:CLU-INCOMPLETE-08` |
+| CLU-INCOMPLETE-09 | partial required change-request evidence with twenty-five observed stale items forces HEAVY | `vector:CLU-INCOMPLETE-09` |
+| CLU-INCOMPLETE-10 | partial change-request evidence with five observed stale items proves a CLUTTERED floor | `vector:CLU-INCOMPLETE-10` |
+| CLU-INCOMPLETE-11 | a partial denominator cannot elevate a ratio-only threshold | `vector:CLU-INCOMPLETE-11` |
+| CLU-INCOMPLETE-12 | a partial zero subset remains UNKNOWN | `vector:CLU-INCOMPLETE-12` |
+| CLU-INCOMPLETE-13 | a partial classified branch subset of twenty forces HEAVY | `vector:CLU-INCOMPLETE-13` |
+| CLU-INCOMPLETE-14 | a partial classified branch subset of six to nineteen proves a CLUTTERED floor | `vector:CLU-INCOMPLETE-14` |
+| CLU-INCOMPLETE-15 | a partial classified branch subset of one to five proves a LIGHT floor | `vector:CLU-INCOMPLETE-15` |
+| CLU-INCOMPLETE-16 | a partial classified branch zero subset remains UNKNOWN | `vector:CLU-INCOMPLETE-16` |
+| CLU-INCOMPLETE-17 | an unavailable issue component beside twenty unclassified branches is two-sided uncertainty and stays UNKNOWN | `vector:CLU-INCOMPLETE-17` |
+| CLU-INCOMPLETE-18 | an independent positive core floor survives unclassified branch ambiguity | `vector:CLU-INCOMPLETE-18` |
+| CLU-INCOMPLETE-19 | the complete UNCLASSIFIED upper-bound path of T7 is preserved | `vector:CLU-INCOMPLETE-19` |
+| CLU-INCOMPLETE-20 | provider naming, enumeration order and pagination metadata cannot enter the classification | `vector:CLU-INCOMPLETE-20`, `test_clu_incomplete_20_provider_and_order_invariance_is_exact_over_the_whole_result` |
+| undeclared retention | a partial branch count whose retention semantics are undeclared or unclassified proves no floor; declared but unreadable semantics fail closed (#26) | `test_clutter_partial_branch_count_without_classified_retention_is_unknown`, `test_clutter_partial_branch_count_that_is_unclassified_proves_nothing`, `test_clutter_declared_but_unreadable_retention_semantics_fail_closed` |
+| partial without a value | a PARTIAL count that carries no observed subset is unresolved, not a lower bound | `test_clutter_partial_count_without_a_value_is_unresolved_not_a_subset` |
+| invariant band under unclassified branches | when the work items alone reach the band the full unclassified count reaches, the band is DEGRADED and EXACT (section 5 of the contract) | `test_clutter_unclassified_branches_that_the_work_items_already_reach_are_an_invariant_band` |
+
 ## Activity coverage (PV-REV-ACTIVITY-COVERAGE-001)
 
 Reading 3 of issue #9, accepted: the interval stays the full canonical gap and
@@ -83,7 +116,7 @@ timestamp. Executable as `activity` vectors.
 | V1-07 | mapping change makes history incomparable | `test_art_04_rpt_10_semantic_config_change_is_incomparable` |
 | V1-08 | fail then rerun pass | `test_r54_...` |
 | V1-10 | unavailable channel never becomes zero | `test_v1_10_unavailable_channel_never_becomes_zero_but_lower_bound_still_classifies` |
-| V1-11 | branch enumeration unavailable cannot emit exact CLEAN | `test_v1_11_branch_enumeration_unavailable_cannot_emit_exact_clean` |
+| V1-11 | branch enumeration unavailable cannot emit exact CLEAN (since `clutter.bands.v1` it emits no band at all, CLU-INCOMPLETE-05) | `test_v1_11_branch_enumeration_unavailable_cannot_emit_exact_clean`, `test_clutter_issues_disabled_with_no_observed_residue_is_unknown_not_clean`, `test_clutter_issues_disabled_with_observed_residue_is_a_lower_bound` |
 | V1-12 | dependency metadata, no aggregate | `test_v1_12_snapshot_carries_dependency_metadata_and_no_aggregate` |
 | V1-13 | no calibrated Debt policy | `test_v1_13_no_calibrated_policy_keeps_large_debt_as_present` |
 | V1-14 | mass-linking yields neutral FULLY_LINKED | `test_v1_14_mass_linking_yields_neutral_fully_linked_with_diagnostic` |
@@ -230,7 +263,8 @@ ART-08..ART-11, ART-15, RPT-4..RPT-6, RPT-9) are listed in the ROADMAP under the
 synthetic fixture suite. The research process delivers them as executable JSON
 vectors in the format of [vectors.md](vectors.md), one accepted family per
 unit; the ones accepted so far (T2, R1, R2, R3, R4, T4, T5, T7) are in the
-corpus above. The `ci` kind reaches the normalization boundary R5..R10 are
+corpus above, and so are the twenty cases of `PV-CLUTTER-INCOMPLETE-001`,
+transcribed from the accepted contract the way `ORDER-01..15` were. The `ci` kind reaches the normalization boundary R5..R10 are
 about, so that family can be materialized against it (issue #20); `variants`
 and the dependency-group assertions close the T8 and part of the T6 gap of
 issue #23, while T3 and the bundle and store cases still need a surface this

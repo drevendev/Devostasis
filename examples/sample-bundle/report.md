@@ -2,7 +2,7 @@
 
 - Observed at: 2026-09-05T12:00:00Z
 - Comparison: BASELINE
-- Bundle: `75eaace90bb9db59d103a7bf91fe4f69afb6a3683633d72bcdbd93fb4e051d6d`
+- Bundle: `45f84cc2652cb5d80e3b7edb689fa4b7973a5c5c76db2b5cfb2df06e8a2ec6c6`
 - Contracts: vitals PV-VITALS-V1-002, observations RAW-OBS-V0, policy devostasis.policy.v1
 
 ```text
@@ -63,7 +63,7 @@ _Is future work explicitly declared, and does any declaration reach beyond 28 da
 
 _How much unresolved stale residue is observable?_
 
-- Evaluation: AVAILABLE; rule `clutter.bands.v0`
+- Evaluation: AVAILABLE; rule `clutter.bands.v1`
 - Gauge (stale residue): █░░░░░░░░░ 10
 - Shares signals with: CLUTTER_FLOW_FORGE
 

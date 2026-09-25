@@ -71,7 +71,7 @@ def test_a_forbidden_diagnostic_that_is_emitted_fails():
             {"observation_id": "git.nondefault_branches.stale_count_30d", "value": 0},
         ],
     }
-    expect = {"band": "CLEAN", "evaluation_status": "DEGRADED", "diagnostics_absent": ["COMPONENT_UNAVAILABLE"]}
+    expect = {"band": None, "evaluation_status": "UNKNOWN", "diagnostics_absent": ["COMPONENT_UNAVAILABLE"]}
     result = vectors.run(parse(given=given, expect=expect))
     assert not result.ok and "must not be emitted" in result.failures[0]
 

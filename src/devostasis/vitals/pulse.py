@@ -139,7 +139,7 @@ def evaluate(obs: ObservationSet) -> VitalResult:
     events = sum(channels.values())
     channel_count = sum(1 for value in channels.values() if value > 0)
     band = classify(active_days, events, channel_count)
-    provenance = [ISSUE_ONLY] if issue_only(channels) else []
+    provenance = [ISSUE_ONLY] if not unobserved and not partial_required and issue_only(channels) else []
     derived = {
         "commits_28d": commits,
         "commit_active_days_28d": active_days,

@@ -77,13 +77,16 @@
       "derived": {
         "components": {
           "branches": {
+            "acquisition": "COMPLETE",
             "stale_30d": 1
           },
           "change_requests": {
+            "acquisition": "COMPLETE",
             "open": 2,
             "stale_14d": 0
           },
           "issues": {
+            "acquisition": "COMPLETE",
             "open": 3,
             "stale_30d": 1
           }
@@ -124,11 +127,16 @@
           "freshness": "FRESH",
           "observation_id": "git.nondefault_branches.stale_count_30d",
           "status": "AVAILABLE"
+        },
+        {
+          "freshness": "UNKNOWN",
+          "observation_id": "git.nondefault_branches.retention_semantics",
+          "status": "NOT_REQUESTED"
         }
       ],
       "policy_version": "devostasis.policy.v1",
       "possible_bands": null,
-      "rule_id": "clutter.bands.v0",
+      "rule_id": "clutter.bands.v1",
       "shared_signal_groups": [
         "FORGE_INVENTORY",
         "BRANCH_RESIDUE"

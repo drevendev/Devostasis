@@ -54,7 +54,9 @@ def test_every_envelope_in_the_corpus_is_one_the_published_schema_accepts():
     for vector in ALL:
         if vector.kind != "vital":
             continue
-        for stated in vector.given["observations"]:
-            keys = set(stated)
-            assert required <= keys, f"{vector.case}: envelope is missing {sorted(required - keys)}"
-            assert keys <= allowed, f"{vector.case}: envelope states {sorted(keys - allowed)}, which the schema does not declare"
+        shapes = vector.given["variants"] if "variants" in vector.given else [vector.given]
+        for shape in shapes:
+            for stated in shape["observations"]:
+                keys = set(stated)
+                assert required <= keys, f"{vector.case}: envelope is missing {sorted(required - keys)}"
+                assert keys <= allowed, f"{vector.case}: envelope states {sorted(keys - allowed)}, which the schema does not declare"

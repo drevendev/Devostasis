@@ -55,7 +55,7 @@ beside it calls invalid.
              {"observation_id": "git.nondefault_branches.stale_count_30d", "value": 0}]},
  "expect": {"band": "LIGHT", "evaluation_status": "AVAILABLE",
             "band_semantics": "EXACT", "possible_bands": null,
-            "rule_id": "clutter.bands.v0",
+            "rule_id": "clutter.bands.v1",
             "derived": {"tracked_open_count": 6, "stale_work_count": 1},
             "diagnostics_absent": ["COMPONENT_UNAVAILABLE"],
             "explanation_contains": ["1 stale work items out of 6 tracked open items"]}}

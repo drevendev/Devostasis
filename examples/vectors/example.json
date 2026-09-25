@@ -38,7 +38,7 @@
         "evaluation_status": "AVAILABLE",
         "band_semantics": "EXACT",
         "possible_bands": null,
-        "rule_id": "clutter.bands.v0",
+        "rule_id": "clutter.bands.v1",
         "derived": {
           "tracked_open_count": 6,
           "stale_work_count": 1,
@@ -59,7 +59,7 @@
     },
     {
       "case": "EXAMPLE-VITAL-02",
-      "title": "A component that could not be enumerated makes CLEAN a lower bound, never an exact CLEAN",
+      "title": "A component that could not be enumerated leaves no band, never an exact CLEAN",
       "kind": "vital",
       "source_unit": "PV-VITALS-V1-002",
       "given": {
@@ -90,20 +90,24 @@
         ]
       },
       "expect": {
-        "band": "CLEAN",
-        "evaluation_status": "DEGRADED",
-        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
-        "possible_bands": [
-          "CLEAN",
-          "LIGHT",
-          "CLUTTERED",
-          "HEAVY"
-        ],
+        "band": null,
+        "evaluation_status": "UNKNOWN",
+        "band_semantics": null,
+        "possible_bands": null,
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "NONE"
+        },
         "derived_absent": [
           "issues_open_count"
         ],
         "diagnostics": [
-          "COMPONENT_UNAVAILABLE:issues:ISSUES_DISABLED"
+          "COMPONENT_UNAVAILABLE:issues:ISSUES_DISABLED",
+          "CLUTTER_INCOMPLETE_COMPONENT:issues:UNAVAILABLE",
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:NONE"
+        ],
+        "explanation_contains": [
+          "incomplete evidence is never positive emptiness"
         ]
       }
     },

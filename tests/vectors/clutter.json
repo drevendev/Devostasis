@@ -24,7 +24,7 @@
         "evaluation_status": "DEGRADED",
         "band_semantics": "CONSERVATIVE_UPPER_BOUND",
         "possible_bands": ["CLEAN", "LIGHT", "CLUTTERED", "HEAVY"],
-        "rule_id": "clutter.bands.v0",
+        "rule_id": "clutter.bands.v1",
         "diagnostics": ["CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED"]
       }
     }

@@ -207,23 +207,66 @@ tracked > 0), `stale_branch_count`.
 | LIGHT | `stale_work > 0` or `stale_branches > 0` |
 | CLEAN | everything observable is zero |
 
-Degradation: an explicitly `UNAVAILABLE` component is excluded and the result
-is a `CONSERVATIVE_LOWER_BOUND`; exact `CLEAN` is impossible when a component
-could not be enumerated. A `PARTIAL`, `FORBIDDEN`, `UNKNOWN` or `ERROR`
-component yields `UNKNOWN`.
+Rule `clutter.bands.v1` (0.1.9) adopts the accepted incomplete-evidence
+contract `PV-CLUTTER-INCOMPLETE-001` (cases `CLU-INCOMPLETE-01..20`) and the
+reading `PV-ISSUE-026-RECONCILE-001` gave issue #26, without moving a
+threshold or a window. The change-request component is required; the issue
+and branch components are optional.
 
-A stale branch is residue only when it is known to be one. When the branch
-inventory declares `retention_semantics = UNCLASSIFIED` and the stale count is
-positive, that count is an upper bound on the true residue (permanent case
-T7): the band is the one the full count reaches, the result is `DEGRADED`
-with `CONSERVATIVE_UPPER_BOUND` semantics, `possible_bands` holds every band
-some classified residue between zero and the count reaches together with the
-work items, and `CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED` says why. With an
-`UNAVAILABLE` component on top, the result is a
-`NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET` covering both directions. The GitHub
-adapter does not emit `retention_semantics` in this version, so its
-inventories are read as before; emitting it is a fleet-wide decision recorded
-in issue #22.
+**Incomplete evidence.** A component is *incomplete* when it is explicitly
+`UNAVAILABLE` (issues or branches only) or `PARTIAL` with a value, which is a
+trustworthy observed subset. The band is then a *confirmed burden floor*
+built only from facts omitted records cannot erase:
+
+- observed stale work counts, complete or partial, add to
+  `confirmed_stale_work_lower_bound`;
+- a stale branch count adds to `confirmed_stale_branch_lower_bound` only when
+  the counted residue is known to be residue: a complete count with
+  `CLASSIFIED` or undeclared retention semantics, or a `PARTIAL` count with
+  explicit complete `CLASSIFIED` semantics (that is the answer to #26: a
+  capped head resolution proves a floor, but only for classified branches);
+  an `UNCLASSIFIED` count proves nothing and is diagnosed
+  `CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED`, an undeclared one behind a partial
+  count is diagnosed `CLUTTER_BRANCH_FLOOR_NOT_PROVEN:UNDECLARED`;
+- the ratio predicates apply only when every open and stale count of the
+  issue and change-request domain is complete; otherwise the ratio is not
+  proof (`CLUTTER_RATIO_NOT_PROOF_INCOMPLETE_DENOMINATOR`), because a
+  denominator that can still grow proves nothing, even when the observed
+  subset would satisfy the predicate.
+
+| Confirmed floor | Result |
+| --- | --- |
+| HEAVY | `DEGRADED / HEAVY / EXACT`, no `possible_bands`: the terminal band is invariant under any completion |
+| CLUTTERED | `DEGRADED / CLUTTERED / CONSERVATIVE_LOWER_BOUND`, `possible_bands = [CLUTTERED, HEAVY]` |
+| LIGHT | `DEGRADED / LIGHT / CONSERVATIVE_LOWER_BOUND`, `possible_bands = [LIGHT, CLUTTERED, HEAVY]` |
+| NONE | `UNKNOWN`, no band: incomplete evidence is never positive emptiness, and never `CLEAN` |
+
+Every such result carries `CLUTTER_INCOMPLETE_COMPONENT:<component>:<PARTIAL|UNAVAILABLE>`
+for each incomplete component and `CLUTTER_CONFIRMED_BURDEN_FLOOR:<floor>`,
+and its `derived` keeps the observed values, the floor, the ratio eligibility
+and the retention semantics, so the proof is auditable. `possible_bands`
+under the lower-bound rows is a `NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET`,
+never a claim that every listed band is exactly reachable.
+
+A `FORBIDDEN`, `UNKNOWN` or `ERROR` component, a stale one, a `PARTIAL`
+count without a value, a required change-request component that is not
+complete or partial, and declared retention semantics that cannot be read
+all yield `UNKNOWN`, as before.
+
+**Unclassified branches (T7).** A stale branch is residue only when it is
+known to be one. When every component is complete, the branch inventory
+declares `retention_semantics = UNCLASSIFIED` and the stale count is
+positive, that count is an upper bound on the true residue: the band is the
+one the full count reaches, the result is `DEGRADED` with
+`CONSERVATIVE_UPPER_BOUND` semantics, `possible_bands` holds every band some
+classified residue between zero and the count reaches together with the work
+items, and `CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED` says why. When the work
+items alone already reach that band, the band is invariant and the result is
+`DEGRADED` with `EXACT` semantics and no `possible_bands`. The GitHub adapter
+does not emit `retention_semantics` in this version, so a complete count is
+read as it always was; emitting it is a fleet-wide decision recorded in issue
+#22, and until it is made a capped head resolution on GitHub stays `UNKNOWN`
+because its retention is undeclared.
 
 Groups: `FORGE_INVENTORY`, `BRANCH_RESIDUE`; dependency `CLUTTER_FLOW_FORGE`.
 
