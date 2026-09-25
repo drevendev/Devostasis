@@ -460,3 +460,61 @@ def test_a_failed_workflow_lookup_is_recorded_when_check_suites_supply_the_evide
 
     plain, _, _ = _collect(_routes())
     assert not any(note.startswith("WORKFLOWS_UNAVAILABLE") for note in plain.receipt.capability_notes)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        None,
+        [],
+        "two",
+        {"total_count": "many", "workflows": []},
+        {"total_count": True, "workflows": []},
+        {"total_count": -1, "workflows": []},
+        {"workflows": []},
+    ],
+    ids=["null", "list", "string", "text count", "boolean count", "negative count", "no count"],
+)
+def test_a_malformed_workflows_answer_is_a_declared_failure_not_an_invented_count(body):
+    """PV-REV-PR-029: a 200 from /actions/workflows of the wrong shape or value must reach the
+    declared per-inventory boundary. Before, a non-object body raised AttributeError and a
+    non-numeric total_count raised ValueError past the WORKFLOWS_UNAVAILABLE fallback."""
+    routes = _routes(**{
+        f"{BASE}/actions/workflows": (200, {}, body),
+        f"{BASE}/commits/c1/check-suites": (200, {}, {"total_count": 0, "check_suites": []}),
+        f"{BASE}/commits/c2/check-suites": (200, {}, {"total_count": 0, "check_suites": []}),
+    })
+    obs, transport, _ = _collect(routes)
+    configured = obs.get(CI_CONFIGURED)
+    assert configured.status == ERROR and configured.reason_code == "UNEXPECTED_PAYLOAD", "no workflow count is invented"
+    assert configured.value is None
+    assert "WORKFLOWS_UNAVAILABLE:UNEXPECTED_PAYLOAD" in obs.receipt.capability_notes
+    assert not any(path.endswith("/actions/runs") for path, _ in transport.calls), "runs are never asked for without a workflow count"
+    assert obs.status_of(INV_CRS) == AVAILABLE and obs.status_of(INV_ISSUES) == AVAILABLE, "independent inventories are still collected"
+    revisions = obs.get(CI_REVISIONS)
+    assert revisions.status == AVAILABLE and revisions.coverage["surface"] == "none", "the check-suite surface was sampled instead"
+    derive(obs, single_project("acme/widget"))
+    integrity = {r.vital_id: r for r in evaluate_all(obs)}["integrity"]
+    assert integrity.evaluation_status == "UNKNOWN" and integrity.band is None, "an unreadable Actions surface is never UNINSTRUMENTED"
+
+
+def test_a_malformed_workflows_answer_still_lets_external_check_suites_supply_the_evidence():
+    """The fallback the note exists for: Actions unreadable, an external suite readable."""
+    suite = {"id": 9, "status": "completed", "conclusion": "failure", "app": {"slug": "circleci"}, "url": "s9", "latest_check_runs_count": 3}
+    routes = _routes(**{
+        f"{BASE}/actions/workflows": (200, {}, {"total_count": None}),
+        f"{BASE}/commits/c1/check-suites": (200, {}, {"total_count": 1, "check_suites": [suite]}),
+        f"{BASE}/commits/c2/check-suites": (200, {}, {"total_count": 0, "check_suites": []}),
+    })
+    obs, _, _ = _collect(routes)
+    assert obs.value_of(CI_CONFIGURED) is True
+    revisions = {r["revision"]: r for r in obs.value_of(CI_REVISIONS)}
+    assert revisions["c1"]["current_verdict"] == "VERIFY_FAIL" and revisions["c1"]["history_provenance"] == "PARENT_LEVEL_ONLY"
+    assert "WORKFLOWS_UNAVAILABLE:UNEXPECTED_PAYLOAD" in obs.receipt.capability_notes
+
+
+def test_a_well_formed_workflows_answer_is_read_as_before():
+    from devostasis.adapters.github import _workflows_total
+
+    assert _workflows_total("/x", {"total_count": 0, "workflows": []}) == 0
+    assert _workflows_total("/x", {"total_count": 7}) == 7
