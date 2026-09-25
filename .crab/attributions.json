@@ -1,0 +1,29 @@
+{
+  "schema": "hungry-crab.attributions/1",
+  "receipts": [
+    {
+      "nutrient_id": "crab:tooling:tooling.dependabot",
+      "source": {
+        "label": "pypa/build",
+        "url": "https://github.com/pypa/build",
+        "sha": "58c921aada7f4e03edda65545d42db0c8b000bdc",
+        "license": "MIT"
+      },
+      "taken": [
+        {
+          "maw_path": ".github/dependabot.yml",
+          "prey_path": ".github/dependabot.yml",
+          "verbatim": false
+        }
+      ],
+      "mode": "COPY",
+      "obligation": {
+        "kind": "copyright-notice",
+        "text": "keep the source's copyright and permission notice with the material"
+      },
+      "summary": "carried pypa/build's github-actions Dependabot block over unchanged (weekly on Tuesday, one grouped pull request, a seven-day cooldown) and added a pip block for pyproject.toml on the same schedule",
+      "branch": "crab/tooling-tooling.dependabot-9de61c0c",
+      "recorded_at": "2026-09-25T17:51:14+00:00"
+    }
+  ]
+}
