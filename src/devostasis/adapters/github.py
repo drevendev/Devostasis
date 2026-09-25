@@ -351,9 +351,14 @@ class GitHubClient:
                 body = self.get(path, params)
             except RequestBudgetExhausted:
                 return items, False
-            batch = body.get(items_key, []) if items_key else body
+            if items_key:
+                if not isinstance(body, dict):
+                    raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected an object with {items_key!r} from {path}, got {type(body).__name__}")
+                batch = body.get(items_key, [])
+            else:
+                batch = body
             if not isinstance(batch, list):
-                raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected a list from {path}")
+                raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected a list from {path}, got {type(batch).__name__}")
             items.extend(batch)
             if stop is not None and batch and stop(batch[-1]):
                 return items, True
@@ -518,6 +523,24 @@ def parse_debt_register(document: Any) -> list[dict[str, Any]]:
         )
     items.sort(key=lambda i: i["id"])
     return items
+
+
+def _workflows_total(path: str, payload: Any) -> int:
+    """The workflow count a successful ``/actions/workflows`` answer establishes, or a declared failure.
+
+    A 200 whose body is not an object, or whose ``total_count`` is absent or
+    not a non-negative integer, establishes no count at all. It is refused as
+    ``ERROR / UNEXPECTED_PAYLOAD`` like every other malformed success, so it
+    reaches ``workflows_failure`` and the check-suite fallback with a
+    ``WORKFLOWS_UNAVAILABLE`` note instead of escaping the inventory as a
+    Python exception, and no count is invented in its place (PV-REV-PR-029).
+    """
+    if not isinstance(payload, dict):
+        raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected an object from {path}, got {type(payload).__name__}")
+    total = payload.get("total_count")
+    if isinstance(total, bool) or not isinstance(total, int) or total < 0:
+        raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected a non-negative integer total_count from {path}, got {total!r}")
+    return total
 
 
 class GitHubAdapter:
@@ -905,6 +928,8 @@ class GitHubAdapter:
         limit = MAX_RELEASES
         try:
             raw = self.client.get(path, {"per_page": limit})
+            if not isinstance(raw, list) or not all(isinstance(r, dict) for r in raw):
+                raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected a list of releases from {path}, got {type(raw).__name__}")
         except (ApiFailure, NetworkFailure) as exc:
             obs.add(_failure_observation(INV_RELEASES, "series", exc, common))
             return
@@ -949,8 +974,9 @@ class GitHubAdapter:
 
         workflows_total: int | None = None
         workflows_failure: Exception | None = None
+        workflows_path = f"{base}/actions/workflows"
         try:
-            workflows_total = int(self.client.get(f"{base}/actions/workflows", {"per_page": 1}).get("total_count", 0))
+            workflows_total = _workflows_total(workflows_path, self.client.get(workflows_path, {"per_page": 1}))
         except (ApiFailure, NetworkFailure) as exc:
             workflows_failure = exc
 
@@ -1017,6 +1043,14 @@ class GitHubAdapter:
                 self.notes.append("CI_SURFACE:GITHUB_CHECK_SUITES_SAMPLED")
 
         any_parents = any(parents_by_sha.values())
+        if workflows_failure is not None:
+            # The Actions surface could not be asked at all. When check suites
+            # then supply the evidence, the collection is legitimately
+            # parent-level, but a reader of the receipt must be able to tell
+            # "no Actions runs" from "Actions could not be read", exactly as
+            # CHECK_SUITES_UNAVAILABLE says it for the other surface.
+            reason = workflows_failure.reason_code if isinstance(workflows_failure, ApiFailure) else "NETWORK"
+            self.notes.append(f"WORKFLOWS_UNAVAILABLE:{reason}")
         if workflows_total and workflows_total > 0:
             obs.add(Observation(observation_id=CI_CONFIGURED, status=AVAILABLE, value_type="boolean", value=True, evidence_ref={"workflows_total": workflows_total}, **common_conf))
         elif any_parents:

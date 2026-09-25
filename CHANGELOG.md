@@ -3,6 +3,57 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
+## 0.1.9 (unreleased)
+
+A review pass, like 0.1.7: no new capability, and no rule, threshold, window
+or gauge changed. Each defect was reproduced before it was fixed.
+
+- **A successful response of the wrong shape costs one inventory, not the
+  project.** `GET /actions/runs` answering 200 with no body, or
+  `GET /releases` answering an object instead of a list, escaped as
+  `AttributeError`; `run_all`'s boundary caught it, so the project produced no
+  bundle at all. Both are now `ERROR / UNEXPECTED_PAYLOAD` on that inventory
+  alone, like every other provider failure, and the rest of the evidence is
+  still collected. The review of this change (`PV-REV-PR-029`) found the same
+  hole one endpoint over: `GET /actions/workflows` answering 200 with a body
+  that is not an object, or a `total_count` that is not a non-negative
+  integer, raised past the `WORKFLOWS_UNAVAILABLE` fallback. The count is now
+  validated before it is read; a malformed one is `UNEXPECTED_PAYLOAD`, the
+  receipt says `WORKFLOWS_UNAVAILABLE:UNEXPECTED_PAYLOAD`, check suites are
+  sampled as for any other failed lookup, and no count is invented.
+- **A failed workflow lookup is no longer silent.** When
+  `GET /actions/workflows` fails (a token without `actions: read` is enough)
+  the collector samples check suites instead, Actions-created suites
+  included, and the evidence is parent-level. That was correct and invisible:
+  the receipt said `CI_SURFACE:GITHUB_CHECK_SUITES_SAMPLED` and nothing about
+  why. It now also carries `WORKFLOWS_UNAVAILABLE:<reason>`, mirroring
+  `CHECK_SUITES_UNAVAILABLE`. Capability notes are identity-bearing, so a
+  project in exactly that state gets a new bundle id once; every other bundle
+  is unchanged.
+- **The build metadata names the setuptools that can read it.**
+  `pyproject.toml` uses PEP 639 (`license = "MIT"`, `license-files`) but
+  required only `setuptools>=69`. setuptools 76 rejects the file
+  (`project.license must be valid exactly by one definition`); isolated builds
+  always fetched a newer setuptools, which is why CI never saw it, and
+  `--no-build-isolation` did. Now `setuptools>=77`.
+- **The documentation described a token order the code never used.** The
+  configured `token_env` is read first, before `DEVOSTASIS_GITHUB_TOKEN`,
+  `GITHUB_TOKEN` and `GH_TOKEN`; the configuration guide and the adapter page
+  said last. The code was right, since a runner's own `GITHUB_TOKEN` must not
+  override the token a fleet configuration names, and the pages now say so.
+- **Bookkeeping:** the README status paragraph still described 0.1.0; the
+  roadmap listed issue #9 as "filed, not yet indexed" after it had been
+  answered, and had no row for the accepted judgements this repository has
+  not adopted (#13, #19, #21, #12 finding 3, the cases of #9). It has one now,
+  under the standing obligation that names them. Three findings of the same
+  review pass are filed as issues rather than fixed here, because each is a
+  rule or a contract decision: Clutter `UNKNOWN` past the branch lookup cap
+  ([#26](https://github.com/drevendev/Devostasis/issues/26)),
+  `devostasis build` accepting flags that disagree with the receipt
+  ([#27](https://github.com/drevendev/Devostasis/issues/27)), and
+  comparability decided from the convenience copy `latest/`
+  ([#28](https://github.com/drevendev/Devostasis/issues/28)).
+
 ## 0.1.8 (2026-09-07)
 
 Roadmap targets B5 and B1: the first accepted band ordering, and the format

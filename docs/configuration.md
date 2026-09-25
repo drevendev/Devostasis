@@ -71,11 +71,13 @@ identity but not the comparison.
 
 ## Token
 
-Resolution order: `--token`, `DEVOSTASIS_GITHUB_TOKEN`, `GITHUB_TOKEN`,
-`GH_TOKEN`, the configured `token_env`, then `gh auth token` when the GitHub
-CLI is installed and logged in. Use a fine-grained token with read-only
-Contents, Issues, Pull requests, Actions and Metadata permissions on the
-repositories you observe.
+Resolution order: `--token`, the configured `token_env`,
+`DEVOSTASIS_GITHUB_TOKEN`, `GITHUB_TOKEN`, `GH_TOKEN`, then `gh auth token`
+when the GitHub CLI is installed and logged in. The configured variable comes
+first on purpose: a runner often exports a `GITHUB_TOKEN` of its own, and a
+fleet configuration that names its token must not be overridden by it. Use a
+fine-grained token with read-only Contents, Issues, Pull requests, Actions
+and Metadata permissions on the repositories you observe.
 
 ## Reproducible runs
 
