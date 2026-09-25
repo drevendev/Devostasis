@@ -526,6 +526,24 @@ def parse_debt_register(document: Any) -> list[dict[str, Any]]:
     return items
 
 
+def _workflows_total(path: str, payload: Any) -> int:
+    """The workflow count a successful ``/actions/workflows`` answer establishes, or a declared failure.
+
+    A 200 whose body is not an object, or whose ``total_count`` is absent or
+    not a non-negative integer, establishes no count at all. It is refused as
+    ``ERROR / UNEXPECTED_PAYLOAD`` like every other malformed success, so it
+    reaches ``workflows_failure`` and the check-suite fallback with a
+    ``WORKFLOWS_UNAVAILABLE`` note instead of escaping the inventory as a
+    Python exception, and no count is invented in its place (PV-REV-PR-029).
+    """
+    if not isinstance(payload, dict):
+        raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected an object from {path}, got {type(payload).__name__}")
+    total = payload.get("total_count")
+    if isinstance(total, bool) or not isinstance(total, int) or total < 0:
+        raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected a non-negative integer total_count from {path}, got {total!r}")
+    return total
+
+
 class GitHubAdapter:
     """Collect provider-neutral inventories for one repository at one moment."""
 
@@ -957,8 +975,9 @@ class GitHubAdapter:
 
         workflows_total: int | None = None
         workflows_failure: Exception | None = None
+        workflows_path = f"{base}/actions/workflows"
         try:
-            workflows_total = int(self.client.get(f"{base}/actions/workflows", {"per_page": 1}).get("total_count", 0))
+            workflows_total = _workflows_total(workflows_path, self.client.get(workflows_path, {"per_page": 1}))
         except (ApiFailure, NetworkFailure) as exc:
             workflows_failure = exc
 

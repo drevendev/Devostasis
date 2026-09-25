@@ -113,7 +113,13 @@ The review pass of 2026-09-22, each defect reproduced before it was fixed:
   `AttributeError`; `run_all`'s boundary caught it, so the project produced no
   bundle at all. Both are now `ERROR / UNEXPECTED_PAYLOAD` on that inventory
   alone, like every other provider failure, and the rest of the evidence is
-  still collected.
+  still collected. The review of this change (`PV-REV-PR-029`) found the same
+  hole one endpoint over: `GET /actions/workflows` answering 200 with a body
+  that is not an object, or a `total_count` that is not a non-negative
+  integer, raised past the `WORKFLOWS_UNAVAILABLE` fallback. The count is now
+  validated before it is read; a malformed one is `UNEXPECTED_PAYLOAD`, the
+  receipt says `WORKFLOWS_UNAVAILABLE:UNEXPECTED_PAYLOAD`, check suites are
+  sampled as for any other failed lookup, and no count is invented.
 - **A failed workflow lookup is no longer silent.** When
   `GET /actions/workflows` fails (a token without `actions: read` is enough)
   the collector samples check suites instead, Actions-created suites

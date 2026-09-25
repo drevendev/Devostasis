@@ -40,9 +40,10 @@ A capped pagination yields `PARTIAL` with `PAGINATION_CAPPED`; unresolved
 branch heads yield `PARTIAL` with `BRANCH_HEADS_UNRESOLVED`; incomplete
 attempt history yields `PARTIAL` with `ATTEMPT_HISTORY_INCOMPLETE`. A
 successful response whose body is not the shape the endpoint documents (a
-list expected, an object or nothing returned) is `ERROR` with
-`UNEXPECTED_PAYLOAD` for that inventory alone; it never ends the project's
-collection.
+list expected, an object or nothing returned; a workflow `total_count` that
+is absent or not a non-negative integer) is `ERROR` with `UNEXPECTED_PAYLOAD`
+for that inventory alone; it never ends the project's collection, and no
+value is invented in its place.
 
 The check-suite surface carries its own coverage (issue #12 finding 1). The
 series records how many revisions were planned and examined
