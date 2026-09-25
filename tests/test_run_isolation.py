@@ -30,7 +30,7 @@ def _config() -> Config:
 def test_an_unexpected_failure_costs_one_project_and_not_the_fleet(tmp_path, monkeypatch):
     seen = []
 
-    def fake_run_project(project, store, client, now):
+    def fake_run_project(project, store, client, now, **kwargs):
         seen.append(project.locator)
         if project.repo == "broken":
             raise IndexError("list index out of range")
@@ -46,7 +46,7 @@ def test_an_unexpected_failure_costs_one_project_and_not_the_fleet(tmp_path, mon
 
 def test_the_failure_reason_survives_so_the_run_still_exits_non_zero(tmp_path, monkeypatch):
     """Isolation must not become swallowing: an unsuccessful outcome stays unsuccessful."""
-    monkeypatch.setattr(runner, "run_project", lambda *args: (_ for _ in ()).throw(RuntimeError("collector defect")))
+    monkeypatch.setattr(runner, "run_project", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("collector defect")))
     outcomes = run_all(_config(), FilesystemHistoryStore(tmp_path), None, NOW)
 
     assert all(not outcome.ok for outcome in outcomes)

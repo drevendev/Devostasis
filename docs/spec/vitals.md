@@ -34,8 +34,9 @@ deterministic `explanation`. An `UNKNOWN` Vital has `band = null`.
 
 `rule_id` versions the evaluation rule of one Vital independently of the
 taxonomy and the policy constants. Flow (`flow.bands.v1`) and Pulse
-(`pulse.bands.v1`) carry the calibration repairs adopted in 0.1.2; the other
-five Vitals keep their V0 rule ids. A rule version change never rewrites a
+(`pulse.bands.v1`) carry the calibration repairs adopted in 0.1.2, Integrity
+(`integrity.bands.v1+ci-unit-004`) the judgements adopted in 0.1.9; the other
+four Vitals keep their V0 rule ids. A rule version change never rewrites a
 historical bundle: the affected Vital compares as `INCOMPARABLE`
 (`RULE_VERSION_BOUNDARY`) across the boundary while the rest of the bundle
 stays comparable ([history-and-reports.md](history-and-reports.md)).
@@ -86,6 +87,11 @@ derived metrics name the bounded inputs (`commits_28d_semantics`,
 The frozen active-day thresholds are unchanged. Substantial work concentrated
 on two active days is `QUIET`; PV-CAL-003 recorded this as an open
 calibration observation, not a defect.
+
+Activity that comes from the issue channel alone, with no commit and no
+change-request update, carries the diagnostic `PULSE_ISSUE_ONLY_ACTIVITY`
+(permanent case T5). It is provenance: it says where the observed activity
+came from and implies nothing about productivity, progress or quality.
 
 Groups: `DEFAULT_BRANCH_ACTIVITY`, `CHANGE_REQUEST_ACTIVITY`, `ISSUE_ACTIVITY`;
 dependencies `FLOW_PULSE_ACTIVITY`, `DIRECTION_PULSE_ACTIVITY`.
@@ -146,11 +152,33 @@ Derived: `decisive_count_14d`, `failed_count_14d`, `failure_ratio_14d`
 | SPARSE_MIXED | `1 <= decisive <= 3` with at least one failure |
 | SPARSE | `1 <= decisive <= 3` with no failure |
 
-Degradation: a `PARTIAL` revision series, or a latest revision whose
-verification is still unresolved, yields `DEGRADED` with a
-`NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET` that always includes `FAILING`.
-When the latest revision has no decisive verdict (skipped or cancelled), the
-latest decisive revision is used and diagnosed.
+The decisive population also carries its `sample_strength`: `SPARSE` for one
+to three decisive revisions, `ESTABLISHED` from four, and the diagnostic
+`CI_SPARSE_SAMPLE` is emitted whenever the sample is sparse (R1, R2). A sparse
+band is exact about the revisions it counts and says so, so that `FAILING`
+over one revision is not read as an established rate.
+
+Degradation and refusal, under rule `integrity.bands.v1+ci-unit-004`:
+
+- a required revision series with acquisition status `PARTIAL` is `UNKNOWN`
+  with no band (`PV-REV-TEST-003`): the accepted chain has no degraded path
+  for a truncated required series, and the counts of what was collected stay
+  in `derived`, marked `series_status = PARTIAL`;
+- a newest in-scope revision whose current verdict is `UNKNOWN` is `UNKNOWN`
+  with no band (`PV-REV-INTEGRITY-UNKNOWN-001`, INT-UNKNOWN-01..06):
+  `UNKNOWN` is the absence of an observation, so it never inherits an older
+  decisive verdict; the decisive history stays in `derived` and is never
+  reconstructed as a pass, and the diagnostic `CURRENT_VERDICT_UNKNOWN`
+  names the revision;
+- a newest revision whose verification is still unresolved yields `DEGRADED`
+  with a `NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET` derived from the
+  completions the evidence admits (the revision fails, passes, or ends
+  without a verdict), which always includes `FAILING`; when every completion
+  yields the band already reached, the band is exact;
+- when the latest revision has a positively observed non-decisive verdict
+  (`NOT_EXECUTED`, `NON_VERIFY_TERMINAL`), the latest decisive revision is
+  used and diagnosed `LATEST_REVISION_NON_DECISIVE`; that fallback is never
+  applied to `UNKNOWN`.
 
 A persistently failing secondary workflow makes every revision
 `FAILURE_OBSERVED` and the band `FAILING`; PV-CAL-002 confirmed this as the
@@ -165,7 +193,8 @@ value.
 
 Inputs: `forge.issues.open_count`, `.stale_open_count_30d`,
 `forge.change_requests.open_count`, `.stale_open_count_14d`,
-`git.nondefault_branches.stale_count_30d`. Change-request inventory is
+`git.nondefault_branches.stale_count_30d`, and optionally
+`git.nondefault_branches.retention_semantics`. Change-request inventory is
 required; the issue and branch components may be explicitly `UNAVAILABLE`.
 
 Derived: `tracked_open_count`, `stale_work_count`, `stale_work_ratio` (when
@@ -178,10 +207,66 @@ tracked > 0), `stale_branch_count`.
 | LIGHT | `stale_work > 0` or `stale_branches > 0` |
 | CLEAN | everything observable is zero |
 
-Degradation: an explicitly `UNAVAILABLE` component is excluded and the result
-is a `CONSERVATIVE_LOWER_BOUND`; exact `CLEAN` is impossible when a component
-could not be enumerated. A `PARTIAL`, `FORBIDDEN`, `UNKNOWN` or `ERROR`
-component yields `UNKNOWN`.
+Rule `clutter.bands.v1` (0.1.9) adopts the accepted incomplete-evidence
+contract `PV-CLUTTER-INCOMPLETE-001` (cases `CLU-INCOMPLETE-01..20`) and the
+reading `PV-ISSUE-026-RECONCILE-001` gave issue #26, without moving a
+threshold or a window. The change-request component is required; the issue
+and branch components are optional.
+
+**Incomplete evidence.** A component is *incomplete* when it is explicitly
+`UNAVAILABLE` (issues or branches only) or `PARTIAL` with a value, which is a
+trustworthy observed subset. The band is then a *confirmed burden floor*
+built only from facts omitted records cannot erase:
+
+- observed stale work counts, complete or partial, add to
+  `confirmed_stale_work_lower_bound`;
+- a stale branch count adds to `confirmed_stale_branch_lower_bound` only when
+  the counted residue is known to be residue: a complete count with
+  `CLASSIFIED` or undeclared retention semantics, or a `PARTIAL` count with
+  explicit complete `CLASSIFIED` semantics (that is the answer to #26: a
+  capped head resolution proves a floor, but only for classified branches);
+  an `UNCLASSIFIED` count proves nothing and is diagnosed
+  `CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED`, an undeclared one behind a partial
+  count is diagnosed `CLUTTER_BRANCH_FLOOR_NOT_PROVEN:UNDECLARED`;
+- the ratio predicates apply only when every open and stale count of the
+  issue and change-request domain is complete; otherwise the ratio is not
+  proof (`CLUTTER_RATIO_NOT_PROOF_INCOMPLETE_DENOMINATOR`), because a
+  denominator that can still grow proves nothing, even when the observed
+  subset would satisfy the predicate.
+
+| Confirmed floor | Result |
+| --- | --- |
+| HEAVY | `DEGRADED / HEAVY / EXACT`, no `possible_bands`: the terminal band is invariant under any completion |
+| CLUTTERED | `DEGRADED / CLUTTERED / CONSERVATIVE_LOWER_BOUND`, `possible_bands = [CLUTTERED, HEAVY]` |
+| LIGHT | `DEGRADED / LIGHT / CONSERVATIVE_LOWER_BOUND`, `possible_bands = [LIGHT, CLUTTERED, HEAVY]` |
+| NONE | `UNKNOWN`, no band: incomplete evidence is never positive emptiness, and never `CLEAN` |
+
+Every such result carries `CLUTTER_INCOMPLETE_COMPONENT:<component>:<PARTIAL|UNAVAILABLE>`
+for each incomplete component and `CLUTTER_CONFIRMED_BURDEN_FLOOR:<floor>`,
+and its `derived` keeps the observed values, the floor, the ratio eligibility
+and the retention semantics, so the proof is auditable. `possible_bands`
+under the lower-bound rows is a `NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET`,
+never a claim that every listed band is exactly reachable.
+
+A `FORBIDDEN`, `UNKNOWN` or `ERROR` component, a stale one, a `PARTIAL`
+count without a value, a required change-request component that is not
+complete or partial, and declared retention semantics that cannot be read
+all yield `UNKNOWN`, as before.
+
+**Unclassified branches (T7).** A stale branch is residue only when it is
+known to be one. When every component is complete, the branch inventory
+declares `retention_semantics = UNCLASSIFIED` and the stale count is
+positive, that count is an upper bound on the true residue: the band is the
+one the full count reaches, the result is `DEGRADED` with
+`CONSERVATIVE_UPPER_BOUND` semantics, `possible_bands` holds every band some
+classified residue between zero and the count reaches together with the work
+items, and `CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED` says why. When the work
+items alone already reach that band, the band is invariant and the result is
+`DEGRADED` with `EXACT` semantics and no `possible_bands`. The GitHub adapter
+does not emit `retention_semantics` in this version, so a complete count is
+read as it always was; emitting it is a fleet-wide decision recorded in issue
+#22, and until it is made a capped head resolution on GitHub stays `UNKNOWN`
+because its retention is undeclared.
 
 Groups: `FORGE_INVENTORY`, `BRANCH_RESIDUE`; dependency `CLUTTER_FLOW_FORGE`.
 

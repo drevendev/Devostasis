@@ -42,6 +42,11 @@ def build_activity(
     if interval_start:
         start = timeutil.parse_ts(interval_start)
         basis = BASIS_PREVIOUS
+        if start >= end:
+            # An interval that ends before it starts describes nothing. The
+            # runner never asks for one since #17; a caller that does has
+            # compared against the wrong bundle, and that is not repaired here.
+            raise ValueError(f"activity interval must start before it ends: {interval_start} is not before {obs.observed_at}")
     else:
         start = timeutil.minus_days(end, ACTIVITY["window_days"])
         basis = BASIS_WINDOW

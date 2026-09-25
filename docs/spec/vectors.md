@@ -55,19 +55,28 @@ beside it calls invalid.
              {"observation_id": "git.nondefault_branches.stale_count_30d", "value": 0}]},
  "expect": {"band": "LIGHT", "evaluation_status": "AVAILABLE",
             "band_semantics": "EXACT", "possible_bands": null,
-            "rule_id": "clutter.bands.v0",
+            "rule_id": "clutter.bands.v1",
             "derived": {"tracked_open_count": 6, "stale_work_count": 1},
             "diagnostics_absent": ["COMPONENT_UNAVAILABLE"],
             "explanation_contains": ["1 stale work items out of 6 tracked open items"]}}
 ```
 
 `band` and `evaluation_status` are required; `band_semantics`,
-`possible_bands` and `rule_id` are compared when present. `derived` is a
+`possible_bands`, `rule_id`, `shared_signal_groups` and
+`dependency_group_ids` are compared when present. `derived` is a
 subset: every key it names must exist and be equal, and `derived_absent` names
 keys that must not exist. `diagnostics` and `diagnostics_absent` match a
 diagnostic that equals the given string or starts with it, so a case can
 require `COMPONENT_UNAVAILABLE:issues:ISSUES_DISABLED` or just its prefix.
 `explanation_contains` holds substrings of the deterministic explanation.
+
+A case that states one obligation over several evidence shapes, such as a
+substitution matrix over `FORBIDDEN`, `UNKNOWN`, `ERROR`, `PARTIAL` and
+`STALE`, puts them under `given.variants` instead of `given.observations`: a
+list of at least two `{title, observations}` entries, all held to the one
+`expect` of the case. The case passes only when every shape does, and a
+failure names the shape by its `title`. `variants` replaces `observations`;
+stating both is an error.
 
 ### `kind: "delta"`
 
@@ -129,12 +138,81 @@ with no `expect` of its own; each of those is an error rather than a quietly
 different run. A failure names the pair by its `title`, so a case with twelve
 comparisons still says which one broke.
 
+### `kind: "ci"`
+
+Starts one stage earlier than `vital`, at the provider-native verification
+normalization ([integrity-ci.md](integrity-ci.md)): the outcome map, parent
+identity and attempt precedence, and one canonical record per immutable
+revision. A case about that contract (`R5`..`R10`, `INT-UNKNOWN-02`,
+`INT-UNKNOWN-03`) states workflow runs, their earlier attempts and check suites
+exactly as the provider reports them, and is executed at the boundary it is
+about instead of over verdicts somebody pre-normalized.
+
+```json
+{"case": "EXAMPLE-CI-01", "kind": "ci",
+ "title": "a retry that passed keeps the failure of its first attempt",
+ "given": {"observed_at": "2026-09-05T12:00:00Z",
+           "revisions": [{"sha": "a1", "committed_at": "2026-09-01T10:00:00Z"}],
+           "actions_runs": [{"id": 100, "head_sha": "a1", "run_attempt": 2,
+                             "status": "completed", "conclusion": "success",
+                             "prior_attempts": [{"run_attempt": 1, "status": "completed", "conclusion": "timed_out"}]}]},
+ "expect": {"revisions": {"a1": {"current_verdict": "VERIFY_PASS", "history_state": "FAILURE_OBSERVED",
+                                 "historical_contribution": "VERIFY_FAIL",
+                                 "parents": [{"current_state": "VERIFY_PASS"}]}},
+            "integrity": {"band": "SPARSE_MIXED", "evaluation_status": "AVAILABLE",
+                          "derived": {"sample_strength": "SPARSE"}, "diagnostics": ["CI_SPARSE_SAMPLE"]}}}
+```
+
+`given` names the `revisions` of the window (`sha`, `committed_at`), the
+`actions_runs` as the provider lists them (`id`, `head_sha`, `run_attempt`,
+`status`, `conclusion`, with earlier attempts under `prior_attempts`) and the
+`check_suites` keyed by the sha they verify. `provider` is `github` and is
+the only provider with a normalization in this version; another one is an
+error, never a skip. `configured` (default `true`, `null` for not observed)
+and `series_status` (default `AVAILABLE`) are the acquisition facts handed to
+Integrity.
+
+`expect.revisions` is keyed by sha and checks the canonical record fields it
+names; `parents` are checked by position, each parent as a subset.
+`expect.integrity` is the `vital` expectation shape, evaluated over the
+normalized records. A case names at least one of the two.
+
+`given.variants` carries several provider-native evidence shapes, each a
+full `given` without `variants` and with an optional `title`, so one accepted
+case can hold provider aliases and enumeration orders to one expectation
+(`EXAMPLE-CI-02`).
+
+### `kind: "activity"`
+
+Builds the activity member ([history-and-reports.md](history-and-reports.md#activity-interval))
+over raw inventories and the `observed_at` of the previous bundle, and checks
+the interval it declares and the coverage it discloses (`ACT-COV-01`..`05`).
+
+```json
+{"case": "EXAMPLE-ACTIVITY-01", "kind": "activity",
+ "title": "an interval wider than the evidence window keeps its bounds and discloses where the evidence starts",
+ "given": {"observed_at": "2026-09-06T12:00:00Z", "previous_observed_at": "2026-06-01T00:00:00Z",
+           "observations": [{"observation_id": "git.default_branch.commits_28d", "value_type": "series",
+                             "value": [{"sha": "a1", "committed_at": "2026-09-06T08:00:00Z", "title": "one change"}],
+                             "coverage": {"complete": true}}]},
+ "expect": {"interval": {"start": "2026-06-01T00:00:00Z", "end": "2026-09-06T12:00:00Z", "basis": "PREVIOUS_BUNDLE"},
+            "coverage_notes": ["INTERVAL_EXCEEDS_EVIDENCE_WINDOW:evidence_from=2026-08-09T12:00:00Z"],
+            "classes": {"REVISION": {"count": 1}}}}
+```
+
+`previous_observed_at` absent or `null` is a `BASELINE` interval;
+`list_cap` defaults to 50. `expect.interval` is a subset of the interval
+fields, `coverage_notes` and `coverage_notes_absent` match by prefix like
+diagnostics, `classes` holds the counts to assert per activity class as a
+checked subset, and `truncated` the truncation flags.
+
 ## Rules the runner enforces
 
 - **It fails closed.** An unknown `kind`, an unknown key in a vector, an
-  unknown comparison status, a malformed observation envelope, a missing path
-  or a duplicate case id is an error. A vector that cannot run must never look like a vector that passed,
-  and a case family this version cannot execute makes the suite red rather than
+  unknown comparison status, a provider without a normalization, a malformed
+  observation envelope, a missing path or a duplicate case id is an error. A
+  vector that cannot run must never look like a vector that passed, and a
+  case family this version cannot execute makes the suite red rather than
   silently skipped.
 - **A vector states, it does not compute.** Expectations are literal values.
   Deriving an expectation from the implementation would prove only that the
@@ -154,8 +232,9 @@ devostasis vectors --case ORDER-07 --quiet
 
 The same corpus runs inside the ordinary test suite
 (`tests/conformance/test_vectors.py`), one pytest case per vector, so a
-conformance case fails where every other test fails. Exit status is 1 when a
-vector fails and 2 when the corpus itself cannot be loaded.
+conformance case fails where every other test fails, and every kind the format
+declares must be exercised by the corpus. Exit status is 1 when a vector fails
+and 2 when the corpus itself cannot be loaded.
 
 ## Where the vectors live
 

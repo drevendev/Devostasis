@@ -9,6 +9,7 @@ fails closed with ``CONFIG_IDENTITY_UNCLASSIFIED`` (PV-EFFECTIVE-CONFIG-001).
 from __future__ import annotations
 
 import copy
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,10 @@ GLOBAL_KEY_CLASSIFICATION = {
 }
 
 PLANNING_SOURCES = ("milestones", "file", "none")
+# A locator component: what a provider names a namespace or a repository with.
+# Nothing else, in particular no path separator, parent reference or drive,
+# ever reaches a store path (PV-AUDIT-STORE-PATH-001).
+LOCATOR_PART = re.compile(r"[A-Za-z0-9._-]+")
 DEBT_SOURCES = ("labels", "file")
 LOCALES = ("en",)
 GAUGE_MODES = ("bar", "number", "band")
@@ -260,17 +265,21 @@ def resolve_project(raw: dict[str, Any], defaults: dict[str, Any], config_versio
     if provider != "github":
         raise ConfigError(f"unsupported provider {provider!r}; this version implements the GitHub adapter only")
     repo = raw.get("repo")
-    if not isinstance(repo, str) or repo.count("/") != 1 or not all(repo.split("/")):
-        raise ConfigError(f"project repo must be 'owner/name', got {repo!r}")
+    if not isinstance(repo, str) or repo.count("/") != 1 or not all(LOCATOR_PART.fullmatch(part) and part not in (".", "..") for part in repo.split("/")):
+        raise ConfigError(f"project repo must be 'owner/name' of letters, digits, dots, hyphens and underscores, got {repo!r}")
     owner, name = repo.split("/")
     projected = {k: v for k, v in raw.items() if PROJECT_KEY_CLASSIFICATION.get(k) == "B"}
     merged = _merge_defaults(defaults, projected)
 
     activity = merged.get("activity") or {}
+    if not isinstance(activity, dict):
+        raise ConfigError("activity must be an object")
     for key in activity:
         if key not in ("enabled", "list_cap"):
             raise ConfigError(f"CONFIG_IDENTITY_UNCLASSIFIED: activity key {key!r} is unknown")
-    enabled = bool(activity.get("enabled", True))
+    enabled = activity.get("enabled", True)
+    if not isinstance(enabled, bool):
+        raise ConfigError(f"activity.enabled must be a boolean, got {enabled!r}")
     cap = activity.get("list_cap", 50)
     if not isinstance(cap, int) or isinstance(cap, bool) or cap < 0:
         raise ConfigError("activity.list_cap must be a non-negative integer")
@@ -319,13 +328,25 @@ def load_config_dict(raw: dict[str, Any], base_dir: Path | None = None) -> Confi
     if not isinstance(projects_raw, list) or not projects_raw:
         raise ConfigError("projects must be a non-empty list")
     projects = tuple(resolve_project(item, defaults, config_version) for item in projects_raw)
-    seen = set()
+    seen: dict[str, str] = {}
     for project in projects:
-        if project.project_key in seen:
-            raise ConfigError(f"duplicate project {project.locator}")
-        seen.add(project.project_key)
-    store = raw.get("store") or {}
-    store_path = store.get("path", ".") if isinstance(store, dict) else "."
+        # GitHub locators are case-insensitive: two spellings of one
+        # repository are one project, not two (PV-AUDIT-PROJECT-LOCATOR-ALIAS-001).
+        folded = project.project_key.lower()
+        if folded in seen:
+            raise ConfigError(f"duplicate project {project.locator} (also configured as {seen[folded]})")
+        seen[folded] = project.locator
+    store = raw.get("store")
+    if store is None:
+        store = {}
+    if not isinstance(store, dict):
+        raise ConfigError(f"store must be an object, got {store!r}")
+    for key in store:
+        if key != "path":
+            raise ConfigError(f"CONFIG_IDENTITY_UNCLASSIFIED: store key {key!r} is unknown")
+    store_path = store.get("path", ".")
+    if not isinstance(store_path, str) or not store_path:
+        raise ConfigError(f"store.path must be a non-empty string, got {store_path!r}")
     if base_dir is not None and not Path(store_path).is_absolute():
         store_path = str((base_dir / store_path).resolve())
     return Config(

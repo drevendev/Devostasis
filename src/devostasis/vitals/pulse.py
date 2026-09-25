@@ -11,6 +11,11 @@ completion of the missing tail. If every completion yields the same band, that
 band is emitted as DEGRADED / CONSERVATIVE_LOWER_BOUND; if completions can
 cross a band boundary, ``possible_bands`` lists every reachable band and no
 exact band is asserted; a capped input without a usable value stays UNKNOWN.
+
+Activity that comes from the issue channel alone (no commit, no change-request
+update) is diagnosed ``PULSE_ISSUE_ONLY_ACTIVITY`` (permanent case T5). The
+diagnostic is provenance: it says where the observed activity came from and
+implies nothing about productivity, progress or quality.
 """
 
 from __future__ import annotations
@@ -46,6 +51,13 @@ SHARED = ["DEFAULT_BRANCH_ACTIVITY", "CHANGE_REQUEST_ACTIVITY", "ISSUE_ACTIVITY"
 GROUPS = ["FLOW_PULSE_ACTIVITY", "DIRECTION_PULSE_ACTIVITY"]
 
 UNBOUNDED_EVENTS = 10**9
+ISSUE_ONLY = "PULSE_ISSUE_ONLY_ACTIVITY"
+
+
+def issue_only(channels: dict[str, int]) -> bool:
+    """Every observed activity event came from the issue channel."""
+    issues = channels.get(ISSUE_UPDATES, 0)
+    return issues > 0 and all(value == 0 for key, value in channels.items() if key != ISSUE_UPDATES)
 
 
 def classify(active_days: int, events: int, channel_count: int) -> str:
@@ -127,6 +139,7 @@ def evaluate(obs: ObservationSet) -> VitalResult:
     events = sum(channels.values())
     channel_count = sum(1 for value in channels.values() if value > 0)
     band = classify(active_days, events, channel_count)
+    provenance = [ISSUE_ONLY] if not unobserved and not partial_required and issue_only(channels) else []
     derived = {
         "commits_28d": commits,
         "commit_active_days_28d": active_days,
@@ -148,7 +161,7 @@ def evaluate(obs: ObservationSet) -> VitalResult:
             derived=derived,
             shared_signal_groups=SHARED,
             dependency_group_ids=GROUPS,
-            diagnostics=[],
+            diagnostics=provenance,
             explanation=(
                 f"{commits} default-branch commits on {active_days} active days and "
                 f"{events} activity events across {channel_count} channels in 28 days."
@@ -192,7 +205,7 @@ def evaluate(obs: ObservationSet) -> VitalResult:
         derived=derived,
         shared_signal_groups=SHARED,
         dependency_group_ids=GROUPS,
-        diagnostics=unobserved + partial_required,
+        diagnostics=unobserved + partial_required + provenance,
         explanation=(
             f"At least {events} activity events observed ({commits} commits on {active_days} active days); {tail}."
         ),

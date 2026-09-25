@@ -44,7 +44,7 @@ Any other key is rejected with `CONFIG_IDENTITY_UNCLASSIFIED`.
 | `store.path` | C | `.` | history store root, relative to the config file |
 | `token_env` | C | none | extra environment variable to read the token from |
 | `defaults` | B | see below | applies to every project unless overridden |
-| `projects[].repo` | A | required | `owner/name` |
+| `projects[].repo` | A | required | `owner/name`, each of letters, digits, dots, hyphens and underscores; two spellings of one repository are one project |
 | `projects[].planning.source` | B | `milestones` | `milestones` reads GitHub milestones; `file` reads a targets register ([registers](spec/registers.md)); `none` declares planning positively absent |
 | `projects[].planning.path` | B | none | repository path of the targets register, required for `file` |
 | `projects[].planning.link_marker` | B | `Target:` | marker that links a change request to a target id in its text (`file` source) |
@@ -60,6 +60,16 @@ Any other key is rejected with `CONFIG_IDENTITY_UNCLASSIFIED`.
 | `projects[].activity.list_cap` | B | `50` | maximum items per activity list |
 | `projects[].observations_member` | B | `true` | include `observations.json` (full evidence; turn off to keep stores small) |
 | `projects[].display_name`, `notes` | C | none | ignored by the runtime |
+
+The configuration is read strictly: `activity.enabled` must be a boolean
+(`"false"` is not `false`), `store` must be an object with only `path`, and
+an owner or repository name that is not a name is rejected before anything
+is observed, so nothing that pathlib would read as a path can reach the
+store. GitHub locators are case-insensitive, so two spellings of one
+repository are a duplicate in the configuration; two locators the provider
+resolves to one repository at run time (a redirect, an alias) are one
+project too: the second is refused with `DUPLICATE_PROJECT_IDENTITY` before
+it collects anything, and is never mistaken for a rename of the first.
 
 ## What changes comparability
 

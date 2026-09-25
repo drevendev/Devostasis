@@ -1,0 +1,1256 @@
+{
+  "schema": "devostasis.vectors.v1",
+  "notes": "Permanent cases CLU-INCOMPLETE-01..20 of PV-CLUTTER-INCOMPLETE-001 (accepted by PV-REV-CLUTTER-INCOMPLETE-001), transcribed from the contract's Required conformance fixtures section, plus the branch reading PV-ISSUE-026-RECONCILE-001 gave issue #26 (cases 13..16). Adopted in 0.1.9 as rule clutter.bands.v1. Where a case names a range (6..19, 1..5) both ends are stated as variants under the one identifier. Where the contract says 'CF' the evidence is AVAILABLE and FRESH; 'PARTIAL' carries the observed subset as its value; retention semantics are stated explicitly because the accepted branch floor requires CLASSIFIED.",
+  "vectors": [
+    {
+      "case": "CLU-INCOMPLETE-01",
+      "title": "Unavailable issue inventory cannot manufacture CLEAN",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "CLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": null,
+        "evaluation_status": "UNKNOWN",
+        "band_semantics": null,
+        "possible_bands": null,
+        "rule_id": "clutter.bands.v1",
+        "diagnostics": [
+          "CLUTTER_INCOMPLETE_COMPONENT:issues:UNAVAILABLE",
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:NONE"
+        ],
+        "derived": {
+          "confirmed_burden_floor": "NONE"
+        }
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-02",
+      "title": "Unavailable issue inventory with one confirmed stale change request",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 1
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 1
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "CLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": "LIGHT",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": [
+          "LIGHT",
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "LIGHT",
+          "possible_bands_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET",
+          "confirmed_stale_work_lower_bound": 1
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:LIGHT",
+          "CLUTTER_INCOMPLETE_COMPONENT:issues:UNAVAILABLE"
+        ]
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-03",
+      "title": "Unavailable issue inventory with an absolute CLUTTERED floor",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 10
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 5
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "CLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": "CLUTTERED",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": [
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "CLUTTERED",
+          "possible_bands_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET",
+          "confirmed_stale_work_lower_bound": 5,
+          "ratio_domain_complete": false
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:CLUTTERED",
+          "CLUTTER_RATIO_NOT_PROOF_INCOMPLETE_DENOMINATOR"
+        ]
+      },
+      "notes": "The observed ratio 5/10 would satisfy the HEAVY ratio predicate, but the issue denominator is unavailable, so the ratio is not proof; the absolute count of five proves CLUTTERED."
+    },
+    {
+      "case": "CLU-INCOMPLETE-04",
+      "title": "Unavailable issue inventory with an absolute HEAVY floor",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 25
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 25
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "CLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": "HEAVY",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "EXACT",
+        "possible_bands": null,
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "HEAVY",
+          "confirmed_stale_work_lower_bound": 25
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:HEAVY"
+        ]
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-05",
+      "title": "Unavailable branch inventory cannot manufacture CLEAN",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "status": "UNAVAILABLE",
+            "reason_code": "NOT_ENUMERABLE"
+          }
+        ]
+      },
+      "expect": {
+        "band": null,
+        "evaluation_status": "UNKNOWN",
+        "band_semantics": null,
+        "possible_bands": null,
+        "rule_id": "clutter.bands.v1",
+        "diagnostics": [
+          "CLUTTER_INCOMPLETE_COMPONENT:branches:UNAVAILABLE",
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:NONE"
+        ]
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-06",
+      "title": "Unavailable branch inventory above a complete LIGHT core",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 1
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 1
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "status": "UNAVAILABLE",
+            "reason_code": "NOT_ENUMERABLE"
+          }
+        ]
+      },
+      "expect": {
+        "band": "LIGHT",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": [
+          "LIGHT",
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "LIGHT",
+          "possible_bands_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET",
+          "ratio_domain_complete": true
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:LIGHT",
+          "CLUTTER_INCOMPLETE_COMPONENT:branches:UNAVAILABLE"
+        ]
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-07",
+      "title": "Unavailable branch inventory preserves a complete ratio floor",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "value": 2
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 2
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 1
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "status": "UNAVAILABLE",
+            "reason_code": "NOT_ENUMERABLE"
+          }
+        ]
+      },
+      "expect": {
+        "band": "CLUTTERED",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": [
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "CLUTTERED",
+          "possible_bands_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET",
+          "ratio_domain_complete": true,
+          "stale_work_ratio": {
+            "num": 1,
+            "den": 4
+          }
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:CLUTTERED"
+        ],
+        "diagnostics_absent": [
+          "CLUTTER_RATIO_NOT_PROOF_INCOMPLETE_DENOMINATOR"
+        ]
+      },
+      "notes": "The whole issue and change-request domain is complete, so the ratio 1/4 over four tracked items is admissible proof; missing branch records cannot alter it."
+    },
+    {
+      "case": "CLU-INCOMPLETE-08",
+      "title": "A ratio-only trigger is not proof when the issue denominator is unavailable",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 4
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 2
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "CLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": "LIGHT",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": [
+          "LIGHT",
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "LIGHT",
+          "possible_bands_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET",
+          "ratio_domain_complete": false,
+          "stale_work_ratio": null
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:LIGHT",
+          "CLUTTER_RATIO_NOT_PROOF_INCOMPLETE_DENOMINATOR"
+        ]
+      },
+      "notes": "The observed subset ratio 2/4 would be HEAVY; it must not be, because the unavailable issue inventory could dilute it."
+    },
+    {
+      "case": "CLU-INCOMPLETE-09",
+      "title": "Partial required change-request evidence forces HEAVY",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "status": "PARTIAL",
+            "value": 25,
+            "reason_code": "PAGINATION_CAPPED"
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "status": "PARTIAL",
+            "value": 25,
+            "reason_code": "PAGINATION_CAPPED"
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "CLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": "HEAVY",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "EXACT",
+        "possible_bands": null,
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "HEAVY",
+          "confirmed_stale_work_lower_bound": 25
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:HEAVY",
+          "CLUTTER_INCOMPLETE_COMPONENT:change_requests:PARTIAL"
+        ]
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-10",
+      "title": "Partial change-request evidence proves a CLUTTERED lower floor",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "status": "PARTIAL",
+            "value": 5,
+            "reason_code": "PAGINATION_CAPPED"
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "status": "PARTIAL",
+            "value": 5,
+            "reason_code": "PAGINATION_CAPPED"
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "CLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": "CLUTTERED",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": [
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "CLUTTERED",
+          "possible_bands_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET",
+          "confirmed_stale_work_lower_bound": 5
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:CLUTTERED",
+          "CLUTTER_INCOMPLETE_COMPONENT:change_requests:PARTIAL"
+        ]
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-11",
+      "title": "A partial denominator cannot elevate a ratio-only threshold",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "status": "PARTIAL",
+            "value": 4,
+            "reason_code": "PAGINATION_CAPPED"
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "status": "PARTIAL",
+            "value": 1,
+            "reason_code": "PAGINATION_CAPPED"
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "CLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": "LIGHT",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": [
+          "LIGHT",
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "LIGHT",
+          "possible_bands_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET",
+          "ratio_domain_complete": false
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:LIGHT",
+          "CLUTTER_RATIO_NOT_PROOF_INCOMPLETE_DENOMINATOR"
+        ]
+      },
+      "notes": "The observed subset ratio 1/4 over four tracked items would be CLUTTERED; the open count is a lower bound that can still grow, so it is not."
+    },
+    {
+      "case": "CLU-INCOMPLETE-12",
+      "title": "A partial zero subset remains UNKNOWN",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "status": "PARTIAL",
+            "value": 0,
+            "reason_code": "PAGINATION_CAPPED"
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "status": "PARTIAL",
+            "value": 0,
+            "reason_code": "PAGINATION_CAPPED"
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "CLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": null,
+        "evaluation_status": "UNKNOWN",
+        "band_semantics": null,
+        "possible_bands": null,
+        "rule_id": "clutter.bands.v1",
+        "diagnostics": [
+          "CLUTTER_INCOMPLETE_COMPONENT:change_requests:PARTIAL",
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:NONE"
+        ]
+      },
+      "notes": "A returned zero is not proof that the omitted tail is empty."
+    },
+    {
+      "case": "CLU-INCOMPLETE-13",
+      "title": "A partial classified branch subset forces HEAVY",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "status": "PARTIAL",
+            "value": 20,
+            "reason_code": "BRANCH_HEADS_UNRESOLVED"
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "CLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": "HEAVY",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "EXACT",
+        "possible_bands": null,
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "HEAVY",
+          "confirmed_stale_branch_lower_bound": 20,
+          "stale_branch_count_semantics": "LOWER_BOUND"
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:HEAVY",
+          "CLUTTER_INCOMPLETE_COMPONENT:branches:PARTIAL"
+        ]
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-14",
+      "title": "A partial classified branch subset proves a CLUTTERED floor",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "variants": [
+          {
+            "title": "six observed stale branches",
+            "observations": [
+              {
+                "observation_id": "forge.issues.open_count",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.issues.stale_open_count_30d",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.change_requests.open_count",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.change_requests.stale_open_count_14d",
+                "value": 0
+              },
+              {
+                "observation_id": "git.nondefault_branches.stale_count_30d",
+                "status": "PARTIAL",
+                "value": 6,
+                "reason_code": "BRANCH_HEADS_UNRESOLVED"
+              },
+              {
+                "observation_id": "git.nondefault_branches.retention_semantics",
+                "value_type": "enum",
+                "value": "CLASSIFIED"
+              }
+            ]
+          },
+          {
+            "title": "nineteen observed stale branches",
+            "observations": [
+              {
+                "observation_id": "forge.issues.open_count",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.issues.stale_open_count_30d",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.change_requests.open_count",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.change_requests.stale_open_count_14d",
+                "value": 0
+              },
+              {
+                "observation_id": "git.nondefault_branches.stale_count_30d",
+                "status": "PARTIAL",
+                "value": 19,
+                "reason_code": "BRANCH_HEADS_UNRESOLVED"
+              },
+              {
+                "observation_id": "git.nondefault_branches.retention_semantics",
+                "value_type": "enum",
+                "value": "CLASSIFIED"
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "band": "CLUTTERED",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": [
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "CLUTTERED",
+          "possible_bands_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET",
+          "stale_branch_count_semantics": "LOWER_BOUND"
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:CLUTTERED",
+          "CLUTTER_INCOMPLETE_COMPONENT:branches:PARTIAL"
+        ]
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-15",
+      "title": "A partial classified branch subset proves a LIGHT floor",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "variants": [
+          {
+            "title": "one observed stale branch",
+            "observations": [
+              {
+                "observation_id": "forge.issues.open_count",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.issues.stale_open_count_30d",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.change_requests.open_count",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.change_requests.stale_open_count_14d",
+                "value": 0
+              },
+              {
+                "observation_id": "git.nondefault_branches.stale_count_30d",
+                "status": "PARTIAL",
+                "value": 1,
+                "reason_code": "BRANCH_HEADS_UNRESOLVED"
+              },
+              {
+                "observation_id": "git.nondefault_branches.retention_semantics",
+                "value_type": "enum",
+                "value": "CLASSIFIED"
+              }
+            ]
+          },
+          {
+            "title": "five observed stale branches",
+            "observations": [
+              {
+                "observation_id": "forge.issues.open_count",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.issues.stale_open_count_30d",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.change_requests.open_count",
+                "value": 0
+              },
+              {
+                "observation_id": "forge.change_requests.stale_open_count_14d",
+                "value": 0
+              },
+              {
+                "observation_id": "git.nondefault_branches.stale_count_30d",
+                "status": "PARTIAL",
+                "value": 5,
+                "reason_code": "BRANCH_HEADS_UNRESOLVED"
+              },
+              {
+                "observation_id": "git.nondefault_branches.retention_semantics",
+                "value_type": "enum",
+                "value": "CLASSIFIED"
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "band": "LIGHT",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": [
+          "LIGHT",
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "LIGHT",
+          "possible_bands_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET",
+          "stale_branch_count_semantics": "LOWER_BOUND"
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:LIGHT",
+          "CLUTTER_INCOMPLETE_COMPONENT:branches:PARTIAL"
+        ]
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-16",
+      "title": "A partial classified branch zero subset remains UNKNOWN",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "status": "PARTIAL",
+            "value": 0,
+            "reason_code": "BRANCH_HEADS_UNRESOLVED"
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "CLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": null,
+        "evaluation_status": "UNKNOWN",
+        "band_semantics": null,
+        "possible_bands": null,
+        "rule_id": "clutter.bands.v1",
+        "diagnostics": [
+          "CLUTTER_INCOMPLETE_COMPONENT:branches:PARTIAL",
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:NONE"
+        ]
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-17",
+      "title": "Two-sided uncertainty stays UNKNOWN",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 20
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "UNCLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": null,
+        "evaluation_status": "UNKNOWN",
+        "band_semantics": null,
+        "possible_bands": null,
+        "rule_id": "clutter.bands.v1",
+        "diagnostics": [
+          "CLUTTER_INCOMPLETE_COMPONENT:issues:UNAVAILABLE",
+          "CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED",
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:NONE"
+        ],
+        "derived": {
+          "confirmed_stale_branch_lower_bound": 0
+        }
+      },
+      "notes": "The apparent branch HEAVY is not positive burden proof while the missing issue component could add burden; opposite one-sided bounds are never combined into a band."
+    },
+    {
+      "case": "CLU-INCOMPLETE-18",
+      "title": "An independent positive core floor survives unclassified branch ambiguity",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "status": "UNAVAILABLE",
+            "reason_code": "ISSUES_DISABLED"
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 5
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 5
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 20
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "UNCLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": "CLUTTERED",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": [
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "CLUTTERED",
+          "possible_bands_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET",
+          "confirmed_stale_work_lower_bound": 5,
+          "confirmed_stale_branch_lower_bound": 0
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:CLUTTERED",
+          "CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED"
+        ]
+      }
+    },
+    {
+      "case": "CLU-INCOMPLETE-19",
+      "title": "The existing complete UNCLASSIFIED upper-bound behaviour is preserved",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "observations": [
+          {
+            "observation_id": "forge.issues.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.issues.stale_open_count_30d",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.open_count",
+            "value": 0
+          },
+          {
+            "observation_id": "forge.change_requests.stale_open_count_14d",
+            "value": 0
+          },
+          {
+            "observation_id": "git.nondefault_branches.stale_count_30d",
+            "value": 6
+          },
+          {
+            "observation_id": "git.nondefault_branches.retention_semantics",
+            "value_type": "enum",
+            "value": "UNCLASSIFIED"
+          }
+        ]
+      },
+      "expect": {
+        "band": "CLUTTERED",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_UPPER_BOUND",
+        "rule_id": "clutter.bands.v1",
+        "diagnostics": [
+          "CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED"
+        ],
+        "diagnostics_absent": [
+          "CLUTTER_INCOMPLETE_COMPONENT",
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR"
+        ],
+        "derived_absent": [
+          "confirmed_burden_floor"
+        ]
+      },
+      "notes": "No acquisition is incomplete, so the lower-bound table does not apply; the accepted T7 path answers, with its less-burdened conservative superset (not asserted here, because the accepted contract leaves the exact list to the implementation)."
+    },
+    {
+      "case": "CLU-INCOMPLETE-20",
+      "title": "Provider and enumeration order cannot enter the classification",
+      "kind": "vital",
+      "source_unit": "PV-CLUTTER-INCOMPLETE-001",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-07T12:00:00Z",
+        "variants": [
+          {
+            "title": "provider order A",
+            "observations": [
+              {
+                "observation_id": "forge.issues.open_count",
+                "status": "UNAVAILABLE",
+                "reason_code": "ISSUES_DISABLED"
+              },
+              {
+                "observation_id": "forge.issues.stale_open_count_30d",
+                "status": "UNAVAILABLE",
+                "reason_code": "ISSUES_DISABLED"
+              },
+              {
+                "observation_id": "forge.change_requests.open_count",
+                "status": "PARTIAL",
+                "value": 5,
+                "reason_code": "PAGINATION_CAPPED"
+              },
+              {
+                "observation_id": "forge.change_requests.stale_open_count_14d",
+                "status": "PARTIAL",
+                "value": 5,
+                "reason_code": "PAGINATION_CAPPED"
+              },
+              {
+                "observation_id": "git.nondefault_branches.stale_count_30d",
+                "value": 2
+              },
+              {
+                "observation_id": "git.nondefault_branches.retention_semantics",
+                "value_type": "enum",
+                "value": "CLASSIFIED"
+              }
+            ]
+          },
+          {
+            "title": "provider order B with other pagination metadata",
+            "observations": [
+              {
+                "observation_id": "forge.change_requests.stale_open_count_14d",
+                "status": "PARTIAL",
+                "value": 5,
+                "reason_code": "PAGINATION_CAPPED",
+                "coverage": {
+                  "complete": false,
+                  "page_size": 30
+                }
+              },
+              {
+                "observation_id": "git.nondefault_branches.retention_semantics",
+                "value_type": "enum",
+                "value": "CLASSIFIED"
+              },
+              {
+                "observation_id": "forge.issues.stale_open_count_30d",
+                "status": "UNAVAILABLE",
+                "reason_code": "ISSUES_DISABLED"
+              },
+              {
+                "observation_id": "git.nondefault_branches.stale_count_30d",
+                "value": 2
+              },
+              {
+                "observation_id": "forge.change_requests.open_count",
+                "status": "PARTIAL",
+                "value": 5,
+                "reason_code": "PAGINATION_CAPPED",
+                "coverage": {
+                  "complete": false,
+                  "page_size": 30
+                }
+              },
+              {
+                "observation_id": "forge.issues.open_count",
+                "status": "UNAVAILABLE",
+                "reason_code": "ISSUES_DISABLED"
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "band": "CLUTTERED",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
+        "possible_bands": [
+          "CLUTTERED",
+          "HEAVY"
+        ],
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "CLUTTERED",
+          "possible_bands_semantics": "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET",
+          "confirmed_stale_work_lower_bound": 5,
+          "confirmed_stale_branch_lower_bound": 2
+        },
+        "diagnostics": [
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:CLUTTERED",
+          "CLUTTER_INCOMPLETE_COMPONENT:issues:UNAVAILABLE",
+          "CLUTTER_INCOMPLETE_COMPONENT:change_requests:PARTIAL"
+        ]
+      }
+    }
+  ]
+}

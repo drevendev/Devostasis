@@ -24,12 +24,85 @@ citation resolves; both directions are a test (`test_spec_drift.py`).
 | Case | Meaning | Test |
 | --- | --- | --- |
 | T1 | configured CI with zero runs is NO_RECENT_RUNS | `test_t1_no_recent_runs_is_neither_clean_nor_uninstrumented` |
-| R3 | zero observed activity with an unavailable channel is DEGRADED DORMANT | `test_r3_zero_activity_with_unavailable_channel_is_degraded_dormant_lower_bound` |
+| T2 | configured false with zero recent revision verification is exactly UNINSTRUMENTED | `vector:T2` |
+| T4 | unavailable change-request activity keeps Pulse a conservative lower bound | `vector:T4` |
+| T5 | issue-only activity is QUIET with the provenance diagnostic `PULSE_ISSUE_ONLY_ACTIVITY` | `vector:T5` |
+| T7 | unclassified stale branches are an upper bound on Clutter burden (`CONSERVATIVE_UPPER_BOUND`, `CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED`) | `vector:T7` |
+| R1 | two deduped revisions, one historical failure, latest success: SPARSE_MIXED with `sample_strength` SPARSE and `CI_SPARSE_SAMPLE` | `vector:R1` |
+| R2 | one deduped failing revision: FAILING, and still a sparse sample | `vector:R2` |
+| R3 | zero observed activity with an unavailable channel is DEGRADED DORMANT | `test_r3_zero_activity_with_unavailable_channel_is_degraded_dormant_lower_bound`, `vector:R3` |
+| R4 | complete fresh zero activity across every Pulse channel is exactly DORMANT | `vector:R4` |
 | V0.7 precedence | unresolved sibling blocks PASS, never hides FAIL | `test_v0_7_unresolved_sibling_blocks_pass_but_not_fail` |
 | R54 | same-revision retry keeps historical failure | `test_r54_same_revision_retry_success_keeps_historical_failure` |
 | R55 | retry-count invariance | `test_r55_retry_count_invariance` |
 | R56 | newer revision is a distinct sample | `test_r56_newer_revision_is_a_distinct_sample` |
 | R57 | order and surface invariance | `test_r57_order_and_surface_invariance` |
+
+## Integrity: the newest revision and the sample (PV-REV-INTEGRITY-UNKNOWN-001, PV-REV-TEST-003, PV-REV-TEST-VECTORS-002)
+
+Rule `integrity.bands.v1+ci-unit-004`, adopted in 0.1.9. The six cases of the
+accepted judgement on issue #13 are executable; two of them start at the
+provider-native normalization, because their subject is that `startup_failure`
+and an unsupported conclusion reach the Vital as `UNKNOWN`.
+
+| Case | Meaning | Test |
+| --- | --- | --- |
+| INT-UNKNOWN-01 | four historical passes plus a newest in-scope UNKNOWN revision evaluate UNKNOWN with no band; the passes stay auditable | `vector:INT-UNKNOWN-01` |
+| INT-UNKNOWN-02 | the same shape with the UNKNOWN produced by `startup_failure`, in either enumeration order | `vector:INT-UNKNOWN-02` |
+| INT-UNKNOWN-03 | the same shape with an unsupported or future conclusion, or none at all | `vector:INT-UNKNOWN-03` |
+| INT-UNKNOWN-04 | a newest positively NOT_EXECUTED revision keeps the accepted fallback | `vector:INT-UNKNOWN-04` |
+| INT-UNKNOWN-05 | a newest positively NON_VERIFY_TERMINAL revision keeps the accepted fallback | `vector:INT-UNKNOWN-05` |
+| INT-UNKNOWN-06 | a newest UNKNOWN over failure-bearing history stays UNKNOWN and the failure is not erased | `vector:INT-UNKNOWN-06` |
+| partial series | a required revision series that is PARTIAL is UNKNOWN with no band, its counts visible (PV-REV-TEST-003) | `test_partial_revision_series_is_unknown_with_its_evidence_preserved` |
+| sample strength | one to three decisive revisions are SPARSE with `CI_SPARSE_SAMPLE`; four are ESTABLISHED | `test_sparse_samples_declare_their_strength_and_established_ones_do_not_carry_the_diagnostic` |
+| unresolved superset | `possible_bands` of a still-verifying newest revision holds every band a completion reaches, never a fixed tail (#12 finding 3) | `test_the_unresolved_superset_is_derived_from_the_completions_the_evidence_admits` |
+
+## Clutter: incomplete evidence (PV-CLUTTER-INCOMPLETE-001, PV-ISSUE-026-RECONCILE-001)
+
+Rule `clutter.bands.v1`, adopted in 0.1.9. The twenty cases of the accepted
+contract, transcribed from its `Required conformance fixtures` section; the
+ranges a case names (6..19, 1..5) are stated as variants under the one
+identifier. Cases 13 to 16 are the accepted answer to issue #26.
+
+| Case | Meaning | Test |
+| --- | --- | --- |
+| CLU-INCOMPLETE-01 | an unavailable issue inventory cannot manufacture CLEAN | `vector:CLU-INCOMPLETE-01` |
+| CLU-INCOMPLETE-02 | an unavailable issue inventory with one confirmed stale change request is a LIGHT lower bound | `vector:CLU-INCOMPLETE-02` |
+| CLU-INCOMPLETE-03 | an absolute stale-work count of five proves CLUTTERED while the ratio over an unavailable denominator proves nothing | `vector:CLU-INCOMPLETE-03` |
+| CLU-INCOMPLETE-04 | an absolute stale-work count of twenty-five is HEAVY and exact | `vector:CLU-INCOMPLETE-04` |
+| CLU-INCOMPLETE-05 | an unavailable branch inventory cannot manufacture CLEAN | `vector:CLU-INCOMPLETE-05` |
+| CLU-INCOMPLETE-06 | an unavailable branch inventory above a complete LIGHT core is a LIGHT lower bound | `vector:CLU-INCOMPLETE-06` |
+| CLU-INCOMPLETE-07 | a complete issue and change-request ratio domain is admissible proof when only the branch inventory is unavailable | `vector:CLU-INCOMPLETE-07` |
+| CLU-INCOMPLETE-08 | a ratio-only trigger is not proof when the issue denominator is unavailable | `vector:CLU-INCOMPLETE-08` |
+| CLU-INCOMPLETE-09 | partial required change-request evidence with twenty-five observed stale items forces HEAVY | `vector:CLU-INCOMPLETE-09` |
+| CLU-INCOMPLETE-10 | partial change-request evidence with five observed stale items proves a CLUTTERED floor | `vector:CLU-INCOMPLETE-10` |
+| CLU-INCOMPLETE-11 | a partial denominator cannot elevate a ratio-only threshold | `vector:CLU-INCOMPLETE-11` |
+| CLU-INCOMPLETE-12 | a partial zero subset remains UNKNOWN | `vector:CLU-INCOMPLETE-12` |
+| CLU-INCOMPLETE-13 | a partial classified branch subset of twenty forces HEAVY | `vector:CLU-INCOMPLETE-13` |
+| CLU-INCOMPLETE-14 | a partial classified branch subset of six to nineteen proves a CLUTTERED floor | `vector:CLU-INCOMPLETE-14` |
+| CLU-INCOMPLETE-15 | a partial classified branch subset of one to five proves a LIGHT floor | `vector:CLU-INCOMPLETE-15` |
+| CLU-INCOMPLETE-16 | a partial classified branch zero subset remains UNKNOWN | `vector:CLU-INCOMPLETE-16` |
+| CLU-INCOMPLETE-17 | an unavailable issue component beside twenty unclassified branches is two-sided uncertainty and stays UNKNOWN | `vector:CLU-INCOMPLETE-17` |
+| CLU-INCOMPLETE-18 | an independent positive core floor survives unclassified branch ambiguity | `vector:CLU-INCOMPLETE-18` |
+| CLU-INCOMPLETE-19 | the complete UNCLASSIFIED upper-bound path of T7 is preserved | `vector:CLU-INCOMPLETE-19` |
+| CLU-INCOMPLETE-20 | provider naming, enumeration order and pagination metadata cannot enter the classification | `vector:CLU-INCOMPLETE-20`, `test_clu_incomplete_20_provider_and_order_invariance_is_exact_over_the_whole_result` |
+| undeclared retention | a partial branch count whose retention semantics are undeclared or unclassified proves no floor; declared but unreadable semantics fail closed (#26) | `test_clutter_partial_branch_count_without_classified_retention_is_unknown`, `test_clutter_partial_branch_count_that_is_unclassified_proves_nothing`, `test_clutter_declared_but_unreadable_retention_semantics_fail_closed` |
+| partial without a value | a PARTIAL count that carries no observed subset is unresolved, not a lower bound | `test_clutter_partial_count_without_a_value_is_unresolved_not_a_subset` |
+| invariant band under unclassified branches | when the work items alone reach the band the full unclassified count reaches, the band is DEGRADED and EXACT (section 5 of the contract) | `test_clutter_unclassified_branches_that_the_work_items_already_reach_are_an_invariant_band` |
+
+## Activity coverage (PV-REV-ACTIVITY-COVERAGE-001)
+
+Reading 3 of issue #9, accepted: the interval stays the full canonical gap and
+a shortfall of evidence is disclosed with the exact earliest evidence
+timestamp. Executable as `activity` vectors.
+
+| Case | Meaning | Test |
+| --- | --- | --- |
+| ACT-COV-01 | full-gap interval within the evidence window: no shortfall note | `vector:ACT-COV-01` |
+| ACT-COV-02 | full-gap interval wider than the window: canonical bounds unchanged, note with the exact `evidence_from` | `vector:ACT-COV-02` |
+| ACT-COV-03 | a 97-day gap with 28 days of evidence and one revision states one observed revision with the shortfall, never one revision across 97 days | `vector:ACT-COV-03` |
+| ACT-COV-04 | BASELINE reports the observation window and never a historical overrun | `vector:ACT-COV-04` |
+| ACT-COV-05 | a capped enumeration and an interval shortfall are both disclosed | `vector:ACT-COV-05` |
 
 ## Seven-Vital taxonomy (PV-VIT-010, PV-VIT-012)
 
@@ -43,7 +116,7 @@ citation resolves; both directions are a test (`test_spec_drift.py`).
 | V1-07 | mapping change makes history incomparable | `test_art_04_rpt_10_semantic_config_change_is_incomparable` |
 | V1-08 | fail then rerun pass | `test_r54_...` |
 | V1-10 | unavailable channel never becomes zero | `test_v1_10_unavailable_channel_never_becomes_zero_but_lower_bound_still_classifies` |
-| V1-11 | branch enumeration unavailable cannot emit exact CLEAN | `test_v1_11_branch_enumeration_unavailable_cannot_emit_exact_clean` |
+| V1-11 | branch enumeration unavailable cannot emit exact CLEAN (since `clutter.bands.v1` it emits no band at all, CLU-INCOMPLETE-05) | `test_v1_11_branch_enumeration_unavailable_cannot_emit_exact_clean`, `test_clutter_issues_disabled_with_no_observed_residue_is_unknown_not_clean`, `test_clutter_issues_disabled_with_observed_residue_is_a_lower_bound` |
 | V1-12 | dependency metadata, no aggregate | `test_v1_12_snapshot_carries_dependency_metadata_and_no_aggregate` |
 | V1-13 | no calibrated Debt policy | `test_v1_13_no_calibrated_policy_keeps_large_debt_as_present` |
 | V1-14 | mass-linking yields neutral FULLY_LINKED | `test_v1_14_mass_linking_yields_neutral_fully_linked_with_diagnostic` |
@@ -117,6 +190,35 @@ citation resolves; both directions are a test (`test_spec_drift.py`).
 | RPT-7 | rename and transfer continuity by immutable project id | `test_rpt_7_a_renamed_repository_keeps_one_history`, `test_a_transfer_to_another_owner_is_the_same_event`, `test_an_old_name_reused_by_a_new_repository_is_a_new_project`, `test_a_locator_held_by_another_project_fails_closed`, `test_without_an_immutable_id_the_locator_is_the_identity` |
 | rule boundary | a Vital with a changed rule id is INCOMPARABLE on its own | `test_rule_version_boundary_makes_one_vital_incomparable_inside_a_comparable_bundle` |
 | CONFIG_IDENTITY_UNCLASSIFIED | unknown config fails closed | `test_unclassified_configuration_input_fails_closed` |
+| non-monotonic observation | an observation not later than the previous bundle is INCOMPARABLE (`NON_MONOTONIC_OBSERVATION`) and claims no direction; activity never runs backwards (#17) | `test_an_older_observation_is_incomparable_and_claims_no_direction`, `test_an_observation_at_the_same_instant_is_on_the_same_side_of_the_boundary`, `test_activity_refuses_an_interval_that_ends_before_it_starts` |
+| immutable authority | the comparison reads the immutable bundle the index names; a compacted or damaged `latest/` is not a history gap, a divergent one is reported (#28) | `test_the_comparison_reads_the_immutable_bundle_and_survives_a_compacted_latest_copy`, `test_a_damaged_latest_copy_is_not_a_history_gap_but_a_divergent_one_is`, `test_without_an_index_the_newest_immutable_bundle_is_found_by_scanning` |
+| metadata binding | `semantic_config` is the projection of the stored config; every identity field the manifest repeats agrees with the preimage; the receipt and the evidence hash to what the identity names; a manifest of the wrong shape is a problem, not an exception (#12 finding 4) | `test_a_manifest_semantic_config_that_is_not_the_projection_of_the_stored_config_fails_verification`, `test_every_identity_field_the_manifest_repeats_must_agree_with_the_preimage`, `test_the_receipt_and_the_evidence_are_bound_to_the_identity`, `test_a_manifest_of_the_wrong_shape_is_a_verification_problem_not_an_exception` |
+| receipt configuration | a build over observations derived under another effective configuration is refused (#27) | `test_build_refuses_observations_collected_under_another_configuration` |
+| check-suite coverage | a sampled, failed or capped check-suite surface is PARTIAL with its coverage recorded, at the 100/101 revision and suite boundaries; collected failures are kept (#12 finding 1) | `test_the_hundred_and_first_revision_makes_the_suite_sample_partial`, `test_an_access_failure_after_four_revisions_makes_the_sample_partial_and_keeps_what_was_seen`, `test_a_second_page_of_suites_is_read_and_a_capped_page_count_is_partial`, `test_a_spent_budget_makes_the_suite_sample_partial` |
+
+## Store, transport and decoder boundaries (research audits, 2026-09-20 to 2026-09-24)
+
+Implementation-local labels: the audits define regression boundaries, not
+permanent research case identifiers, and none of these rows claims one.
+
+| Case | Meaning | Test |
+| --- | --- | --- |
+| index tail containment | the tail is followed only along the canonical history path of the bundle it names, inside this project's tree; an escaping, absolute or mislabelled path is a gap, never a comparison (review of #28's repair) | `test_a_tail_path_that_escapes_the_history_tree_is_a_history_gap_never_a_comparison`, `test_an_absolute_tail_path_is_refused`, `test_a_tail_whose_basename_is_not_its_bundle_id_is_refused` |
+| project identity binding | the bundle the tail names must carry this project's identity, or its locator for a store without identities | `test_another_projects_bundle_inside_the_history_tree_is_refused_by_identity`, `test_without_identities_the_locator_binds_the_bundle`, `test_an_honest_store_still_verifies_and_compares` |
+| malformed index | an index of the wrong shape is a gap and is never appended to | `test_an_index_of_the_wrong_shape_is_a_history_gap_and_is_never_appended_to` |
+| identity lookup fails closed | an unreadable index elsewhere in the store makes the immutable-id lookup fail rather than pass for absence (PV-AUDIT-HISTORYSTORE-001) | `test_an_unreadable_index_elsewhere_makes_the_identity_lookup_fail_closed` |
+| FLEET-COV | an unreadable or malformed project index, or a present but unreadable demand member, stops the fleet surfaces instead of dropping the project; an absent demand member stays the legacy null case (PV-AUDIT-FLEET-INDEX-001, PV-AUDIT-FLEET-COVERAGE-001) | `test_a_corrupt_project_index_stops_the_fleet_surfaces_instead_of_dropping_the_project`, `test_a_single_corrupt_project_is_a_failure_not_an_empty_store`, `test_a_present_but_unreadable_demand_member_is_not_a_pre_demand_bundle`, `test_an_absent_demand_member_is_a_pre_demand_bundle_and_an_unreadable_one_is_a_failure`, `test_the_run_command_reports_a_fleet_surface_failure_as_a_store_error` |
+| HISTORY-PUBLISH | the index is replaced, never truncated; a failure between the index and the copy leaves a stale copy that is recovered, not a gap; a copy of an unknown bundle is still refused (PV-AUDIT-HISTORYSTORE-ATOMIC-PUBLICATION-001) | `test_the_index_is_replaced_never_truncated`, `test_a_stale_copy_left_by_an_interrupted_publication_is_recovered_not_a_gap`, `test_leftovers_of_an_interrupted_latest_publication_are_cleared_by_the_next`, `test_a_copy_of_a_bundle_the_index_does_not_know_is_still_refused` |
+| STORE-ID-BIND | a wrapper whose bundle id or project key disagrees with its manifest is refused before any write (PV-AUDIT-STORE-BUNDLE-PATH-BINDING-001, PV-AUDIT-STORE-PROJECT-BINDING-001) | `test_a_wrapper_that_disagrees_with_its_manifest_is_refused_before_anything_is_written` |
+| store path containment | a key that is not a `<forge>/<owner>/<repo>` triple of name characters derives no store path, and the configuration admits only such names (PV-AUDIT-STORE-PATH-001) | `test_a_key_that_is_not_a_locator_derives_no_store_path`, `test_a_locator_stays_beneath_the_store`, `test_a_configured_repo_that_is_not_a_locator_is_rejected` |
+| LOCATOR-ALIAS | two spellings of one repository are one project in the configuration and in the run (PV-AUDIT-PROJECT-LOCATOR-ALIAS-001) | `test_case_variants_of_one_locator_are_one_configured_project`, `test_two_locators_the_provider_resolves_to_one_repository_are_observed_once`, `test_run_project_refuses_the_second_locator_of_one_repository_before_writing` |
+| CONFIG-SHAPE | `activity.enabled` and `store` of the wrong type are rejected, not coerced (PV-AUDIT-CONFIG-SHAPE-001) | `test_configuration_of_the_wrong_shape_is_rejected_not_coerced` |
+| GH-*-PAYLOAD | a malformed successful row of any inventory is `ERROR / UNEXPECTED_PAYLOAD` for that inventory alone; the repository metadata bootstrap fails the project explicitly; a head detail that cannot be read leaves the head unresolved; a check-suite answer of the wrong shape is a failure, not zero suites (PV-AUDIT-GITHUB-REPO/COMMITS/CR/ISSUES/BRANCH/RELEASE/CI-PAYLOAD-001) | `test_a_malformed_successful_row_is_a_declared_failure_of_that_inventory_alone`, `test_repository_metadata_that_does_not_establish_the_routing_facts_is_a_declared_collection_failure`, `test_a_malformed_repository_in_a_fleet_run_costs_one_outcome_and_the_next_project_still_runs`, `test_a_head_detail_that_cannot_be_read_leaves_the_head_unresolved_not_the_inventory_failed`, `test_a_check_suite_answer_of_the_wrong_shape_is_a_declared_failure_not_zero_suites`, `test_a_valid_draft_release_without_a_date_is_ignored_and_valid_rows_keep_their_order`, `test_an_unreadable_commit_inventory_leaves_verification_unknown_not_uninstrumented`, `test_a_malformed_workflows_answer_is_a_declared_failure_not_an_invented_count` |
+| REG-STATE | the register state vocabulary is closed; a state outside it is `INVALID_REGISTER`, never an open item (PV-AUDIT-REGISTER-STATE-001) | `test_reg_state_01_02_the_documented_vocabulary_is_read`, `test_reg_state_03_04_06_07_a_state_outside_the_vocabulary_is_an_invalid_register_not_an_open_item`, `test_reg_state_05_08_the_collectors_turn_an_invalid_state_into_error_invalid_register` |
+| GH-RETRY-HEADER | an unreadable wait hint is no hint; the bounded backoff applies and the answer's own classification stands (PV-AUDIT-GITHUB-RETRY-HEADER-001) | `test_gh_retry_header_01_03_an_unreadable_wait_hint_is_no_hint`, `test_gh_retry_header_04_06_a_malformed_hint_takes_the_bounded_backoff_and_ends_in_the_declared_status` |
+| GH-REDIRECT-AUTH | a redirect off the API origin is refused and the credential never leaves; same-origin redirects still work (PV-AUDIT-GITHUB-REDIRECT-AUTH-001) | `test_gh_redirect_auth_a_redirect_to_another_origin_is_refused_and_the_token_never_leaves`, `test_gh_redirect_auth_a_same_origin_redirect_is_followed_with_the_credential`, `test_gh_redirect_auth_the_origin_is_the_configured_api_base`, `test_gh_redirect_auth_a_refused_redirect_is_a_declared_transport_failure` |
+| GH-CACHE-INTEGRITY | a cache entry is replayed only when complete and still hashing to its digest; anything else is a miss and one refetch (PV-AUDIT-GITHUB-CACHE-INTEGRITY-001) | `test_gh_cache_integrity_01_02_05_unreadable_metadata_is_a_miss_never_an_exception`, `test_gh_cache_integrity_03_07_a_body_that_no_longer_hashes_to_its_digest_is_not_replayed`, `test_gh_cache_integrity_04_06_a_304_over_an_invalid_entry_refetches_once_and_a_valid_one_replays` |
+| CANON-NONFINITE / DECIMAL / JSON-PARSER / UNICODE | the canonical decoder rejects non-finite constants, decimal and exponent numbers, duplicate members and unpaired surrogates; integers of any size and valid Unicode survive (PV-AUDIT-CANONICAL-*-001) | `test_canon_nonfinite_and_decimal_tokens_reject_at_the_decoder`, `test_canon_decimal_07_integers_of_any_size_stay_integers`, `test_canon_json_parser_a_member_named_twice_is_rejected_not_collapsed`, `test_canon_unicode_01_04_an_unpaired_surrogate_is_rejected`, `test_canon_unicode_05_08_a_valid_pair_and_ordinary_unicode_survive`, `test_canon_unicode_06_07_a_direct_surrogate_value_or_key_is_a_canonicalization_error_not_a_unicode_error` |
 
 ## Band ordering (PV-BAND-ORDER-001)
 
@@ -176,9 +278,18 @@ accepted case.
 | evidence is contract-checked | an envelope that violates the observation contract fails the vector | `test_an_envelope_that_violates_the_observation_contract_is_a_failure_not_a_pass` |
 | published schema | the schema and the validator agree on the shape, including the partial evidence envelope and the comparison statuses | `test_the_published_vector_schema_and_the_runner_agree_on_the_shape`, `test_the_schema_publishes_the_partial_envelope_the_runner_actually_accepts`, `test_every_envelope_in_the_corpus_is_one_the_published_schema_accepts` |
 | corpus | every vector in the corpus runs, and every declared kind is exercised | `test_conformance_vector`, `test_every_kind_the_format_declares_is_exercised_by_the_corpus` |
+| variants | one case over several evidence shapes passes only when every shape does, and a failure names the shape | `test_variants_hold_every_evidence_shape_to_the_one_expectation` |
+| ci kind | provider-native outcomes are normalized before Integrity sees them; a provider without a normalization is rejected | `test_the_ci_kind_normalizes_provider_native_outcomes_before_integrity_sees_them` |
+| activity kind | the interval and the coverage notes of the activity member are checked | `test_the_activity_kind_checks_the_interval_and_the_coverage_it_discloses` |
 
-Cases not yet implemented as tests (T2..T9, R1, R2, R4..R53, ART-05,
+Cases not yet implemented as tests (T3, T6, T8, T9, R5..R53, ART-05,
 ART-08..ART-11, ART-15, RPT-4..RPT-6, RPT-9) are listed in the ROADMAP under the
-synthetic fixture suite. PV-TEST-001 will deliver them as executable JSON
-vectors in the format of [vectors.md](vectors.md); the runner that will execute
-them exists and is proved by the cases above.
+synthetic fixture suite. The research process delivers them as executable JSON
+vectors in the format of [vectors.md](vectors.md), one accepted family per
+unit; the ones accepted so far (T2, R1, R2, R3, R4, T4, T5, T7) are in the
+corpus above, and so are the twenty cases of `PV-CLUTTER-INCOMPLETE-001`,
+transcribed from the accepted contract the way `ORDER-01..15` were. The `ci` kind reaches the normalization boundary R5..R10 are
+about, so that family can be materialized against it (issue #20); `variants`
+and the dependency-group assertions close the T8 and part of the T6 gap of
+issue #23, while T3 and the bundle and store cases still need a surface this
+version does not publish.

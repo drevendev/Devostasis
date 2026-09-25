@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import base64
 import json
+import math
 import re
 import time
 import urllib.error
@@ -56,6 +57,7 @@ MAX_BRANCH_HEAD_LOOKUPS = 60
 MAX_ATTEMPT_LOOKUPS = 60
 MAX_ATTEMPTS_PER_RUN = 5
 MAX_SUITE_REVISIONS = 100
+MAX_SUITE_PAGES = 3
 MAX_RELEASES = 30
 MAX_REGISTER_BYTES = 1_000_000
 
@@ -128,6 +130,32 @@ def classify_http_error(status: int, body: Any, headers: dict[str, str]) -> tupl
     return ERROR, f"HTTP_{status}", False
 
 
+class RedirectRefused(urllib.error.URLError):
+    """A redirect the transport will not follow with the caller's credential."""
+
+
+class _SameOriginRedirects(urllib.request.HTTPRedirectHandler):
+    """Follow a redirect only to the configured API origin.
+
+    urllib copies every header of the original request onto the redirected
+    one, the bearer token included. A redirect to another origin would hand
+    the credential to whoever answers there, and a downgrade to HTTP would
+    send it in the clear, so both are refused as a declared transport failure
+    (PV-AUDIT-GITHUB-REDIRECT-AUTH-001). The API's own redirects, such as a
+    renamed repository, stay on the origin and still work.
+    """
+
+    def __init__(self, origin: str) -> None:
+        super().__init__()
+        self.origin = origin
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102 - urllib's signature
+        target = urllib.parse.urlsplit(newurl)
+        if f"{target.scheme}://{target.netloc}".lower() != self.origin:
+            raise RedirectRefused(f"redirect to {newurl} refused: it leaves the API origin {self.origin}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 class UrllibTransport:
     """Minimal HTTPS transport on the standard library."""
 
@@ -136,6 +164,12 @@ class UrllibTransport:
         self.api_base = api_base.rstrip("/")
         self.user_agent = user_agent
         self.timeout = timeout
+        parts = urllib.parse.urlsplit(self.api_base)
+        self.origin = f"{parts.scheme}://{parts.netloc}".lower()
+        self._opener = urllib.request.build_opener(_SameOriginRedirects(self.origin))
+
+    def _open(self, request: urllib.request.Request):
+        return self._opener.open(request, timeout=self.timeout)
 
     def get(self, path: str, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> tuple[int, dict[str, str], Any]:
         url = self.api_base + path
@@ -150,7 +184,7 @@ class UrllibTransport:
         for name, value in (headers or {}).items():
             request.add_header(name, value)
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            with self._open(request) as response:
                 raw = response.read()
                 headers = {k.lower(): v for k, v in response.headers.items()}
                 try:
@@ -169,6 +203,8 @@ class UrllibTransport:
             except ValueError:
                 body = {"message": raw.decode("utf-8", "replace")[:200]}
             return exc.code, headers, body
+        except RedirectRefused as exc:
+            raise ApiFailure(0, ERROR, "REDIRECT_REFUSED", str(exc), False) from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise NetworkFailure(f"network failure for {path}: {exc}") from exc
 
@@ -194,18 +230,35 @@ class RetryPolicy:
     backoff_seconds: tuple[int, ...] = (1, 2, 4)
 
 
+def _header_seconds(raw: str) -> int | None:
+    """A numeric header value as whole seconds, or None when it cannot be read as one.
+
+    ``float`` accepts ``inf`` and overflowing exponents that ``int`` then
+    refuses with OverflowError; a wait hint that cannot be read is not a
+    reason to raise past the provider boundary, it is no hint at all
+    (PV-AUDIT-GITHUB-RETRY-HEADER-001).
+    """
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(value):
+        return None
+    try:
+        return int(value)
+    except (OverflowError, ValueError):
+        return None
+
+
 def retry_after_seconds(headers: dict[str, str], now: float | None = None) -> int | None:
-    """What the provider asked us to wait, from Retry-After or the rate-limit reset."""
+    """What the provider asked us to wait, from Retry-After or the rate-limit reset; None when unreadable."""
     raw = headers.get("retry-after")
     if raw:
-        try:
-            return max(int(float(raw)), 0)
-        except ValueError:
-            return None
+        seconds = _header_seconds(raw)
+        return None if seconds is None else max(seconds, 0)
     if headers.get("x-ratelimit-remaining") == "0" and headers.get("x-ratelimit-reset"):
-        try:
-            reset = int(float(headers["x-ratelimit-reset"]))
-        except ValueError:
+        reset = _header_seconds(headers["x-ratelimit-reset"])
+        if reset is None:
             return None
         return max(reset - int(now if now is not None else time.time()), 0)
     return None
@@ -354,7 +407,9 @@ class GitHubClient:
             if items_key:
                 if not isinstance(body, dict):
                     raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected an object with {items_key!r} from {path}, got {type(body).__name__}")
-                batch = body.get(items_key, [])
+                batch = body.get(items_key)
+                if batch is None:
+                    raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected {items_key!r} in the answer from {path}, got none")
             else:
                 batch = body
             if not isinstance(batch, list):
@@ -365,6 +420,75 @@ class GitHubClient:
             if len(batch) < PER_PAGE:
                 return items, True
         return items, False
+
+
+def _payload_failure(path: str, what: str) -> ApiFailure:
+    """A successful answer whose shape or values cannot be read as the endpoint documents.
+
+    It is an ``ApiFailure`` so the collector that asked turns it into an
+    explicit ``ERROR / UNEXPECTED_PAYLOAD`` observation on that inventory
+    alone, exactly like a failed request; nothing is coerced, defaulted or
+    skipped in its place (PV-AUDIT-GITHUB-*-PAYLOAD-001).
+    """
+    return ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"{path}: {what}")
+
+
+def _object(path: str, value: Any, what: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise _payload_failure(path, f"{what} is {type(value).__name__}, not an object")
+    return value
+
+
+def _rows(path: str, rows: Any) -> list[dict[str, Any]]:
+    if not isinstance(rows, list):
+        raise _payload_failure(path, f"expected a list, got {type(rows).__name__}")
+    for position, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise _payload_failure(path, f"item {position} is {type(row).__name__}, not an object")
+    return rows
+
+
+def _integer(path: str, value: Any, field: str, minimum: int = 0) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        raise _payload_failure(path, f"{field} is {value!r}, not an integer >= {minimum}")
+    return value
+
+
+def _optional_integer(path: str, value: Any, field: str, minimum: int = 0) -> int | None:
+    return None if value is None else _integer(path, value, field, minimum)
+
+
+def _text(path: str, value: Any, field: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise _payload_failure(path, f"{field} is {value!r}, not a non-empty string")
+    return value
+
+
+def _optional_text(path: str, value: Any, field: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise _payload_failure(path, f"{field} is {value!r}, not a string")
+    return value
+
+
+def _boolean(path: str, value: Any, field: str) -> bool:
+    if not isinstance(value, bool):
+        raise _payload_failure(path, f"{field} is {value!r}, not a boolean")
+    return value
+
+
+def _timestamp(path: str, value: Any, field: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise _payload_failure(path, f"{field} is {value!r}, not a timestamp")
+    try:
+        return timeutil.normalize_ts(value)
+    except ValueError as exc:
+        raise _payload_failure(path, f"{field} {value!r} is not a timestamp: {exc}") from exc
+
+
+def _optional_timestamp(path: str, value: Any, field: str) -> str | None:
+    return None if value is None else _timestamp(path, value, field)
 
 
 def _failure_observation(observation_id: str, value_type: str, exc: Exception, common: dict[str, Any]) -> Observation:
@@ -456,9 +580,28 @@ def marker_target_ids(text: str | None, marker: str) -> list[str]:
     return seen
 
 
-def _register_state(value: Any) -> str:
-    text = str(value or "open").strip().lower()
-    return "CLOSED" if text in ("closed", "done", "resolved", "cancelled", "canceled") else "OPEN"
+OPEN_STATES = ("open",)
+CLOSED_STATES = ("closed", "done", "resolved", "cancelled", "canceled")
+
+
+def _register_state(where: str, value: Any) -> str:
+    """The documented state vocabulary, or an invalid register.
+
+    An absent or empty state is ``open``, as the register contract allows. A
+    present value outside the vocabulary, or of the wrong type, is not an
+    open item: it is a register nobody can read, and reading it as open would
+    manufacture a target or a debt item (PV-AUDIT-REGISTER-STATE-001).
+    """
+    if value is None or value == "":
+        return "OPEN"
+    if not isinstance(value, str):
+        raise RegisterError(f"{where} state must be a string, got {value!r}")
+    state = value.strip().lower()
+    if state in OPEN_STATES:
+        return "OPEN"
+    if state in CLOSED_STATES:
+        return "CLOSED"
+    raise RegisterError(f"{where} state {value!r} is not one of {OPEN_STATES + CLOSED_STATES}")
 
 
 def parse_targets_register(document: Any) -> list[dict[str, Any]]:
@@ -481,7 +624,7 @@ def parse_targets_register(document: Any) -> list[dict[str, Any]]:
                 "target_id": target_id,
                 "id": target_id,
                 "title": _register_title(f"target {target_id}", entry.get("title")),
-                "state": _register_state(entry.get("state")),
+                "state": _register_state(f"target {target_id}", entry.get("state")),
                 "due_at": _normalize_date(entry.get("due")),
                 "open_items": 0,
                 "closed_items": 0,
@@ -515,7 +658,7 @@ def parse_debt_register(document: Any) -> list[dict[str, Any]]:
             {
                 "id": item_id,
                 "title": _register_title(f"debt item {item_id}", entry.get("title")),
-                "state": _register_state(entry.get("state")),
+                "state": _register_state(f"debt item {item_id}", entry.get("state")),
                 "opened_at": opened,
                 "updated_at": updated,
                 "closed_at": _normalize_date(entry.get("closed")),
@@ -560,19 +703,19 @@ class GitHubAdapter:
         base = f"/repos/{owner}/{repo}"
         started = timeutil.format_ts(timeutil.now_utc())
         try:
-            meta = self.client.get(base)
+            meta = self._repository_metadata(base, self.client.get(base))
         except (ApiFailure, NetworkFailure) as exc:
             raise CollectionError(f"cannot identify {owner}/{repo}: {exc}") from exc
-        default_branch = meta.get("default_branch") or "main"
+        default_branch = meta["default_branch"]
         subject = {
             "provider": "github",
             "forge_instance": "github.com",
             "owner": owner,
             "repo": repo,
             "display_locator": f"{owner}/{repo}",
-            "immutable_project_id": str(meta.get("id")) if meta.get("id") is not None else None,
+            "immutable_project_id": str(meta["id"]),
             "default_branch": default_branch,
-            "visibility": meta.get("visibility"),
+            "visibility": meta["visibility"],
         }
         obs = ObservationSet(subject=subject, observed_at=self.observed_at)
         obs.add(
@@ -581,14 +724,14 @@ class GitHubAdapter:
                 status=AVAILABLE,
                 value_type="record",
                 value={
-                    "id": meta.get("id"),
-                    "full_name": meta.get("full_name"),
+                    "id": meta["id"],
+                    "full_name": meta["full_name"],
                     "default_branch": default_branch,
-                    "visibility": meta.get("visibility"),
-                    "has_issues": bool(meta.get("has_issues")),
-                    "archived": bool(meta.get("archived")),
-                    "pushed_at": timeutil.normalize_ts(meta.get("pushed_at")),
-                    "html_url": meta.get("html_url"),
+                    "visibility": meta["visibility"],
+                    "has_issues": meta["has_issues"],
+                    "archived": meta["archived"],
+                    "pushed_at": meta["pushed_at"],
+                    "html_url": meta["html_url"],
                 },
                 evidence_ref={"endpoint": base},
                 **self._common(base),
@@ -598,7 +741,7 @@ class GitHubAdapter:
         commits_by_sha = self._collect_commits(obs, base, default_branch)
         target_states = self._collect_targets(obs, base, project, default_branch)
         self._collect_change_requests(obs, base, project, target_states)
-        self._collect_issues(obs, base, bool(meta.get("has_issues")))
+        self._collect_issues(obs, base, meta["has_issues"])
         self._collect_branches(obs, base, default_branch, commits_by_sha)
         self._collect_debt_register(obs, base, project, default_branch)
         self._collect_releases(obs, base)
@@ -616,13 +759,36 @@ class GitHubAdapter:
         obs.finalize_receipt(receipt)
         return obs
 
+    @staticmethod
+    def _repository_metadata(path: str, payload: Any) -> dict[str, Any]:
+        """The repository fields collection is routed by, each one typed evidence.
+
+        The default branch decides where commits, registers and verification
+        are looked for, the id decides where history lives, and the capability
+        flags decide what is asked for. None of them is guessed: an answer that
+        does not establish them is a declared failure, never ``main``, never
+        the truthiness of a string (PV-AUDIT-GITHUB-REPO-PAYLOAD-001).
+        """
+        meta = _object(path, payload, "repository metadata")
+        return {
+            "id": _integer(path, meta.get("id"), "id", 1),
+            "full_name": _optional_text(path, meta.get("full_name"), "full_name"),
+            "default_branch": _text(path, meta.get("default_branch"), "default_branch"),
+            "visibility": _optional_text(path, meta.get("visibility"), "visibility"),
+            "has_issues": _boolean(path, meta.get("has_issues"), "has_issues"),
+            "archived": _boolean(path, meta.get("archived"), "archived"),
+            "pushed_at": _optional_timestamp(path, meta.get("pushed_at"), "pushed_at"),
+            "html_url": _optional_text(path, meta.get("html_url"), "html_url"),
+        }
+
     def _fetch_json_register(self, base: str, path: str, ref: str) -> Any:
         """Read a JSON file of the repository through the contents API."""
         encoded = "/".join(urllib.parse.quote(part) for part in path.split("/"))
-        body = self.client.get(f"{base}/contents/{encoded}", {"ref": ref})
+        endpoint = f"{base}/contents/{encoded}"
+        body = self.client.get(endpoint, {"ref": ref})
         if not isinstance(body, dict) or body.get("type") != "file":
             raise RegisterError(f"{path} is not a file")
-        if int(body.get("size") or 0) > MAX_REGISTER_BYTES:
+        if _integer(endpoint, body.get("size", 0), "size") > MAX_REGISTER_BYTES:
             raise RegisterError(f"{path} exceeds {MAX_REGISTER_BYTES} bytes")
         if body.get("encoding") != "base64" or not body.get("content"):
             raise RegisterError(f"{path} has no base64 content")
@@ -641,13 +807,11 @@ class GitHubAdapter:
         except (ApiFailure, NetworkFailure) as exc:
             obs.add(_failure_observation(INV_COMMITS, "series", exc, common))
             return {}
-        items = []
-        for commit in raw:
-            info = commit.get("commit") or {}
-            committed = (info.get("committer") or {}).get("date") or (info.get("author") or {}).get("date")
-            if not committed:
-                continue
-            items.append({"sha": commit["sha"], "committed_at": timeutil.normalize_ts(committed), "title": _title(info.get("message"))})
+        try:
+            items = [self._commit_record(path, commit) for commit in _rows(path, raw)]
+        except ApiFailure as exc:
+            obs.add(_failure_observation(INV_COMMITS, "series", exc, common))
+            return {}
         items.sort(key=lambda c: (c["committed_at"], c["sha"]))
         obs.add(
             Observation(
@@ -662,6 +826,29 @@ class GitHubAdapter:
             )
         )
         return {item["sha"]: item for item in items}
+
+    @staticmethod
+    def _commit_record(path: str, commit: dict[str, Any]) -> dict[str, Any]:
+        """One commit as the inventory records it, or a declared payload failure.
+
+        A commit without a readable date is not skipped: an omitted commit
+        would undercount activity and misplace the verification window
+        (PV-AUDIT-GITHUB-COMMITS-PAYLOAD-001). The committer date is used when
+        present, the author date otherwise, as before.
+        """
+        sha = _text(path, commit.get("sha"), "sha")
+        info = _object(path, commit.get("commit"), f"commit {sha} commit")
+        committed: str | None = None
+        for role in ("committer", "author"):
+            person = info.get(role)
+            if person is None:
+                continue
+            person = _object(path, person, f"commit {sha} {role}")
+            if committed is None and person.get("date") is not None:
+                committed = _timestamp(path, person.get("date"), f"commit {sha} {role}.date")
+        if committed is None:
+            raise _payload_failure(path, f"commit {sha} carries no committer or author date")
+        return {"sha": sha, "committed_at": committed, "title": _title(info.get("message"))}
 
     def _target_refs(self, pull: dict[str, Any], project: ResolvedProject, target_states: dict[str, str] | None) -> list[dict[str, str]]:
         source = project.planning["source"]
@@ -686,36 +873,15 @@ class GitHubAdapter:
                 path,
                 {"state": "all", "sort": "updated", "direction": "desc"},
                 MAX_CHANGE_REQUEST_PAGES,
-                stop=lambda item: timeutil.parse_ts(item["updated_at"]) < since,
+                stop=lambda item: timeutil.parse_ts(_timestamp(path, _object(path, item, "change request").get("updated_at"), "updated_at")) < since,
             )
+            merged: dict[int, dict[str, Any]] = {}
+            for pull in _rows(path, open_raw) + _rows(path, recent_raw):
+                record = self._change_request_record(path, pull, project, target_states)
+                merged[record["number"]] = record
         except (ApiFailure, NetworkFailure) as exc:
             obs.add(_failure_observation(INV_CRS, "series", exc, common))
             return
-        merged: dict[int, dict[str, Any]] = {}
-        for pull in open_raw + recent_raw:
-            if pull.get("merged_at"):
-                state = "MERGED"
-            elif pull.get("state") == "closed":
-                state = "CLOSED"
-            else:
-                state = "OPEN"
-            refs = self._target_refs(pull, project, target_states)
-            merged[int(pull["number"])] = {
-                "number": int(pull["number"]),
-                "id": pull.get("id"),
-                "title": _title(pull.get("title")),
-                "state": state,
-                "draft": bool(pull.get("draft")),
-                "created_at": timeutil.normalize_ts(pull.get("created_at")),
-                "updated_at": timeutil.normalize_ts(pull.get("updated_at")),
-                "merged_at": timeutil.normalize_ts(pull.get("merged_at")),
-                "closed_at": timeutil.normalize_ts(pull.get("closed_at")),
-                "target_id": refs[0]["target_id"] if refs else None,
-                "target_state": refs[0]["state"] if refs else None,
-                "target_refs": refs,
-                "author": (pull.get("user") or {}).get("login"),
-                "url": pull.get("html_url"),
-            }
         items = [merged[number] for number in sorted(merged)]
         complete = open_complete and window_complete
         obs.add(
@@ -737,6 +903,67 @@ class GitHubAdapter:
             )
         )
 
+    def _change_request_record(self, path: str, pull: dict[str, Any], project: ResolvedProject, target_states: dict[str, str] | None) -> dict[str, Any]:
+        """One change request as the inventory records it, or a declared payload failure (PV-AUDIT-GITHUB-CR-PAYLOAD-001)."""
+        number = _integer(path, pull.get("number"), "number", 1)
+        where = f"change request #{number}"
+        merged_at = _optional_timestamp(path, pull.get("merged_at"), f"{where} merged_at")
+        state_text = _optional_text(path, pull.get("state"), f"{where} state")
+        if merged_at:
+            state = "MERGED"
+        elif state_text == "closed":
+            state = "CLOSED"
+        else:
+            state = "OPEN"
+        user = pull.get("user")
+        author = None if user is None else _optional_text(path, _object(path, user, f"{where} user").get("login"), f"{where} user.login")
+        refs = self._target_refs(pull, project, target_states)
+        return {
+            "number": number,
+            "id": _optional_integer(path, pull.get("id"), f"{where} id"),
+            "title": _title(pull.get("title")),
+            "state": state,
+            "draft": _boolean(path, pull.get("draft", False), f"{where} draft"),
+            "created_at": _timestamp(path, pull.get("created_at"), f"{where} created_at"),
+            "updated_at": _timestamp(path, pull.get("updated_at"), f"{where} updated_at"),
+            "merged_at": merged_at,
+            "closed_at": _optional_timestamp(path, pull.get("closed_at"), f"{where} closed_at"),
+            "target_id": refs[0]["target_id"] if refs else None,
+            "target_state": refs[0]["state"] if refs else None,
+            "target_refs": refs,
+            "author": author,
+            "url": _optional_text(path, pull.get("html_url"), f"{where} html_url"),
+        }
+
+    @staticmethod
+    def _issue_record(path: str, issue: dict[str, Any]) -> dict[str, Any]:
+        """One issue as the inventory records it, or a declared payload failure (PV-AUDIT-GITHUB-ISSUES-PAYLOAD-001)."""
+        number = _integer(path, issue.get("number"), "number", 1)
+        where = f"issue #{number}"
+        labels = issue.get("labels")
+        if labels is None:
+            labels = []
+        names = []
+        for position, label in enumerate(_rows(path, labels)):
+            names.append(_text(path, label.get("name"), f"{where} labels[{position}].name"))
+        user = issue.get("user")
+        author = None if user is None else _optional_text(path, _object(path, user, f"{where} user").get("login"), f"{where} user.login")
+        milestone = _milestone_ref(where, issue.get("milestone") or None)
+        state_text = _optional_text(path, issue.get("state"), f"{where} state")
+        return {
+            "number": number,
+            "id": _optional_integer(path, issue.get("id"), f"{where} id"),
+            "title": _title(issue.get("title")),
+            "state": "CLOSED" if state_text == "closed" else "OPEN",
+            "created_at": _timestamp(path, issue.get("created_at"), f"{where} created_at"),
+            "updated_at": _timestamp(path, issue.get("updated_at"), f"{where} updated_at"),
+            "closed_at": _optional_timestamp(path, issue.get("closed_at"), f"{where} closed_at"),
+            "labels": sorted(names),
+            "target_id": milestone["target_id"] if milestone else None,
+            "author": author,
+            "url": _optional_text(path, issue.get("html_url"), f"{where} html_url"),
+        }
+
     def _collect_issues(self, obs: ObservationSet, base: str, has_issues: bool) -> None:
         since = timeutil.minus_days(self.now, PULSE["window_days"])
         path = f"{base}/issues"
@@ -753,23 +980,15 @@ class GitHubAdapter:
             obs.add(_failure_observation(INV_ISSUES, "series", exc, common))
             return
         merged: dict[int, dict[str, Any]] = {}
-        for issue in open_raw + recent_raw:
-            if issue.get("pull_request"):
-                continue
-            milestone = _milestone_ref(f"issue #{issue.get('number')}", issue.get("milestone") or None)
-            merged[int(issue["number"])] = {
-                "number": int(issue["number"]),
-                "id": issue.get("id"),
-                "title": _title(issue.get("title")),
-                "state": "CLOSED" if issue.get("state") == "closed" else "OPEN",
-                "created_at": timeutil.normalize_ts(issue.get("created_at")),
-                "updated_at": timeutil.normalize_ts(issue.get("updated_at")),
-                "closed_at": timeutil.normalize_ts(issue.get("closed_at")),
-                "labels": sorted(label.get("name", "") for label in (issue.get("labels") or []) if isinstance(label, dict)),
-                "target_id": milestone["target_id"] if milestone else None,
-                "author": (issue.get("user") or {}).get("login"),
-                "url": issue.get("html_url"),
-            }
+        try:
+            for issue in _rows(path, open_raw) + _rows(path, recent_raw):
+                if issue.get("pull_request"):
+                    continue
+                record = self._issue_record(path, issue)
+                merged[record["number"]] = record
+        except ApiFailure as exc:
+            obs.add(_failure_observation(INV_ISSUES, "series", exc, common))
+            return
         items = [merged[number] for number in sorted(merged)]
         complete = open_complete and window_complete
         obs.add(
@@ -796,25 +1015,32 @@ class GitHubAdapter:
         items = []
         lookups = 0
         heads_resolved = True
-        for branch in raw:
-            name = branch.get("name")
-            if name == default_branch:
-                continue
-            sha = (branch.get("commit") or {}).get("sha")
-            committed_at = None
-            if sha in commits_by_sha:
-                committed_at = commits_by_sha[sha]["committed_at"]
-            elif sha and lookups < MAX_BRANCH_HEAD_LOOKUPS:
-                lookups += 1
-                try:
-                    detail = self.client.get(f"{base}/commits/{sha}")
-                    info = detail.get("commit") or {}
-                    committed_at = timeutil.normalize_ts((info.get("committer") or {}).get("date") or (info.get("author") or {}).get("date"))
-                except (ApiFailure, NetworkFailure):
+        try:
+            for branch in _rows(path, raw):
+                name = _text(path, branch.get("name"), "branch name")
+                if name == default_branch:
+                    continue
+                sha = _text(path, _object(path, branch.get("commit"), f"branch {name} commit").get("sha"), f"branch {name} commit.sha")
+                protected = _boolean(path, branch.get("protected", False), f"branch {name} protected")
+                committed_at = None
+                if sha in commits_by_sha:
+                    committed_at = commits_by_sha[sha]["committed_at"]
+                elif lookups < MAX_BRANCH_HEAD_LOOKUPS:
+                    lookups += 1
+                    detail_path = f"{base}/commits/{sha}"
+                    try:
+                        # A head whose detail cannot be read stays unresolved: the
+                        # inventory is then PARTIAL / BRANCH_HEADS_UNRESOLVED, and
+                        # nothing is inferred about its age (PV-AUDIT-GITHUB-BRANCH-PAYLOAD-001).
+                        committed_at = self._commit_record(detail_path, _object(detail_path, self.client.get(detail_path), "commit detail"))["committed_at"]
+                    except (ApiFailure, NetworkFailure):
+                        heads_resolved = False
+                else:
                     heads_resolved = False
-            else:
-                heads_resolved = False
-            items.append({"name": name, "head_sha": sha, "head_committed_at": committed_at, "protected": bool(branch.get("protected"))})
+                items.append({"name": name, "head_sha": sha, "head_committed_at": committed_at, "protected": protected})
+        except ApiFailure as exc:
+            obs.add(_failure_observation(INV_BRANCHES, "series", exc, common))
+            return
         items.sort(key=lambda b: b["name"])
         status = AVAILABLE if (complete and heads_resolved) else PARTIAL
         obs.add(
@@ -869,19 +1095,11 @@ class GitHubAdapter:
         except (ApiFailure, NetworkFailure) as exc:
             obs.add(_failure_observation(INV_TARGETS, "series", exc, common))
             return None
-        items = [
-            {
-                "target_id": str(m["number"]),
-                "id": m.get("id"),
-                "title": _title(m.get("title")),
-                "state": "CLOSED" if m.get("state") == "closed" else "OPEN",
-                "due_at": timeutil.normalize_ts(m.get("due_on")),
-                "open_items": int(m.get("open_issues") or 0),
-                "closed_items": int(m.get("closed_issues") or 0),
-                "url": m.get("html_url"),
-            }
-            for m in raw
-        ]
+        try:
+            items = [self._milestone_record(path, milestone) for milestone in _rows(path, raw)]
+        except ApiFailure as exc:
+            obs.add(_failure_observation(INV_TARGETS, "series", exc, common))
+            return None
         items.sort(key=lambda m: int(m["target_id"]))
         obs.add(
             Observation(
@@ -896,6 +1114,22 @@ class GitHubAdapter:
             )
         )
         return None
+
+    @staticmethod
+    def _milestone_record(path: str, milestone: dict[str, Any]) -> dict[str, Any]:
+        number = _integer(path, milestone.get("number"), "milestone number", 1)
+        where = f"milestone {number}"
+        state_text = _optional_text(path, milestone.get("state"), f"{where} state")
+        return {
+            "target_id": str(number),
+            "id": _optional_integer(path, milestone.get("id"), f"{where} id"),
+            "title": _title(milestone.get("title")),
+            "state": "CLOSED" if state_text == "closed" else "OPEN",
+            "due_at": _optional_timestamp(path, milestone.get("due_on"), f"{where} due_on"),
+            "open_items": _optional_integer(path, milestone.get("open_issues"), f"{where} open_issues") or 0,
+            "closed_items": _optional_integer(path, milestone.get("closed_issues"), f"{where} closed_issues") or 0,
+            "url": _optional_text(path, milestone.get("html_url"), f"{where} html_url"),
+        }
 
     def _collect_debt_register(self, obs: ObservationSet, base: str, project: ResolvedProject, default_branch: str) -> None:
         mapping = project.debt_mapping
@@ -927,27 +1161,31 @@ class GitHubAdapter:
         common = self._common(path)
         limit = MAX_RELEASES
         try:
-            raw = self.client.get(path, {"per_page": limit})
-            if not isinstance(raw, list) or not all(isinstance(r, dict) for r in raw):
-                raise ApiFailure(200, ERROR, "UNEXPECTED_PAYLOAD", f"expected a list of releases from {path}, got {type(raw).__name__}")
+            raw = _rows(path, self.client.get(path, {"per_page": limit}))
+            items = []
+            for position, release in enumerate(raw):
+                where = f"release {position}"
+                # A draft is positively a draft, and only then may it carry no
+                # publication date; every other row is a published release whose
+                # tag and date must be readable (PV-AUDIT-GITHUB-RELEASE-PAYLOAD-001).
+                if _boolean(path, release.get("draft"), f"{where} draft"):
+                    continue
+                items.append(
+                    {
+                        "tag": _text(path, release.get("tag_name"), f"{where} tag_name"),
+                        "name": _title(release.get("name")),
+                        "published_at": _timestamp(path, release.get("published_at"), f"{where} published_at"),
+                        "prerelease": _boolean(path, release.get("prerelease"), f"{where} prerelease"),
+                        "url": _optional_text(path, release.get("html_url"), f"{where} html_url"),
+                    }
+                )
         except (ApiFailure, NetworkFailure) as exc:
             obs.add(_failure_observation(INV_RELEASES, "series", exc, common))
             return
         # A full page means the provider had at least this many: the newest are
         # observed, the rest are not, and that is PARTIAL rather than complete.
         complete = len(raw) < limit
-        items = [
-            {
-                "tag": r.get("tag_name"),
-                "name": _title(r.get("name")),
-                "published_at": timeutil.normalize_ts(r.get("published_at")),
-                "prerelease": bool(r.get("prerelease")),
-                "url": r.get("html_url"),
-            }
-            for r in raw
-            if not r.get("draft") and r.get("published_at")
-        ]
-        items.sort(key=lambda r: (r["published_at"], r["tag"] or ""))
+        items.sort(key=lambda r: (r["published_at"], r["tag"]))
         obs.add(
             Observation(
                 observation_id=INV_RELEASES,
@@ -960,6 +1198,35 @@ class GitHubAdapter:
                 **common,
             )
         )
+
+    @staticmethod
+    def _attempt_record(path: str, payload: Any, run_id: int, number: int) -> dict[str, Any]:
+        """An earlier attempt of a run, proven to be the attempt that was asked for.
+
+        An attempt that names another run or another number is not evidence
+        about this run's history; counting it would let ``attempts_complete``
+        be true over attempts nobody proved (PV-AUDIT-GITHUB-CI-PAYLOAD-001).
+        """
+        attempt = _object(path, payload, "run attempt")
+        if _integer(path, attempt.get("id"), "id", 1) != run_id:
+            raise _payload_failure(path, f"attempt belongs to run {attempt.get('id')}, not {run_id}")
+        if _integer(path, attempt.get("run_attempt"), "run_attempt", 1) != number:
+            raise _payload_failure(path, f"attempt {number} was asked for, {attempt.get('run_attempt')} answered")
+        _text(path, attempt.get("status"), "status")
+        _optional_text(path, attempt.get("conclusion"), "conclusion")
+        return attempt
+
+    @staticmethod
+    def _check_suite_record(path: str, suite: dict[str, Any]) -> dict[str, Any]:
+        """A check suite with every consumed field typed; a count nobody sent is not one."""
+        suite_id = _integer(path, suite.get("id"), "check suite id")
+        where = f"check suite {suite_id}"
+        _text(path, suite.get("status"), f"{where} status")
+        _optional_text(path, suite.get("conclusion"), f"{where} conclusion")
+        app = suite.get("app")
+        app_slug = None if app is None else _optional_text(path, _object(path, app, f"{where} app").get("slug"), f"{where} app.slug")
+        count = _integer(path, suite.get("latest_check_runs_count"), f"{where} latest_check_runs_count")
+        return {"raw": suite, "app_slug": app_slug, "latest_check_runs_count": count}
 
     def _collect_ci(self, obs: ObservationSet, base: str, default_branch: str, commits_by_sha: dict[str, dict[str, Any]]) -> None:
         since = timeutil.minus_days(self.now, INTEGRITY["window_days"])
@@ -997,50 +1264,92 @@ class GitHubAdapter:
                 runs_failure = exc
                 runs = []
             attempt_lookups = 0
-            for run in runs:
-                sha = run.get("head_sha")
-                if sha not in commits_by_sha:
-                    continue
-                runs_seen += 1
-                prior: list[dict[str, Any]] = []
-                current_attempt = int(run.get("run_attempt") or 1)
-                if current_attempt > 1:
-                    wanted = list(range(max(1, current_attempt - MAX_ATTEMPTS_PER_RUN), current_attempt))
-                    for number in wanted:
-                        if attempt_lookups >= MAX_ATTEMPT_LOOKUPS:
+            runs_path = f"{base}/actions/runs"
+            try:
+                for run in _rows(runs_path, runs):
+                    # Every run is validated before the window is applied: a run
+                    # whose head cannot be read is not an out-of-window run
+                    # (PV-AUDIT-GITHUB-CI-PAYLOAD-001).
+                    sha = _text(runs_path, run.get("head_sha"), "head_sha")
+                    run_id = _integer(runs_path, run.get("id"), "id", 1)
+                    current_attempt = _integer(runs_path, run.get("run_attempt"), f"run {run_id} run_attempt", 1)
+                    _text(runs_path, run.get("status"), f"run {run_id} status")
+                    _optional_text(runs_path, run.get("conclusion"), f"run {run_id} conclusion")
+                    if sha not in commits_by_sha:
+                        continue
+                    runs_seen += 1
+                    prior: list[dict[str, Any]] = []
+                    if current_attempt > 1:
+                        wanted = list(range(max(1, current_attempt - MAX_ATTEMPTS_PER_RUN), current_attempt))
+                        for number in wanted:
+                            if attempt_lookups >= MAX_ATTEMPT_LOOKUPS:
+                                attempts_complete = False
+                                break
+                            attempt_lookups += 1
+                            attempt_path = f"{runs_path}/{run_id}/attempts/{number}"
+                            try:
+                                prior.append(self._attempt_record(attempt_path, self.client.get(attempt_path), run_id, number))
+                            except NetworkFailure:
+                                attempts_complete = False
+                            except ApiFailure as exc:
+                                if exc.reason_code == "UNEXPECTED_PAYLOAD":
+                                    raise
+                                attempts_complete = False
+                        if current_attempt - 1 > MAX_ATTEMPTS_PER_RUN:
                             attempts_complete = False
-                            break
-                        attempt_lookups += 1
-                        try:
-                            prior.append(self.client.get(f"{base}/actions/runs/{run['id']}/attempts/{number}"))
-                        except (ApiFailure, NetworkFailure):
-                            attempts_complete = False
-                    if current_attempt - 1 > MAX_ATTEMPTS_PER_RUN:
-                        attempts_complete = False
-                parents_by_sha.setdefault(sha, []).append(github_ci.actions_parent(run, prior))
+                    parents_by_sha.setdefault(sha, []).append(github_ci.actions_parent(run, prior))
+            except ApiFailure as exc:
+                runs_failure = exc
             self.notes.append("CI_SURFACE:GITHUB_ACTIONS_ONLY")
             if runs_seen:
                 self.notes.append("CHECKS_SURFACE_NOT_COLLECTED")
 
+        # The check-suite surface is sampled per revision, newest first, when
+        # no Actions run was seen. Its coverage is tracked on its own (#12
+        # finding 1): how many revisions were planned and examined, whether
+        # every suite page was read, and why sampling stopped. A truncated
+        # sample, a failed fetch or a spent budget make the series PARTIAL;
+        # the parents already collected are kept, a failure among them stays.
+        suites_planned = 0
         suites_sampled = 0
+        suites_pages_complete = True
+        suites_stop: str | None = None
         suites_failure: Exception | None = None
         if not runs_seen and not runs_failure:
-            for commit in sorted(window_commits, key=lambda c: (c["committed_at"], c["sha"]), reverse=True)[:MAX_SUITE_REVISIONS]:
+            planned = sorted(window_commits, key=lambda c: (c["committed_at"], c["sha"]), reverse=True)
+            suites_planned = len(planned)
+            for commit in planned[:MAX_SUITE_REVISIONS]:
                 suites_sampled += 1
                 try:
-                    body = self.client.get(f"{base}/commits/{commit['sha']}/check-suites", {"per_page": 100})
+                    suites, page_complete = self.client.paginate(f"{base}/commits/{commit['sha']}/check-suites", {}, MAX_SUITE_PAGES, items_key="check_suites")
                 except (ApiFailure, NetworkFailure) as exc:
                     suites_failure = exc
+                    suites_stop = exc.reason_code if isinstance(exc, ApiFailure) else "NETWORK"
                     break
-                for suite in body.get("check_suites", []) or []:
-                    app_slug = (suite.get("app") or {}).get("slug")
-                    if app_slug == "github-actions" and workflows_total:
+                if not page_complete:
+                    suites_pages_complete = False
+                    suites_stop = suites_stop or self.client.incomplete_reason()
+                suites_path = f"{base}/commits/{commit['sha']}/check-suites"
+                try:
+                    validated = [self._check_suite_record(suites_path, suite) for suite in _rows(suites_path, suites)]
+                except ApiFailure as exc:
+                    suites_failure = exc
+                    suites_stop = exc.reason_code
+                    break
+                for suite in validated:
+                    if suite["app_slug"] == "github-actions" and workflows_total:
                         continue
-                    if suite.get("latest_check_runs_count", 1) == 0:
+                    if suite["latest_check_runs_count"] == 0:
                         continue
-                    parents_by_sha.setdefault(commit["sha"], []).append(github_ci.check_suite_parent(suite))
+                    parents_by_sha.setdefault(commit["sha"], []).append(github_ci.check_suite_parent(suite["raw"]))
+                if self.client.budget_exhausted:
+                    suites_stop = suites_stop or BUDGET_EXHAUSTED
+                    break
+            if suites_failure is None and suites_sampled < suites_planned:
+                suites_stop = suites_stop or ("CHECK_SUITE_SAMPLE_CAPPED" if suites_sampled >= MAX_SUITE_REVISIONS else BUDGET_EXHAUSTED)
             if suites_sampled:
                 self.notes.append("CI_SURFACE:GITHUB_CHECK_SUITES_SAMPLED")
+        suites_complete = suites_failure is None and suites_pages_complete and suites_sampled == suites_planned
 
         any_parents = any(parents_by_sha.values())
         if workflows_failure is not None:
@@ -1074,12 +1383,14 @@ class GitHubAdapter:
             reason = suites_failure.reason_code if isinstance(suites_failure, ApiFailure) else "NETWORK"
             self.notes.append(f"CHECK_SUITES_UNAVAILABLE:{reason}")
         records = github_ci.build_revision_records(window_commits, parents_by_sha)
-        complete = runs_complete and attempts_complete and (commits_obs.status == AVAILABLE)
+        complete = runs_complete and attempts_complete and suites_complete and (commits_obs.status == AVAILABLE)
         reason = None
         if not runs_complete:
             reason = self.client.incomplete_reason()
         elif not attempts_complete:
             reason = "ATTEMPT_HISTORY_INCOMPLETE"
+        elif not suites_complete:
+            reason = "CHECK_SUITES_INCOMPLETE"
         elif commits_obs.status != AVAILABLE:
             reason = "REVISIONS_PARTIAL"
         obs.add(
@@ -1093,6 +1404,10 @@ class GitHubAdapter:
                     "window_end": self.observed_at,
                     "runs_complete": runs_complete,
                     "attempts_complete": attempts_complete,
+                    "suites_complete": suites_complete,
+                    "suite_revisions_planned": suites_planned,
+                    "suite_revisions_examined": suites_sampled,
+                    "suites_stop_reason": suites_stop,
                     "outcome_map_version": github_ci.OUTCOME_MAP_VERSION,
                     "surface": "github_actions" if runs_seen else ("github_check_suites" if any_parents else "none"),
                 },

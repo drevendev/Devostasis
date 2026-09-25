@@ -15,18 +15,55 @@ it is covered by a test.
 
 The file is a plain JSON document so it can be inspected, deleted or shipped
 through an ordinary CI cache. Nothing in it is required: a missing, corrupt or
-stale cache costs requests, never correctness.
+stale cache costs requests, never correctness. That holds entry by entry as
+well as for the file: an entry is replayed only when its complete shape is
+readable and the body it holds still hashes to the digest recorded beside the
+tag, because a 304 confirms the provider's validator, not whatever bytes sit
+next to it on disk. Anything else is a miss and is fetched again
+(PV-AUDIT-GITHUB-CACHE-INTEGRITY-001). The digest guards against accidental
+corruption, not against an adversary who can rewrite the file.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
-CACHE_SCHEMA = "devostasis.http-cache.v1"
+CACHE_SCHEMA = "devostasis.http-cache.v2"
 DEFAULT_MAX_ENTRIES = 4000
 DEFAULT_MAX_ENTRY_BYTES = 2_000_000
+
+
+def _serialized(body: Any) -> str | None:
+    """The body as the deterministic text its digest is taken over, or None when it cannot be serialized."""
+    try:
+        return json.dumps(body, sort_keys=True, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _digest(serialized: str) -> str:
+    return "sha256:" + hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def valid_entry(entry: Any) -> bool:
+    """Whether a persisted entry is complete, well typed and still hashes to its digest."""
+    if not isinstance(entry, dict):
+        return False
+    etag = entry.get("etag")
+    used = entry.get("used", 0)
+    if not isinstance(etag, str) or not etag.strip():
+        return False
+    if isinstance(used, bool) or not isinstance(used, int) or used < 0:
+        return False
+    if "body" not in entry or entry["body"] is None:
+        return False
+    serialized = _serialized(entry["body"])
+    if serialized is None:
+        return False
+    return entry.get("digest") == _digest(serialized)
 
 
 class ConditionalCache:
@@ -49,12 +86,13 @@ class ConditionalCache:
         self._tick = 0
         self.hits = 0
         self.stores = 0
+        self.discarded = 0
         self.load()
 
     # ------------------------------------------------------------------ file
 
     def load(self) -> None:
-        """Read the cache file. A missing or unreadable file is simply an empty cache."""
+        """Read the cache file. A missing, unreadable or foreign file is an empty cache; a bad entry is a miss."""
         if self.path is None or not self.path.exists():
             return
         try:
@@ -64,9 +102,16 @@ class ConditionalCache:
         if not isinstance(document, dict) or document.get("schema") != CACHE_SCHEMA:
             return
         entries = document.get("entries")
-        if isinstance(entries, dict):
-            self._entries = {key: value for key, value in entries.items() if isinstance(value, dict) and value.get("etag")}
-            self._tick = max((int(entry.get("used", 0)) for entry in self._entries.values()), default=0)
+        if not isinstance(entries, dict):
+            return
+        kept: dict[str, dict[str, Any]] = {}
+        for key, entry in entries.items():
+            if isinstance(key, str) and key and valid_entry(entry):
+                kept[key] = {"etag": entry["etag"], "body": entry["body"], "used": entry.get("used", 0), "digest": entry["digest"]}
+            else:
+                self.discarded += 1
+        self._entries = kept
+        self._tick = max((entry["used"] for entry in self._entries.values()), default=0)
 
     def save(self) -> None:
         if self.path is None:
@@ -96,9 +141,13 @@ class ConditionalCache:
         return entry.get("etag") if entry else None
 
     def body_for(self, key: str) -> Any:
-        """The cached body, recorded as used. Returns None when the entry is gone."""
+        """The cached body, recorded as used. Returns None when the entry is gone or no longer hashes to its digest."""
         entry = self._entries.get(key)
         if entry is None:
+            return None
+        if not valid_entry(entry):
+            self._entries.pop(key, None)
+            self.discarded += 1
             return None
         self._tick += 1
         entry["used"] = self._tick
@@ -109,15 +158,14 @@ class ConditionalCache:
         """Remember a response. Bodies too large, or absent, are not worth a tag."""
         if not etag or body is None:
             return
-        try:
-            size = len(json.dumps(body, separators=(",", ":")))
-        except (TypeError, ValueError):
+        serialized = _serialized(body)
+        if serialized is None:
             return
-        if size > self.max_entry_bytes:
+        if len(serialized) > self.max_entry_bytes:
             self._entries.pop(key, None)
             return
         self._tick += 1
-        self._entries[key] = {"etag": etag, "body": body, "used": self._tick}
+        self._entries[key] = {"etag": etag, "body": body, "used": self._tick, "digest": _digest(serialized)}
         self.stores += 1
 
     def __len__(self) -> int:

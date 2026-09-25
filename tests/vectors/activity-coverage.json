@@ -1,0 +1,94 @@
+{
+  "schema": "devostasis.vectors.v1",
+  "notes": "Conformance cases ACT-COV-01..05 of PV-REV-ACTIVITY-COVERAGE-001, the judgement that accepted reading 3 of issue #9: the activity interval stays the full canonical gap (previous.observed_at, current.observed_at], and when the inventories behind it reach back less far, the shortfall is disclosed with the exact earliest evidence timestamp and is never read as observed silence. The observation window is 28 days, so evidence collected at 2026-09-06T12:00:00Z starts at 2026-08-09T12:00:00Z.",
+  "vectors": [
+    {
+      "case": "ACT-COV-01",
+      "title": "A full-gap interval no wider than the evidence window carries no shortfall note",
+      "kind": "activity",
+      "source_unit": "PV-REV-ACTIVITY-COVERAGE-001",
+      "given": {
+        "observed_at": "2026-09-06T12:00:00Z",
+        "previous_observed_at": "2026-09-05T12:00:00Z",
+        "observations": [
+          {"observation_id": "git.default_branch.commits_28d", "value_type": "series", "value": [{"sha": "a1", "committed_at": "2026-09-06T08:00:00Z", "title": "one change"}], "coverage": {"complete": true}}
+        ]
+      },
+      "expect": {
+        "interval": {"start": "2026-09-05T12:00:00Z", "end": "2026-09-06T12:00:00Z", "basis": "PREVIOUS_BUNDLE", "exclusive_start": true},
+        "coverage_notes_absent": ["INTERVAL_EXCEEDS_EVIDENCE_WINDOW"],
+        "classes": {"REVISION": {"count": 1}}
+      }
+    },
+    {
+      "case": "ACT-COV-02",
+      "title": "A full-gap interval wider than the evidence window keeps its canonical bounds and discloses the exact earliest evidence timestamp",
+      "kind": "activity",
+      "source_unit": "PV-REV-ACTIVITY-COVERAGE-001",
+      "given": {
+        "observed_at": "2026-09-06T12:00:00Z",
+        "previous_observed_at": "2026-06-01T00:00:00Z",
+        "observations": [
+          {"observation_id": "git.default_branch.commits_28d", "value_type": "series", "value": [{"sha": "a1", "committed_at": "2026-09-06T08:00:00Z", "title": "one change"}], "coverage": {"complete": true}}
+        ]
+      },
+      "expect": {
+        "interval": {"start": "2026-06-01T00:00:00Z", "end": "2026-09-06T12:00:00Z", "basis": "PREVIOUS_BUNDLE"},
+        "coverage_notes": ["INTERVAL_EXCEEDS_EVIDENCE_WINDOW:evidence_from=2026-08-09T12:00:00Z"]
+      }
+    },
+    {
+      "case": "ACT-COV-03",
+      "title": "A 97-day gap with 28 days of evidence and one revision reports one observed revision together with the shortfall, never one revision across 97 days",
+      "kind": "activity",
+      "source_unit": "PV-REV-ACTIVITY-COVERAGE-001",
+      "given": {
+        "observed_at": "2026-09-06T12:00:00Z",
+        "previous_observed_at": "2026-06-01T12:00:00Z",
+        "observations": [
+          {"observation_id": "git.default_branch.commits_28d", "value_type": "series", "value": [{"sha": "a1", "committed_at": "2026-08-20T08:00:00Z", "title": "the one revision the window still holds"}], "coverage": {"complete": true}}
+        ]
+      },
+      "expect": {
+        "interval": {"start": "2026-06-01T12:00:00Z", "end": "2026-09-06T12:00:00Z"},
+        "coverage_notes": ["INTERVAL_EXCEEDS_EVIDENCE_WINDOW:evidence_from=2026-08-09T12:00:00Z"],
+        "classes": {"REVISION": {"count": 1}}
+      }
+    },
+    {
+      "case": "ACT-COV-04",
+      "title": "A BASELINE bundle reports the observation window itself and never a historical overrun",
+      "kind": "activity",
+      "source_unit": "PV-REV-ACTIVITY-COVERAGE-001",
+      "given": {
+        "observed_at": "2026-09-06T12:00:00Z",
+        "previous_observed_at": null,
+        "observations": [
+          {"observation_id": "git.default_branch.commits_28d", "value_type": "series", "value": [{"sha": "a1", "committed_at": "2026-09-06T08:00:00Z", "title": "one change"}], "coverage": {"complete": true}}
+        ]
+      },
+      "expect": {
+        "interval": {"start": "2026-08-09T12:00:00Z", "end": "2026-09-06T12:00:00Z", "basis": "OBSERVATION_WINDOW_28D", "exclusive_start": true},
+        "coverage_notes_absent": ["INTERVAL_EXCEEDS_EVIDENCE_WINDOW"]
+      }
+    },
+    {
+      "case": "ACT-COV-05",
+      "title": "A capped enumeration and an interval shortfall are both disclosed; neither cancels the other",
+      "kind": "activity",
+      "source_unit": "PV-REV-ACTIVITY-COVERAGE-001",
+      "given": {
+        "observed_at": "2026-09-06T12:00:00Z",
+        "previous_observed_at": "2026-06-01T12:00:00Z",
+        "observations": [
+          {"observation_id": "git.default_branch.commits_28d", "value_type": "series", "status": "PARTIAL", "reason_code": "PAGINATION_CAPPED", "value": [{"sha": "a1", "committed_at": "2026-09-06T08:00:00Z", "title": "the newest of many"}], "coverage": {"complete": false}}
+        ]
+      },
+      "expect": {
+        "interval": {"start": "2026-06-01T12:00:00Z", "end": "2026-09-06T12:00:00Z", "basis": "PREVIOUS_BUNDLE"},
+        "coverage_notes": ["REVISION:PARTIAL:PAGINATION_CAPPED", "INTERVAL_EXCEEDS_EVIDENCE_WINDOW:evidence_from=2026-08-09T12:00:00Z"],
+        "classes": {"REVISION": {"count": 1}}
+      }
+    }
+  ]
+}

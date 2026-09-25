@@ -48,6 +48,15 @@ UTF-8; object keys sorted by code point; no insignificant whitespace; only
 Files may be stored pretty-printed; their digest is computed from the parsed
 content. `effective-config.json` is stored in canonical form exactly.
 
+Reading is as strict as writing. The one decoder behind every canonical read
+refuses what the profile excludes before any caller interprets the value: a
+decimal or exponent number (`1.5`, `1e3`, `-0.0`), which would otherwise
+become a host float; `NaN`, `Infinity` and `-Infinity`, which Python accepts
+although JSON does not; an object naming a member twice, which a host parser
+would collapse to one value of its choosing; and a string with an unpaired
+surrogate, which is not UTF-8. Each is a canonicalization error, never a
+value a later check may or may not catch (`PV-AUDIT-CANONICAL-*-001`).
+
 ## Effective config
 
 Before identity is computed, the runtime projects every resolved
@@ -122,7 +131,19 @@ directory and performs, in this order:
    present and declared, and agree with the `ACTIVITY_DISABLED` /
    `OBSERVATIONS_MEMBER_DISABLED` markers in the identity preimage, else
    `CANONICAL_MEMBER_PROFILE_MISMATCH` (ART-23);
-5. only when steps 3 and 4 passed, and the renderer version matches, is
+5. the metadata the manifest repeats is bound to what the identity hashes
+   (issue #12 finding 4): every identity field the manifest copies from the
+   preimage agrees with it (`IDENTITY_FIELD_MISMATCH`), the manifest receipt
+   hashes to `source_receipts_digest` (`RECEIPT_DIGEST_MISMATCH`), the
+   receipt inside `observations.json` is that receipt
+   (`RECEIPT_COPY_MISMATCH`), `snapshot.json` names the evidence the bundle
+   carries (`OBSERVATIONS_DIGEST_MISMATCH`), and `semantic_config`, the field
+   the comparison reads, is exactly the projection of the validated stored
+   config under its schema (`SEMANTIC_CONFIG_MISMATCH`). A manifest that is
+   not an object, or whose `members`, `receipt`, `identity_preimage` or
+   `semantic_config` is not one, is a verification problem, never an
+   exception;
+6. only when steps 3 and 4 passed, and the renderer version matches, is
    `report.md` re-rendered from the immutable machine members and the
    `display` of the stored config (never from current defaults) and compared
    byte for byte (ART-12/ART-24). A bundle whose stored config failed the
@@ -132,7 +153,15 @@ directory and performs, in this order:
 Any problem is a verification failure. A consistently re-hashed forgery that
 claims a member disabled in the stored config while keeping the member, or
 that changes the stored config to an unsupported shape, fails at step 3 or 4
-even though every digest matches.
+even though every digest matches; one that rewrites the comparability
+metadata, the receipt or an identity field without touching a member fails
+at step 5.
+
+A bundle is built only over evidence derived under its own configuration:
+when the receipt carries a real digest that differs from the effective
+configuration a build resolves, the build is refused with `CONFIG_MISMATCH`
+(issue #27) instead of persisting a semantic authority that contradicts its
+snapshot.
 
 ## Conformance cases implemented
 

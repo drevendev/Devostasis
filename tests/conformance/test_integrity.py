@@ -139,11 +139,74 @@ def test_current_unresolved_degrades_instead_of_claiming_clean():
     assert "FAILING" in result.possible_bands and "CURRENT_VERIFICATION_UNRESOLVED" in result.diagnostics
 
 
-def test_partial_revision_series_is_degraded_superset():
+def test_partial_revision_series_is_unknown_with_its_evidence_preserved():
+    """PV-REV-TEST-003: a truncated required series has no accepted degraded path.
+
+    Rule v0 emitted CLEAN / DEGRADED with a fixed three-band tail it called a
+    superset (#12 finding 3). The accepted Integrity chain says a PARTIAL
+    required input is UNKNOWN with no band; what was collected stays visible.
+    """
     obs = obs_set()
     integrity_inputs(obs, True, passing_revisions(5), status=PARTIAL)
     result = integrity.evaluate(obs)
-    assert result.band == "CLEAN" and result.evaluation_status == "DEGRADED" and result.band_semantics == "NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET"
+    assert result.band is None and result.evaluation_status == "UNKNOWN" and result.possible_bands is None
+    assert result.derived["decisive_count_14d"] == 5 and result.derived["series_status"] == "PARTIAL"
+    assert "REVISION_SERIES_PARTIAL:PAGINATION_CAPPED" in result.diagnostics
+    assert result.rule_id == "integrity.bands.v1+ci-unit-004"
+
+
+def test_sparse_samples_declare_their_strength_and_established_ones_do_not_carry_the_diagnostic():
+    """PV-REV-TEST-VECTORS-002 (R1, R2): one to three decisive revisions are SPARSE and say so."""
+    for count in (1, 2, 3):
+        obs = obs_set()
+        integrity_inputs(obs, True, passing_revisions(count))
+        result = integrity.evaluate(obs)
+        assert result.derived["sample_strength"] == "SPARSE" and "CI_SPARSE_SAMPLE" in result.diagnostics, count
+    obs = obs_set()
+    integrity_inputs(obs, True, passing_revisions(4))
+    result = integrity.evaluate(obs)
+    assert result.derived["sample_strength"] == "ESTABLISHED" and "CI_SPARSE_SAMPLE" not in result.diagnostics
+    obs = obs_set()
+    integrity_inputs(obs, True, [revision("a", "2026-09-01T00:00:00Z", [parent("p1", "NON_VERIFY_TERMINAL")], "NON_VERIFY_TERMINAL")])
+    result = integrity.evaluate(obs)
+    assert "sample_strength" not in result.derived, "no decisive sample has no strength"
+
+
+def test_a_newest_unknown_verdict_never_inherits_an_older_pass():
+    """PV-REV-INTEGRITY-UNKNOWN-001 (#13): unknown is the absence of an observation, not a skipped run."""
+    revs = passing_revisions(4) + [revision("new", "2026-09-09T00:00:00Z", [parent("pn", "UNKNOWN")], "UNKNOWN", "NO_DECISIVE_OBSERVED")]
+    obs = obs_set()
+    integrity_inputs(obs, True, revs)
+    result = integrity.evaluate(obs)
+    assert result.band is None and result.evaluation_status == "UNKNOWN" and result.possible_bands is None
+    assert result.derived["decisive_count_14d"] == 4 and result.derived["failed_count_14d"] == 0
+    assert "CURRENT_VERDICT_UNKNOWN:new" in result.diagnostics
+    assert not any(code.startswith("LATEST_REVISION_NON_DECISIVE") for code in result.diagnostics)
+    assert result.derived["unknown_verdict_rule"] == "PV-REV-INTEGRITY-UNKNOWN-001"
+
+
+def test_the_unresolved_superset_is_derived_from_the_completions_the_evidence_admits():
+    """#12 finding 3: possible_bands must contain every band a completion can reach, and no fixed tail."""
+    assert integrity.reachable_after_unresolved(4, 0, "VERIFY_PASS") == ["CLEAN", "FAILING"]
+    assert integrity.reachable_after_unresolved(2, 0, "VERIFY_PASS") == ["SPARSE", "FAILING"]
+    assert integrity.reachable_after_unresolved(3, 0, "VERIFY_PASS") == ["SPARSE", "CLEAN", "FAILING"], "one more pass makes the sample established"
+    assert integrity.reachable_after_unresolved(0, 0, None) == ["NO_DECISIVE_RUNS", "SPARSE", "FAILING"]
+    assert integrity.reachable_after_unresolved(4, 1, "VERIFY_PASS") == ["FLAKY", "FAILING"], "one of four failed is FAILING now and FLAKY if the newest passes"
+    assert integrity.reachable_after_unresolved(4, 2, "VERIFY_PASS") == ["FAILING"], "no completion leaves FAILING"
+
+    revs = passing_revisions(3) + [revision("f1", "2026-08-30T00:00:00Z", [parent("pf", "VERIFY_FAIL")], "VERIFY_FAIL", "FAILURE_OBSERVED")]
+    revs += [revision("new", "2026-09-09T00:00:00Z", [parent("pn", "VERIFY_UNRESOLVED")], "VERIFY_UNRESOLVED", "NO_DECISIVE_OBSERVED")]
+    obs = obs_set()
+    integrity_inputs(obs, True, revs)
+    result = integrity.evaluate(obs)
+    assert result.band == "FAILING" and result.evaluation_status == "DEGRADED" and result.possible_bands == ["FLAKY", "FAILING"]
+
+    revs = passing_revisions(2) + [revision("f1", "2026-08-30T00:00:00Z", [parent("pf", "VERIFY_FAIL")], "VERIFY_FAIL", "FAILURE_OBSERVED"), revision("f2", "2026-08-31T00:00:00Z", [parent("pg", "VERIFY_FAIL")], "VERIFY_FAIL", "FAILURE_OBSERVED")]
+    revs += [revision("new", "2026-09-09T00:00:00Z", [parent("pn", "VERIFY_UNRESOLVED")], "VERIFY_UNRESOLVED", "NO_DECISIVE_OBSERVED")]
+    obs = obs_set()
+    integrity_inputs(obs, True, revs)
+    result = integrity.evaluate(obs)
+    assert result.band == "FAILING" and result.evaluation_status == "AVAILABLE" and result.possible_bands is None
 
 
 def test_latest_non_decisive_revision_falls_back_to_latest_decisive_verdict():

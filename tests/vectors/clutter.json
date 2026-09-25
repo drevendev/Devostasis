@@ -1,0 +1,32 @@
+{
+  "schema": "devostasis.vectors.v1",
+  "notes": "Permanent Clutter case T7, transcribed from the research materialization PV-TEST-VECTORS-007, accepted by PV-REV-TEST-VECTORS-007. The fixture carries twenty stale branches whose retention semantics are UNCLASSIFIED, so the required conservative superset saturates the whole Clutter vocabulary and an exact possible_bands list is lossless; the general contract stays NON_AUTHORITATIVE_CONSERVATIVE_SUPERSET, and no consumer may read omission from a shorter list as impossibility (issue #22).",
+  "vectors": [
+    {
+      "case": "T7",
+      "title": "Unclassified stale branches are an upper bound on Clutter burden",
+      "kind": "vital",
+      "source_unit": "PV-VIT-002",
+      "given": {
+        "vital": "clutter",
+        "observed_at": "2026-09-06T12:00:00Z",
+        "observations": [
+          {"observation_id": "forge.issues.open_count", "value": 0},
+          {"observation_id": "forge.issues.stale_open_count_30d", "value": 0},
+          {"observation_id": "forge.change_requests.open_count", "value": 0},
+          {"observation_id": "forge.change_requests.stale_open_count_14d", "value": 0},
+          {"observation_id": "git.nondefault_branches.stale_count_30d", "value": 20},
+          {"observation_id": "git.nondefault_branches.retention_semantics", "value_type": "enum", "value": "UNCLASSIFIED"}
+        ]
+      },
+      "expect": {
+        "band": "HEAVY",
+        "evaluation_status": "DEGRADED",
+        "band_semantics": "CONSERVATIVE_UPPER_BOUND",
+        "possible_bands": ["CLEAN", "LIGHT", "CLUTTERED", "HEAVY"],
+        "rule_id": "clutter.bands.v1",
+        "diagnostics": ["CLUTTER_BRANCH_PURPOSE_UNCLASSIFIED"]
+      }
+    }
+  ]
+}

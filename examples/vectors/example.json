@@ -38,7 +38,7 @@
         "evaluation_status": "AVAILABLE",
         "band_semantics": "EXACT",
         "possible_bands": null,
-        "rule_id": "clutter.bands.v0",
+        "rule_id": "clutter.bands.v1",
         "derived": {
           "tracked_open_count": 6,
           "stale_work_count": 1,
@@ -59,7 +59,7 @@
     },
     {
       "case": "EXAMPLE-VITAL-02",
-      "title": "A component that could not be enumerated makes CLEAN a lower bound, never an exact CLEAN",
+      "title": "A component that could not be enumerated leaves no band, never an exact CLEAN",
       "kind": "vital",
       "source_unit": "PV-VITALS-V1-002",
       "given": {
@@ -90,20 +90,24 @@
         ]
       },
       "expect": {
-        "band": "CLEAN",
-        "evaluation_status": "DEGRADED",
-        "band_semantics": "CONSERVATIVE_LOWER_BOUND",
-        "possible_bands": [
-          "CLEAN",
-          "LIGHT",
-          "CLUTTERED",
-          "HEAVY"
-        ],
+        "band": null,
+        "evaluation_status": "UNKNOWN",
+        "band_semantics": null,
+        "possible_bands": null,
+        "rule_id": "clutter.bands.v1",
+        "derived": {
+          "confirmed_burden_floor": "NONE"
+        },
         "derived_absent": [
           "issues_open_count"
         ],
         "diagnostics": [
-          "COMPONENT_UNAVAILABLE:issues:ISSUES_DISABLED"
+          "COMPONENT_UNAVAILABLE:issues:ISSUES_DISABLED",
+          "CLUTTER_INCOMPLETE_COMPONENT:issues:UNAVAILABLE",
+          "CLUTTER_CONFIRMED_BURDEN_FLOOR:NONE"
+        ],
+        "explanation_contains": [
+          "incomplete evidence is never positive emptiness"
         ]
       }
     },
@@ -212,6 +216,201 @@
             }
           }
         ]
+      }
+    },
+    {
+      "case": "EXAMPLE-CI-01",
+      "title": "A retry that passed keeps the failure of its first attempt in the revision's history, and one revision is a sparse sample",
+      "kind": "ci",
+      "source_unit": "PV-CI-UNIT-004",
+      "given": {
+        "observed_at": "2026-09-05T12:00:00Z",
+        "revisions": [
+          {
+            "sha": "a1",
+            "committed_at": "2026-09-01T10:00:00Z"
+          }
+        ],
+        "actions_runs": [
+          {
+            "id": 100,
+            "head_sha": "a1",
+            "run_attempt": 2,
+            "status": "completed",
+            "conclusion": "success",
+            "name": "CI",
+            "event": "push",
+            "prior_attempts": [
+              {
+                "run_attempt": 1,
+                "status": "completed",
+                "conclusion": "timed_out"
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "revisions": {
+          "a1": {
+            "current_verdict": "VERIFY_PASS",
+            "history_state": "FAILURE_OBSERVED",
+            "historical_contribution": "VERIFY_FAIL",
+            "history_provenance": "ATTEMPT_LEVEL",
+            "parents": [
+              {
+                "parent_id": "github_actions:workflow_run:100",
+                "current_state": "VERIFY_PASS",
+                "attempts_observed": [
+                  {
+                    "attempt": 1,
+                    "state": "VERIFY_FAIL"
+                  },
+                  {
+                    "attempt": 2,
+                    "state": "VERIFY_PASS"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "integrity": {
+          "band": "SPARSE_MIXED",
+          "evaluation_status": "AVAILABLE",
+          "derived": {
+            "decisive_count_14d": 1,
+            "failed_count_14d": 1,
+            "sample_strength": "SPARSE"
+          },
+          "diagnostics": [
+            "CI_SPARSE_SAMPLE"
+          ]
+        }
+      }
+    },
+    {
+      "case": "EXAMPLE-CI-02",
+      "title": "Two spellings of the same provider evidence are one obligation: enumeration order never changes a verdict",
+      "kind": "ci",
+      "source_unit": "PV-CI-UNIT-004",
+      "given": {
+        "variants": [
+          {
+            "title": "oldest first",
+            "revisions": [
+              {
+                "sha": "a1",
+                "committed_at": "2026-09-01T10:00:00Z"
+              },
+              {
+                "sha": "a2",
+                "committed_at": "2026-09-02T10:00:00Z"
+              }
+            ],
+            "actions_runs": [
+              {
+                "id": 1,
+                "head_sha": "a1",
+                "run_attempt": 1,
+                "status": "completed",
+                "conclusion": "failure"
+              },
+              {
+                "id": 2,
+                "head_sha": "a2",
+                "run_attempt": 1,
+                "status": "completed",
+                "conclusion": "success"
+              }
+            ]
+          },
+          {
+            "title": "newest first",
+            "revisions": [
+              {
+                "sha": "a2",
+                "committed_at": "2026-09-02T10:00:00Z"
+              },
+              {
+                "sha": "a1",
+                "committed_at": "2026-09-01T10:00:00Z"
+              }
+            ],
+            "actions_runs": [
+              {
+                "id": 2,
+                "head_sha": "a2",
+                "run_attempt": 1,
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "id": 1,
+                "head_sha": "a1",
+                "run_attempt": 1,
+                "status": "completed",
+                "conclusion": "failure"
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "revisions": {
+          "a1": {
+            "current_verdict": "VERIFY_FAIL"
+          },
+          "a2": {
+            "current_verdict": "VERIFY_PASS"
+          }
+        },
+        "integrity": {
+          "band": "SPARSE_MIXED",
+          "evaluation_status": "AVAILABLE"
+        }
+      }
+    },
+    {
+      "case": "EXAMPLE-ACTIVITY-01",
+      "title": "An interval wider than the evidence window keeps its bounds and discloses where the evidence starts",
+      "kind": "activity",
+      "source_unit": "PV-REV-ACTIVITY-COVERAGE-001",
+      "given": {
+        "observed_at": "2026-09-06T12:00:00Z",
+        "previous_observed_at": "2026-06-01T00:00:00Z",
+        "observations": [
+          {
+            "observation_id": "git.default_branch.commits_28d",
+            "value_type": "series",
+            "value": [
+              {
+                "sha": "a1",
+                "committed_at": "2026-09-06T08:00:00Z",
+                "title": "one change"
+              }
+            ],
+            "coverage": {
+              "complete": true
+            }
+          }
+        ]
+      },
+      "expect": {
+        "interval": {
+          "start": "2026-06-01T00:00:00Z",
+          "end": "2026-09-06T12:00:00Z",
+          "basis": "PREVIOUS_BUNDLE",
+          "exclusive_start": true
+        },
+        "coverage_notes": [
+          "INTERVAL_EXCEEDS_EVIDENCE_WINDOW:evidence_from=2026-08-09T12:00:00Z"
+        ],
+        "classes": {
+          "REVISION": {
+            "count": 1
+          }
+        }
       }
     }
   ]

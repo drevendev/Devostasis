@@ -71,7 +71,7 @@ def test_a_forbidden_diagnostic_that_is_emitted_fails():
             {"observation_id": "git.nondefault_branches.stale_count_30d", "value": 0},
         ],
     }
-    expect = {"band": "CLEAN", "evaluation_status": "DEGRADED", "diagnostics_absent": ["COMPONENT_UNAVAILABLE"]}
+    expect = {"band": None, "evaluation_status": "UNKNOWN", "diagnostics_absent": ["COMPONENT_UNAVAILABLE"]}
     result = vectors.run(parse(given=given, expect=expect))
     assert not result.ok and "must not be emitted" in result.failures[0]
 
@@ -151,9 +151,26 @@ def test_the_published_vector_schema_and_the_runner_agree_on_the_shape():
     assert set(entry["required"]) == vectors.REQUIRED_VECTOR_KEYS
     assert set(entry["properties"]) == vectors.VECTOR_KEYS
     assert set(entry["properties"]["kind"]["enum"]) == set(vectors.KINDS)
-    vital, delta = (branch["then"]["properties"] for branch in entry["allOf"])
+    branches = {branch["if"]["properties"]["kind"]["const"]: branch["then"]["properties"] for branch in entry["allOf"]}
+    assert set(branches) == set(vectors.KINDS), "every kind the runner executes has a schema branch, and no other"
+    vital, delta, ci, activity = (branches[kind] for kind in ("vital", "delta", "ci", "activity"))
     assert set(vital["given"]["properties"]) == vectors.VITAL_GIVEN_KEYS
-    assert set(vital["expect"]["properties"]) == vectors.VITAL_EXPECT_KEYS
+    assert set(vital["given"]["properties"]["variants"]["items"]["properties"]) == vectors.VITAL_VARIANT_KEYS
+    vital_expect = schema["$defs"]["vital_expect"]
+    assert vital["expect"] == {"$ref": "#/$defs/vital_expect"}
+    assert set(vital_expect["properties"]) == vectors.VITAL_EXPECT_KEYS
+    assert set(vital_expect["required"]) == vectors.REQUIRED_VITAL_EXPECT_KEYS
+    assert set(ci["given"]["properties"]) == vectors.CI_GIVEN_KEYS
+    assert set(ci["given"]["properties"]["variants"]["items"]["properties"]) == vectors.CI_VARIANT_KEYS
+    assert set(ci["given"]["properties"]["provider"]["enum"]) == set(vectors.CI_PROVIDERS)
+    assert set(ci["expect"]["properties"]) == vectors.CI_EXPECT_KEYS
+    assert ci["expect"]["properties"]["integrity"] == {"$ref": "#/$defs/vital_expect"}, "the Integrity a ci case chains into is checked by the vital shape"
+    revision_expect = ci["expect"]["properties"]["revisions"]["additionalProperties"]
+    assert set(revision_expect["properties"]) == vectors.CI_REVISION_EXPECT_KEYS
+    assert set(revision_expect["properties"]["parents"]["items"]["properties"]) == vectors.CI_PARENT_EXPECT_KEYS
+    assert set(activity["given"]["properties"]) == vectors.ACTIVITY_GIVEN_KEYS
+    assert set(activity["expect"]["properties"]) == vectors.ACTIVITY_EXPECT_KEYS
+    assert set(activity["expect"]["properties"]["interval"]["properties"]) == vectors.ACTIVITY_INTERVAL_KEYS
     assert set(delta["given"]["properties"]) == vectors.DELTA_GIVEN_KEYS
     delta_expect = schema["$defs"]["delta_expect"]
     assert delta["expect"] == {"$ref": "#/$defs/delta_expect"}, "the two expect shapes must be one definition, not two copies"
@@ -184,8 +201,66 @@ def test_the_schema_publishes_the_partial_envelope_the_runner_actually_accepts()
     envelope = schema["$defs"]["envelope"]
     assert envelope["required"] == ["observation_id"]
     assert set(envelope["properties"]) == set(observation["properties"])
-    vital = schema["properties"]["vectors"]["items"]["allOf"][0]["then"]["properties"]
-    assert vital["given"]["properties"]["observations"]["items"] == {"$ref": "#/$defs/envelope"}
+    branches = {branch["if"]["properties"]["kind"]["const"]: branch["then"]["properties"] for branch in schema["properties"]["vectors"]["items"]["allOf"]}
+    assert branches["vital"]["given"]["properties"]["observations"]["items"] == {"$ref": "#/$defs/envelope"}
+    assert branches["vital"]["given"]["properties"]["variants"]["items"]["properties"]["observations"]["items"] == {"$ref": "#/$defs/envelope"}
+    assert branches["activity"]["given"]["properties"]["observations"]["items"] == {"$ref": "#/$defs/envelope"}
+
+
+def test_variants_hold_every_evidence_shape_to_the_one_expectation():
+    """One obligation, several shapes: the case fails when any shape disagrees, and the failure names it."""
+    shapes = [
+        {"title": "stated zero", "observations": CLUTTER_OBSERVATIONS},
+        {"title": "stated zero again", "observations": list(CLUTTER_OBSERVATIONS)},
+    ]
+    assert vectors.run(parse(given={"vital": "clutter", "variants": shapes})).ok
+    heavier = [dict(o, value=30) if o["observation_id"] == "forge.issues.stale_open_count_30d" else o for o in CLUTTER_OBSERVATIONS]
+    heavier = [dict(o, value=40) if o["observation_id"] == "forge.issues.open_count" else o for o in heavier]
+    result = vectors.run(parse(given={"vital": "clutter", "variants": shapes + [{"title": "a heavier shape", "observations": heavier}]}))
+    assert not result.ok and result.failures[0].startswith("a heavier shape: band")
+    with pytest.raises(vectors.VectorError, match="at least two"):
+        parse(given={"vital": "clutter", "variants": shapes[:1]})
+    with pytest.raises(vectors.VectorError, match="replaces"):
+        parse(given={"vital": "clutter", "observations": CLUTTER_OBSERVATIONS, "variants": shapes})
+
+
+def test_the_ci_kind_normalizes_provider_native_outcomes_before_integrity_sees_them():
+    """A ci case starts at the outcome map; a pre-normalized verdict would prove nothing about it."""
+    given = {
+        "revisions": [{"sha": "a", "committed_at": "2026-09-01T10:00:00Z"}],
+        "actions_runs": [{"id": 1, "head_sha": "a", "run_attempt": 2, "status": "completed", "conclusion": "success", "prior_attempts": [{"run_attempt": 1, "status": "completed", "conclusion": "timed_out"}]}],
+    }
+    expect = {
+        "revisions": {"a": {"current_verdict": "VERIFY_PASS", "history_state": "FAILURE_OBSERVED", "historical_contribution": "VERIFY_FAIL", "parents": [{"current_state": "VERIFY_PASS", "attempts_observed": [{"attempt": 1, "state": "VERIFY_FAIL"}, {"attempt": 2, "state": "VERIFY_PASS"}]}]}},
+        "integrity": {"band": "SPARSE_MIXED", "evaluation_status": "AVAILABLE", "derived": {"sample_strength": "SPARSE"}, "diagnostics": ["CI_SPARSE_SAMPLE"]},
+    }
+    assert vectors.run(parse(kind="ci", given=given, expect=expect)).ok
+    wrong = dict(expect, integrity=dict(expect["integrity"], band="CLEAN"))
+    result = vectors.run(parse(kind="ci", given=given, expect=wrong))
+    assert not result.ok and "integrity.band: expected 'CLEAN'" in result.failures[0]
+    with pytest.raises(vectors.VectorError, match="provider"):
+        parse(kind="ci", given=dict(given, provider="gitlab"), expect=expect)
+    with pytest.raises(vectors.VectorError, match="states nothing"):
+        parse(kind="ci", given=given, expect={})
+    unknown_status = dict(given, series_status="UNAVAILABLE")
+    result = vectors.run(parse(kind="ci", given=unknown_status, expect={"integrity": {"band": None, "evaluation_status": "UNKNOWN"}}))
+    assert result.ok, "the series status a ci case states reaches Integrity as an acquisition status"
+
+
+def test_the_activity_kind_checks_the_interval_and_the_coverage_it_discloses():
+    given = {
+        "observed_at": "2026-09-06T12:00:00Z",
+        "previous_observed_at": "2026-06-01T00:00:00Z",
+        "observations": [{"observation_id": "git.default_branch.commits_28d", "value_type": "series", "value": [{"sha": "a1", "committed_at": "2026-09-06T08:00:00Z", "title": "x"}]}],
+    }
+    expect = {"interval": {"start": "2026-06-01T00:00:00Z", "basis": "PREVIOUS_BUNDLE"}, "coverage_notes": ["INTERVAL_EXCEEDS_EVIDENCE_WINDOW:evidence_from=2026-08-09T12:00:00Z"], "classes": {"REVISION": {"count": 1}}}
+    assert vectors.run(parse(kind="activity", given=given, expect=expect)).ok
+    result = vectors.run(parse(kind="activity", given=given, expect={"coverage_notes_absent": ["INTERVAL_EXCEEDS_EVIDENCE_WINDOW"]}))
+    assert not result.ok and "must not be emitted" in result.failures[0]
+    result = vectors.run(parse(kind="activity", given=given, expect={"classes": {"REVISION": {"count": 2}}}))
+    assert not result.ok and "classes.REVISION.count: expected 2" in result.failures[0]
+    with pytest.raises(vectors.VectorError, match="unknown keys"):
+        parse(kind="activity", given=given, expect={"interval": {"width": 1}})
 
 
 def test_a_comparison_status_the_engine_does_not_know_is_rejected():

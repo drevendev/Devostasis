@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +20,11 @@ from .history import FilesystemHistoryStore, HistoryStoreError
 from .observations import ObservationSet
 from .policy import POLICY_VERSION
 from .vitals import build_snapshot, evaluate_all
+
+NON_MONOTONIC_OBSERVATION = "NON_MONOTONIC_OBSERVATION"
+CONFIG_MISMATCH = "CONFIG_MISMATCH"
+DUPLICATE_PROJECT_IDENTITY = "DUPLICATE_PROJECT_IDENTITY"
+_DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 
 
 @dataclass
@@ -50,6 +56,7 @@ def decide_comparison(
     store: FilesystemHistoryStore,
     project: ResolvedProject,
     immutable_project_id: str | None = None,
+    observed_at: str | None = None,
 ) -> tuple[str, str | None, dict[str, Any] | None, dict[str, Any] | None, list[str]]:
     """Return (comparison_status, previous_bundle_id, previous_manifest, previous_snapshot, reasons).
 
@@ -57,6 +64,13 @@ def decide_comparison(
     (RPT-7); without it the locator is the identity and a renamed project
     starts a new BASELINE, which is the honest outcome when nothing proves
     the two names are the same project.
+
+    A pair is only comparable when the current observation is later than the
+    previous one (#17). An observation older than, or as old as, the bundle it
+    would be compared against is ``INCOMPARABLE`` with the reason
+    ``NON_MONOTONIC_OBSERVATION``: the band ordering assumes that "previous"
+    precedes "current" in time, and a delta computed backwards would report
+    every direction inverted while citing the accepted order as its authority.
     """
     latest = store.latest(project.project_key, immutable_project_id)
     if not latest.exists:
@@ -70,14 +84,38 @@ def decide_comparison(
         "semantic_config": project.semantic_config(),
     }
     reasons = delta_mod.compatibility_reasons(current_fields, latest.manifest)
+    previous_observed_at = latest.manifest.get("observed_at")
+    if observed_at is not None and isinstance(previous_observed_at, str):
+        if timeutil.parse_ts(observed_at) <= timeutil.parse_ts(previous_observed_at):
+            reasons.append(f"{NON_MONOTONIC_OBSERVATION}:{previous_observed_at}->{observed_at}")
     if reasons:
         return delta_mod.INCOMPARABLE, latest.bundle_id, latest.manifest, latest.snapshot, reasons
     return delta_mod.COMPARABLE, latest.bundle_id, latest.manifest, latest.snapshot, []
 
 
+def check_receipt_config(project: ResolvedProject, obs: ObservationSet) -> None:
+    """Refuse to build over evidence that was derived under another effective configuration (#27).
+
+    The receipt records the digest of the configuration the aggregates were
+    derived under. A build whose resolved configuration differs would persist
+    a semantic authority that contradicts its own snapshot, and verify. Only a
+    real digest is compared: fixtures and examples carry placeholders.
+    """
+    recorded = obs.receipt.config_hash if obs.receipt is not None else None
+    if not isinstance(recorded, str) or not _DIGEST.fullmatch(recorded):
+        return
+    resolved = project.effective_config_digest()
+    if recorded != resolved:
+        raise BundleError(
+            f"{CONFIG_MISMATCH}: the observations were collected under effective configuration {recorded}, "
+            f"this build resolves {resolved}; pass the planning and debt options the observation used, or observe again"
+        )
+
+
 def build_from_observations(project: ResolvedProject, obs: ObservationSet, store: FilesystemHistoryStore, run_meta: dict[str, Any] | None = None) -> Bundle:
+    check_receipt_config(project, obs)
     snapshot = build_snapshot(obs, evaluate_all(obs))
-    status, previous_id, previous_manifest, previous_snapshot, reasons = decide_comparison(store, project, obs.subject.get("immutable_project_id"))
+    status, previous_id, previous_manifest, previous_snapshot, reasons = decide_comparison(store, project, obs.subject.get("immutable_project_id"), obs.observed_at)
     delta = delta_mod.compare(snapshot, previous_snapshot, status, previous_id, reasons)
     activity = None
     if project.activity_enabled:
@@ -86,12 +124,41 @@ def build_from_observations(project: ResolvedProject, obs: ObservationSet, store
     return build_bundle(project, obs, snapshot, delta, activity, previous_id, status, run_meta)
 
 
-def run_project(project: ResolvedProject, store: FilesystemHistoryStore, client: GitHubClient, now: datetime) -> RunOutcome:
+def run_project(
+    project: ResolvedProject,
+    store: FilesystemHistoryStore,
+    client: GitHubClient,
+    now: datetime,
+    *,
+    admitted: dict[str, str] | None = None,
+) -> RunOutcome:
+    """Observe one project and commit its bundle.
+
+    ``admitted`` maps the immutable identity of every project already observed
+    in this run to the locator that observed it. Two configured locators that
+    the provider resolves to one repository (a case variant, a redirect) are
+    one project: the second is refused before anything is written, so it can
+    neither collect twice nor be mistaken for a rename of the first
+    (PV-AUDIT-PROJECT-LOCATOR-ALIAS-001).
+    """
     started = timeutil.now_utc()
     try:
         obs = observe(project, client, now)
     except CollectionError as exc:
         return RunOutcome(project.locator, False, error=str(exc), requests=client.request_count, conditional_hits=client.conditional_hits)
+    identity = obs.subject.get("immutable_project_id")
+    if admitted is not None and identity not in (None, ""):
+        key = f"{obs.subject.get('forge_instance') or 'github.com'}:{identity}"
+        earlier = admitted.get(key)
+        if earlier is not None and earlier != project.locator:
+            return RunOutcome(
+                project.locator,
+                False,
+                error=f"{DUPLICATE_PROJECT_IDENTITY}: {project.locator} is repository {identity}, already observed in this run as {earlier}; one repository is observed once",
+                requests=client.request_count,
+                conditional_hits=client.conditional_hits,
+            )
+        admitted[key] = project.locator
     try:
         # How the evidence was fetched is provenance, not evidence: it lives in
         # run_meta, which is post-identity, so a cached run and a fresh run of
@@ -151,13 +218,14 @@ def run_all(
     """
     cache = ConditionalCache(Path(cache_dir) / "github-etags.json") if cache_dir else None
     outcomes = []
+    admitted: dict[str, str] = {}
     for project in config.projects:
         if only and project.locator not in only:
             continue
         transport = UrllibTransport(token, user_agent=user_agent or "devostasis/0.1 (+https://github.com/drevendev/devostasis)")
         client = GitHubClient(transport, budget=request_budget, cache=cache)
         try:
-            outcomes.append(run_project(project, store, client, now))
+            outcomes.append(run_project(project, store, client, now, admitted=admitted))
         except Exception as exc:  # noqa: BLE001 - one project's data must not end the fleet run
             # run_project already turns every failure it anticipates into an
             # unsuccessful outcome. This boundary is for the ones it does not:

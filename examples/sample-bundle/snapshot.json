@@ -77,13 +77,16 @@
       "derived": {
         "components": {
           "branches": {
+            "acquisition": "COMPLETE",
             "stale_30d": 1
           },
           "change_requests": {
+            "acquisition": "COMPLETE",
             "open": 2,
             "stale_14d": 0
           },
           "issues": {
+            "acquisition": "COMPLETE",
             "open": 3,
             "stale_30d": 1
           }
@@ -124,11 +127,16 @@
           "freshness": "FRESH",
           "observation_id": "git.nondefault_branches.stale_count_30d",
           "status": "AVAILABLE"
+        },
+        {
+          "freshness": "UNKNOWN",
+          "observation_id": "git.nondefault_branches.retention_semantics",
+          "status": "NOT_REQUESTED"
         }
       ],
       "policy_version": "devostasis.policy.v1",
       "possible_bands": null,
-      "rule_id": "clutter.bands.v0",
+      "rule_id": "clutter.bands.v1",
       "shared_signal_groups": [
         "FORGE_INVENTORY",
         "BRANCH_RESIDUE"
@@ -267,7 +275,8 @@
           "ATTEMPT_LEVEL": 8
         },
         "revisions_in_window": 8,
-        "revisions_with_verification": 8
+        "revisions_with_verification": 8,
+        "sample_strength": "ESTABLISHED"
       },
       "diagnostics": [],
       "evaluation_status": "AVAILABLE",
@@ -286,7 +295,7 @@
       ],
       "policy_version": "devostasis.policy.v1",
       "possible_bands": null,
-      "rule_id": "integrity.bands.v0+ci-unit-004",
+      "rule_id": "integrity.bands.v1+ci-unit-004",
       "shared_signal_groups": [
         "CI_VERIFICATION"
       ],

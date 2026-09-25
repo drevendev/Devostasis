@@ -1,0 +1,158 @@
+{
+  "schema": "devostasis.vectors.v1",
+  "notes": "Permanent cases T2, R1 and R2 at the direct Integrity evaluator boundary, transcribed from the research materialization PV-TEST-VECTORS-002, accepted by PV-REV-TEST-VECTORS-002. R1 and R2 state the accepted sparse-sample metadata: one to three decisive revisions carry sample_strength SPARSE and the mandatory CI_SPARSE_SAMPLE diagnostic (issue #21). The expectations are the accepted ones, not the output of any implementation.",
+  "vectors": [
+    {
+      "case": "T2",
+      "title": "Configured false with zero recent revision verification is exactly UNINSTRUMENTED",
+      "kind": "vital",
+      "source_unit": "PV-TEST-001",
+      "given": {
+        "vital": "integrity",
+        "observed_at": "2026-09-05T12:00:00Z",
+        "observations": [
+          {"observation_id": "ci.configured", "value_type": "boolean", "value": false},
+          {"observation_id": "ci.revision_verdicts_14d", "value_type": "series", "value": []}
+        ]
+      },
+      "expect": {
+        "band": "UNINSTRUMENTED",
+        "evaluation_status": "AVAILABLE",
+        "band_semantics": "EXACT"
+      }
+    },
+    {
+      "case": "R1",
+      "title": "Two deduped immutable revisions with one historical failure and latest success are sparse mixed, never clean",
+      "kind": "vital",
+      "source_unit": "PV-TEST-001",
+      "given": {
+        "vital": "integrity",
+        "observed_at": "2026-09-05T12:00:00Z",
+        "observations": [
+          {"observation_id": "ci.configured", "value_type": "boolean", "value": true},
+          {
+            "observation_id": "ci.revision_verdicts_14d",
+            "value_type": "series",
+            "value": [
+              {
+                "revision": "r1",
+                "committed_at": "2026-09-01T10:00:00Z",
+                "parents": [
+                  {
+                    "parent_id": "p1",
+                    "kind": "github_actions_workflow_run",
+                    "name": "ci",
+                    "event": "push",
+                    "current_attempt": 2,
+                    "current_state": "VERIFY_PASS",
+                    "attempts_observed": [
+                      {"attempt": 1, "state": "VERIFY_FAIL"},
+                      {"attempt": 2, "state": "VERIFY_PASS"}
+                    ],
+                    "attempts_complete": true,
+                    "history_state": "FAILURE_OBSERVED",
+                    "url": null
+                  }
+                ],
+                "current_verdict": "VERIFY_PASS",
+                "history_state": "FAILURE_OBSERVED",
+                "historical_contribution": "VERIFY_FAIL",
+                "history_provenance": "ATTEMPT_LEVEL"
+              },
+              {
+                "revision": "r2",
+                "committed_at": "2026-09-02T10:00:00Z",
+                "parents": [
+                  {
+                    "parent_id": "p2",
+                    "kind": "github_actions_workflow_run",
+                    "name": "ci",
+                    "event": "push",
+                    "current_attempt": 1,
+                    "current_state": "VERIFY_PASS",
+                    "attempts_observed": [
+                      {"attempt": 1, "state": "VERIFY_PASS"}
+                    ],
+                    "attempts_complete": true,
+                    "history_state": "PASS_ONLY_OBSERVED",
+                    "url": null
+                  }
+                ],
+                "current_verdict": "VERIFY_PASS",
+                "history_state": "PASS_ONLY_OBSERVED",
+                "historical_contribution": "VERIFY_PASS",
+                "history_provenance": "ATTEMPT_LEVEL"
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "band": "SPARSE_MIXED",
+        "evaluation_status": "AVAILABLE",
+        "band_semantics": "EXACT",
+        "derived": {
+          "decisive_count_14d": 2,
+          "failed_count_14d": 1,
+          "sample_strength": "SPARSE"
+        },
+        "diagnostics": ["CI_SPARSE_SAMPLE"]
+      }
+    },
+    {
+      "case": "R2",
+      "title": "One deduped failing immutable revision with latest failing is exactly FAILING but remains a sparse sample",
+      "kind": "vital",
+      "source_unit": "PV-TEST-001",
+      "given": {
+        "vital": "integrity",
+        "observed_at": "2026-09-05T12:00:00Z",
+        "observations": [
+          {"observation_id": "ci.configured", "value_type": "boolean", "value": true},
+          {
+            "observation_id": "ci.revision_verdicts_14d",
+            "value_type": "series",
+            "value": [
+              {
+                "revision": "r1",
+                "committed_at": "2026-09-01T10:00:00Z",
+                "parents": [
+                  {
+                    "parent_id": "p1",
+                    "kind": "github_actions_workflow_run",
+                    "name": "ci",
+                    "event": "push",
+                    "current_attempt": 1,
+                    "current_state": "VERIFY_FAIL",
+                    "attempts_observed": [
+                      {"attempt": 1, "state": "VERIFY_FAIL"}
+                    ],
+                    "attempts_complete": true,
+                    "history_state": "FAILURE_OBSERVED",
+                    "url": null
+                  }
+                ],
+                "current_verdict": "VERIFY_FAIL",
+                "history_state": "FAILURE_OBSERVED",
+                "historical_contribution": "VERIFY_FAIL",
+                "history_provenance": "ATTEMPT_LEVEL"
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "band": "FAILING",
+        "evaluation_status": "AVAILABLE",
+        "band_semantics": "EXACT",
+        "derived": {
+          "decisive_count_14d": 1,
+          "failed_count_14d": 1,
+          "sample_strength": "SPARSE"
+        },
+        "diagnostics": ["CI_SPARSE_SAMPLE"]
+      }
+    }
+  ]
+}

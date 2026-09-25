@@ -12,6 +12,16 @@ Rules of the profile:
 
 A pretty-printed file and its canonical form have the same digest, because the
 digest is always recomputed from the parsed content.
+
+Reading is as strict as writing. The one decoder behind ``loads`` and
+``load_file`` refuses what the profile excludes before any caller interprets
+the value: a decimal or exponent number token (``1.5``, ``1e3``, ``-0.0``),
+which Python would otherwise round into a float; ``NaN``, ``Infinity`` and
+``-Infinity``, which Python accepts although JSON does not; an object that
+names a member twice, which Python would collapse to one value chosen by the
+host parser; and a string with an unpaired surrogate, which cannot be UTF-8.
+Each is a ``CanonicalizationError``, never a host value that a later check
+may or may not catch.
 """
 
 from __future__ import annotations
@@ -30,7 +40,10 @@ class CanonicalizationError(ValueError):
 
 
 def _validate(value: Any, path: str) -> None:
-    if value is None or isinstance(value, (bool, int, str)):
+    if value is None or isinstance(value, (bool, int)):
+        return
+    if isinstance(value, str):
+        _validate_text(value, path)
         return
     if isinstance(value, float):
         raise CanonicalizationError(
@@ -44,9 +57,38 @@ def _validate(value: Any, path: str) -> None:
         for key, item in value.items():
             if not isinstance(key, str):
                 raise CanonicalizationError(f"non-string object key at {path}: {key!r}")
+            _validate_text(key, f"{path} key")
             _validate(item, f"{path}.{key}")
         return
     raise CanonicalizationError(f"unsupported type {type(value).__name__} at {path}")
+
+
+def _validate_text(value: str, path: str) -> None:
+    """A string is canonical only when it is UTF-8 encodable: an unpaired surrogate is not."""
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise CanonicalizationError(f"string at {path} contains an unpaired surrogate and cannot be UTF-8: {exc.reason}") from exc
+
+
+def _reject_number(token: str) -> Any:
+    raise CanonicalizationError(f"number {token!r} is not an integer; decimals and exponents are not allowed in canonical artifacts")
+
+
+def _reject_constant(token: str) -> Any:
+    raise CanonicalizationError(f"{token} is not a JSON value and not allowed in canonical artifacts")
+
+
+def _no_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise CanonicalizationError(f"object member {key!r} is named twice; a canonical object names each member once")
+        result[key] = value
+    return result
+
+
+_DECODER = json.JSONDecoder(parse_float=_reject_number, parse_constant=_reject_constant, object_pairs_hook=_no_duplicate_members)
 
 
 def validate(value: Any) -> None:
@@ -81,12 +123,15 @@ def pretty_json(value: Any) -> str:
 
 
 def loads(text: str) -> Any:
-    return json.loads(text)
+    """Parse canonical JSON strictly: only values inside the profile come out."""
+    value = _DECODER.decode(text)
+    validate(value)
+    return value
 
 
 def load_file(path: str | Path) -> Any:
     with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
+        return loads(handle.read())
 
 
 def write_pretty(path: str | Path, value: Any) -> None:
