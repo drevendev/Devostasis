@@ -20,7 +20,11 @@ Configuration: `"planning": {"source": "file", "path": "devostasis/targets.json"
 ```
 
 - `id`: stable identifier, unique in the file, never reused;
-- `state`: `open`, or `closed` (`done`, `resolved`, `cancelled` count as closed);
+- `state`: `open`, or `closed` (`done`, `resolved`, `cancelled` and
+  `canceled` count as closed); absent or empty means `open`; any other value,
+  or a value that is not a string, makes the whole register
+  `ERROR / INVALID_REGISTER` rather than an open item
+  (`PV-AUDIT-REGISTER-STATE-001`);
 - `due`: `YYYY-MM-DD` or RFC 3339, optional. Without it the target is
   `DECLARED`; with a date within 28 days `VISIBLE`; beyond, `EXTENDED`.
 

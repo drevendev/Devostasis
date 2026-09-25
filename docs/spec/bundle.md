@@ -48,6 +48,15 @@ UTF-8; object keys sorted by code point; no insignificant whitespace; only
 Files may be stored pretty-printed; their digest is computed from the parsed
 content. `effective-config.json` is stored in canonical form exactly.
 
+Reading is as strict as writing. The one decoder behind every canonical read
+refuses what the profile excludes before any caller interprets the value: a
+decimal or exponent number (`1.5`, `1e3`, `-0.0`), which would otherwise
+become a host float; `NaN`, `Infinity` and `-Infinity`, which Python accepts
+although JSON does not; an object naming a member twice, which a host parser
+would collapse to one value of its choosing; and a string with an unpaired
+surrogate, which is not UTF-8. Each is a canonicalization error, never a
+value a later check may or may not catch (`PV-AUDIT-CANONICAL-*-001`).
+
 ## Effective config
 
 Before identity is computed, the runtime projects every resolved

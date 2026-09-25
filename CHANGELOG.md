@@ -5,14 +5,17 @@ contract or a policy always come with a version bump of that contract.
 
 ## 0.1.9 (unreleased)
 
-Two things in one release. First, the adoption of every research judgement
+Three things in one release. First, the adoption of the research judgements
 that had been delivered and not adopted, which the roadmap's standing
-obligation puts before queued work: one Integrity rule version, two accepted
-diagnostics under existing rules, eight accepted exact vectors and eleven
-cases of two judgements, plus the vector kinds those cases needed. Second,
-the review pass of 2026-09-22 (issue #30). No threshold, window or gauge
-changed; the one band rule that changed did so under an accepted judgement,
-and its `rule_id` moved with it.
+obligation puts before queued work: one Integrity and one Clutter rule
+version, one accepted diagnostic under an existing rule, eight accepted exact
+vectors and thirty-one cases of three judgements, plus the vector kinds those
+cases needed. Second, the review pass of 2026-09-22 (issue #30). Third, the
+repairs of the research audits of 2026-09-20 to 2026-09-24, which were
+handed off on Drive and had no record in this repository until the review
+of 2026-09-25 catalogued them (the umbrella issue named below). No threshold,
+window or gauge changed; the two band rules that changed did so under
+accepted judgements, and their `rule_id` moved with them.
 
 - **Integrity rule `integrity.bands.v1+ci-unit-004`.** Three accepted
   judgements, one rule version, one `RULE_VERSION_BOUNDARY` per project.
@@ -125,7 +128,94 @@ and its `rule_id` moved with it.
   a spent budget the series is `PARTIAL / CHECK_SUITES_INCOMPLETE`; the
   parents already collected are kept and an observed failure stays. The 101st
   revision and the 101st suite are tests.
-- **The example bundle was regenerated** under the new Integrity rule.
+- **The example bundle was regenerated** under the new Integrity and Clutter
+  rules.
+
+The research audits of 2026-09-20 to 2026-09-24, each reproduced here before
+it was repaired (the review of 2026-09-25 found twenty-six malformed
+successful payloads escaping the collectors with a probe, and the rest by
+the audits' own constructions):
+
+- **The index tail is bound to this project's history** (review of #28's
+  repair on this branch). The tail is followed only along the canonical
+  `history/YYYY/MM/DD/<bundle_id>` path, resolved inside this project's
+  `history/` tree, with a basename equal to the id it claims, and the bundle
+  found there must carry the identity the index records; a damaged index
+  that names another project's bundle, by a parent reference, an absolute
+  path or a copy inside the tree, is `INDEX_TAIL_INVALID` or
+  `PROJECT_IDENTITY_MISMATCH`, a `HISTORY_GAP` and never a comparison. A
+  malformed index is a store failure and is never appended to.
+- **The store fails closed on what it reads about itself.** An unreadable
+  index met while proving an immutable id lives nowhere else fails the lookup
+  instead of passing for absence (`PV-AUDIT-HISTORYSTORE-001`); an
+  unreadable or malformed project index, an unfollowable tail or a demand
+  member that is present but unreadable stops the fleet surfaces instead of
+  dropping the project, and the `run` and `index` commands report a store
+  error (`PV-AUDIT-FLEET-INDEX-001`, `PV-AUDIT-FLEET-COVERAGE-001`); a
+  wrapper whose `bundle_id` or `project_key` disagrees with its manifest is
+  refused before any write (`PV-AUDIT-STORE-BUNDLE-PATH-BINDING-001`,
+  `PV-AUDIT-STORE-PROJECT-BINDING-001`).
+- **Publication is recoverable.** The index is replaced through a temporary
+  file, never truncated in place; it is written before the convenience copy,
+  and the previous copy stays until the new one is in place, so an
+  interruption leaves a stale copy of an indexed bundle that the next commit
+  replaces rather than a gap. A copy of a bundle the index does not know, or
+  one observed after the tail, is still refused
+  (`PV-AUDIT-HISTORYSTORE-ATOMIC-PUBLICATION-001`).
+- **A locator is a name, not a path.** A project key derives a store path
+  only as a `<forge>/<owner>/<repo>` triple of letters, digits, dots, hyphens
+  and underscores, strictly beneath `projects/`, and the configuration admits
+  only such owner and repository names, so `C:\escape/widget` or `../x` never
+  reaches the filesystem (`PV-AUDIT-STORE-PATH-001`). Two spellings of one
+  repository are one project in the configuration, and once the provider has
+  named the repository, in the run: the second is refused with
+  `DUPLICATE_PROJECT_IDENTITY` before it can collect twice or be mistaken for
+  a rename (`PV-AUDIT-PROJECT-LOCATOR-ALIAS-001`). `activity.enabled` must be
+  a boolean and `store` an object (`PV-AUDIT-CONFIG-SHAPE-001`).
+- **Every successful payload is validated before it is read**
+  (`PV-AUDIT-GITHUB-REPO/COMMITS/CR/ISSUES/BRANCH/RELEASE/CI-PAYLOAD-001`).
+  The two shapes 0.1.9 already caught were members of a family: every
+  collector dereferenced its 200 after the boundary that turns failed
+  requests into observations, so a scalar row, a missing field or an
+  unreadable timestamp escaped as a Python exception and the project produced
+  no bundle. Now every consumed field is typed evidence; a body that does not
+  establish it is `ERROR / UNEXPECTED_PAYLOAD` for that inventory alone, the
+  other inventories are still collected, and nothing is coerced, defaulted
+  or skipped: no guessed `main` for a repository without a default branch,
+  no truthiness of the string `"false"`, no commit or published release
+  silently omitted for lacking a date, no run skipped for lacking a head, no
+  check-suite count assumed, and an attempt that names another run or another
+  number is not this run's history. Repository metadata that does not
+  establish the routing facts fails the project explicitly. A branch head
+  whose detail cannot be read stays unresolved, `PARTIAL /
+  BRANCH_HEADS_UNRESOLVED`, never stale or fresh.
+  ([docs/spec/github-adapter.md](docs/spec/github-adapter.md) has the table.)
+- **A register state outside the vocabulary is an invalid register**, not an
+  open item (`PV-AUDIT-REGISTER-STATE-001`): `clsoed`, `17` or `false` no
+  longer manufacture an open target or debt item.
+- **A wait hint that cannot be read is no hint** (`PV-AUDIT-GITHUB-RETRY-HEADER-001`):
+  `Retry-After: inf` or an overflowing reset epoch used to escape as
+  `OverflowError`; the bounded backoff applies and the answer's own
+  classification stands.
+- **A redirect never carries the token off the API origin**
+  (`PV-AUDIT-GITHUB-REDIRECT-AUTH-001`). `urllib` copies `Authorization` onto
+  a redirected request, to any host; the transport now follows redirects only
+  to the configured API origin and refuses the rest as `REDIRECT_REFUSED`. A
+  renamed repository still resolves.
+- **The entity-tag cache is `devostasis.http-cache.v2`**
+  (`PV-AUDIT-GITHUB-CACHE-INTEGRITY-001`): an entry is replayed after a 304
+  only when its complete shape is readable and its body still hashes to the
+  digest stored beside the tag; a corrupt entry or a previous cache file is a
+  miss and one unconditional refetch, never a replayed body and never a
+  `ValueError` while loading. The first fleet run after the upgrade pays a
+  full quota once.
+- **The canonical decoder is as strict as the writer**
+  (`PV-AUDIT-CANONICAL-NONFINITE/DECIMAL/UNICODE/JSON-PARSER-001`): decimal
+  and exponent numbers, `NaN` and the infinities, an object naming a member
+  twice, and an unpaired surrogate are refused when read, as a
+  canonicalization error, instead of becoming a host value that a later
+  check may or may not catch. All 308 bundles of the fleet's store still
+  read and verify.
 
 The review pass of 2026-09-22, each defect reproduced before it was fixed:
 

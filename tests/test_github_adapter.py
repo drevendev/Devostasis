@@ -277,7 +277,6 @@ def test_an_invalid_register_reaches_the_snapshot_as_an_error_observation():
 def test_a_successful_response_that_is_not_json_becomes_a_declared_provider_failure():
     """HTTP 200 with an unreadable body escaped every handler as a ValueError."""
     import io
-    import urllib.request
 
     from devostasis.adapters.github import ApiFailure, UrllibTransport
 
@@ -292,16 +291,13 @@ def test_a_successful_response_that_is_not_json_becomes_a_declared_provider_fail
             return False
 
     transport = UrllibTransport(token=None)
-    original = urllib.request.urlopen
-    urllib.request.urlopen = lambda request, timeout=None: _Response(b"<html>maintenance</html>")
+    transport._open = lambda request: _Response(b"<html>maintenance</html>")
     try:
         transport.get("/repos/acme/widget")
     except ApiFailure as exc:
         assert exc.reason_code == "MALFORMED_RESPONSE" and exc.status_code == 200
     else:
         raise AssertionError("a 200 with a non-JSON body must be a declared failure")
-    finally:
-        urllib.request.urlopen = original
 
 
 # --------------------------------------------------------------------------- linkage evidence (PV-REV-PR-015)

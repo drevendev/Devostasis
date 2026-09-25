@@ -38,12 +38,60 @@ enumeration is a lower bound of the true activity and is reported as
 
 A capped pagination yields `PARTIAL` with `PAGINATION_CAPPED`; unresolved
 branch heads yield `PARTIAL` with `BRANCH_HEADS_UNRESOLVED`; incomplete
-attempt history yields `PARTIAL` with `ATTEMPT_HISTORY_INCOMPLETE`. A
-successful response whose body is not the shape the endpoint documents (a
-list expected, an object or nothing returned; a workflow `total_count` that
-is absent or not a non-negative integer) is `ERROR` with `UNEXPECTED_PAYLOAD`
-for that inventory alone; it never ends the project's collection, and no
-value is invented in its place.
+attempt history yields `PARTIAL` with `ATTEMPT_HISTORY_INCOMPLETE`.
+
+## Successful payloads are validated before they are read
+
+A 200 is not proof that the body is usable. Every field a collector consumes
+is typed evidence, checked before any semantic use, and a body that does not
+establish it is `ERROR` with `UNEXPECTED_PAYLOAD` for that inventory alone:
+the other inventories are still collected, the project still produces a
+bundle, and no value is coerced, defaulted or skipped in the malformed one's
+place (research audits `PV-AUDIT-GITHUB-*-PAYLOAD-001`). Concretely:
+
+| Surface | Required of a successful answer |
+| --- | --- |
+| repository metadata | an object with an integer `id`, a non-empty `default_branch`, boolean `has_issues` and `archived`, and `pushed_at` null or a timestamp; a body that does not establish them fails the project (`CollectionError`) rather than guessing `main` or reading a string's truthiness |
+| commits | every row an object with a non-empty `sha`, an object `commit`, object or null `committer` and `author`, and at least one readable date; a commit without a date is not skipped |
+| change requests | every row an object with an integer `number`, readable `created_at` and `updated_at`, null or readable `merged_at` and `closed_at`, boolean `draft`, object or null `user`; the window predicate itself validates `updated_at`; linkage-bearing `title`, `body` and `milestone` keep their own fail-closed rule (`LinkageEvidenceError`) |
+| issues | every row an object with an integer `number`, readable timestamps, a list of objects with string `name` as `labels`, object or null `user` |
+| branches | every row an object with a non-empty `name`, an object `commit` with a non-empty `sha`, boolean `protected`; a head detail that cannot be read leaves that head unresolved (`PARTIAL / BRANCH_HEADS_UNRESOLVED`), never stale or fresh |
+| milestones | every row an object with an integer `number`, null or readable `due_on`, integer or null `open_issues` and `closed_issues` |
+| releases | every row an object with boolean `draft` and `prerelease`; a draft is ignored only once `draft` is positively `true`; every other row needs a non-empty `tag_name` and a readable `published_at`, and one without is a failure, never an omission |
+| workflow runs | an object with a `workflow_runs` list; every run an object with a non-empty `head_sha` (validated before the window is applied), an integer `id`, an integer `run_attempt` >= 1, a `status` string and a null or string `conclusion`; a workflow count that is absent or not a non-negative integer |
+| run attempts | an object whose `id` is the run asked for and whose `run_attempt` is the number asked for; anything else is not this run's history and fails the series |
+| check suites | an object with a `check_suites` list (a missing list is not zero suites); every suite an object with an integer `id`, a `status` string, null or string `conclusion`, null or object `app`, and an integer `latest_check_runs_count`, which is never assumed |
+| register files | an integer `size`; the register document itself is judged by the register contract (`INVALID_REGISTER`) |
+
+## Redirects
+
+The transport follows a redirect only to the configured API origin (scheme
+and host of the API base, `https://api.github.com` unless configured
+otherwise), because `urllib` copies the `Authorization` header onto the
+redirected request. A redirect to another origin, or from HTTPS to HTTP, is
+refused as `ERROR / REDIRECT_REFUSED` and the token never leaves
+(`PV-AUDIT-GITHUB-REDIRECT-AUTH-001`); the API's own redirects, such as a
+renamed repository, stay on the origin and still work.
+
+## Retry hints
+
+A retryable answer (`429`, a rate-limited `403`, `5xx`) is retried after the
+wait `Retry-After` or `X-RateLimit-Reset` asks for, within the bounded retry
+policy. A hint that cannot be read as a finite number (`inf`, an overflowing
+exponent, text) is no hint at all: the deterministic backoff applies and,
+when retries are exhausted, the answer's own classification stands
+(`RATE_LIMITED`, `PROVIDER_ERROR`), never a host exception
+(`PV-AUDIT-GITHUB-RETRY-HEADER-001`).
+
+## Conditional cache
+
+The entity-tag cache (`--cache`, `devostasis.http-cache.v2`) is an
+optimization and never a truth surface. An entry is replayed after a `304`
+only when its complete shape is readable and the body it holds still hashes
+to the digest recorded beside the tag; a corrupt, foreign or older entry is a
+miss and costs exactly one unconditional request, never a replayed body
+(`PV-AUDIT-GITHUB-CACHE-INTEGRITY-001`). The digest guards against
+accidental corruption, not against an adversary who can rewrite the file.
 
 The check-suite surface carries its own coverage (issue #12 finding 1). The
 series records how many revisions were planned and examined

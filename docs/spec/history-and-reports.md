@@ -106,13 +106,38 @@ must not be more permissive than its sources.
 
 The previous bundle of a comparison is the immutable bundle the project index
 names (its tail), verified from its own contents; without an index the newest
-immutable bundle is found by scanning `history/` (issue #28). `latest/` is
-republished on every commit and may be compacted or damaged without turning
-the next run into a `HISTORY_GAP`; a `latest/` that names a *different*
-bundle than the index is a store inconsistency and is still refused
-(`latest pointer ... differs from index tail`). `HISTORY_GAP` therefore means
-what its definition says: the previous immutable bundle cannot be loaded or
-verified.
+immutable bundle is found by scanning `history/` (issue #28). The tail is
+followed only along the canonical `history/YYYY/MM/DD/<bundle_id>` path,
+resolved inside this project's `history/` tree, with a basename equal to the
+id it claims; the bundle found there must carry the identity the index
+records (its locator, for a store without identities). A tail that points
+anywhere else, or at another project's bundle, is `INDEX_TAIL_INVALID` or
+`PROJECT_IDENTITY_MISMATCH`: an unverified state and a `HISTORY_GAP`, never a
+comparison against what it points at. A malformed index is a store failure
+and is never appended to.
+
+`latest/` is republished on every commit and may be compacted or damaged
+without turning the next run into a `HISTORY_GAP`. The index is written
+first, through a temporary file replaced in one step, and the copy last, with
+the previous copy kept until the new one is in place; an interruption between
+the two therefore leaves a stale copy of an indexed bundle, which the next
+commit replaces, not a gap. A `latest/` that names a bundle the index does
+not know, or one observed after the tail, is a store inconsistency and is
+still refused (`latest pointer ... differs from index tail`). `HISTORY_GAP`
+therefore means what its definition says: the previous immutable bundle
+cannot be loaded or verified.
+
+A bundle is routed by what its canonical members say: a wrapper whose
+`bundle_id` or `project_key` disagrees with its own manifest is refused
+before anything is written. A locator derives a store path only as a
+`<forge>/<owner>/<repo>` triple of letters, digits, dots, hyphens and
+underscores, strictly beneath `projects/`. While proving that an immutable id
+lives nowhere else in the store, and while generating the fleet surfaces, an
+unreadable or malformed project index, a tail that cannot be followed, or a
+demand member that is present but unreadable is an explicit store failure,
+not an absent project: the fleet surfaces are then not rewritten, and the
+`run` and `index` commands report a store error. A bundle that predates the
+demand interface has no demand member and keeps its null levels.
 
 ### Identity and rename continuity (RPT-7)
 
