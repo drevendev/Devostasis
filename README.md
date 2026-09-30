@@ -46,8 +46,10 @@ Devostasis is built against those failures:
   configuration or provider access.
 - **Anti-gaming rules are part of the contract.** A revision that failed
   verification keeps its failure in the history window even if a retry later
-  passes. A zero queue is not "good flow". Full milestone linkage is a fact,
-  not a compliment.
+  passes, and even after the provider stops showing the failed attempt: the
+  history is carried from one bundle to the next. Closing the target a change
+  delivered does not un-link the change. A zero queue is not "good flow".
+  Full milestone linkage is a fact, not a compliment.
 
 ## The seven Vitals
 
@@ -153,7 +155,7 @@ comes first is the consumer's policy, and no accepted contract defines it.
 Requires Python 3.12 or newer. The runtime uses the standard library only.
 
 ```bash
-pip install git+https://github.com/drevendev/devostasis@v0.1.9
+pip install git+https://github.com/drevendev/devostasis@v0.2.0
 ```
 
 Observe one repository (a GitHub token is read from `DEVOSTASIS_GITHUB_TOKEN`,
@@ -212,7 +214,7 @@ permissions:
 
 jobs:
   vitals:
-    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.1.9
+    uses: drevendev/devostasis/.github/workflows/observe-self.yml@v0.2.0
   decide:
     needs: vitals
     runs-on: ubuntu-latest

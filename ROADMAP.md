@@ -13,7 +13,7 @@ standing obligations (interrupt anything)
 Phase A  observe ourselves honestly            closed
         │
         ▼
-Phase B  durability and coverage               4 of 7 done
+Phase B  durability and coverage               5 of 7 done
         │
         ▼
 Phase C  reach: other providers and instruments
@@ -45,7 +45,6 @@ statement; the fix belongs in this repository, not in the rule.
 | --- | --- | --- |
 | B1 vectors | research process, then this repository | `PV-TEST-001` is being produced as `PV-TEST-VECTORS-00n` units; their findings are [#20](https://github.com/drevendev/Devostasis/issues/20), [#21](https://github.com/drevendev/Devostasis/issues/21), [#22](https://github.com/drevendev/Devostasis/issues/22) and [#23](https://github.com/drevendev/Devostasis/issues/23), and two of them need vector kinds this repository has not built |
 | B7 first outside consumer | **the owner** | picking a repository; B5 has landed, so the consumer surface no longer moves |
-| B3 durable revision history | **this repository** | `PV-HIST-002` was accepted by `PV-REV-HIST-002` on 2026-09-08 ([#34](https://github.com/drevendev/Devostasis/issues/34)); nothing blocks it but sequencing |
 | C1 GitLab adapter | **this repository, after B7 and the compatibility policy** | the requirements are accepted (`PV-GITLAB-003` by `PV-REV-GITLAB-003`, [#34](https://github.com/drevendev/Devostasis/issues/34)) |
 | C2 uncollected GitHub surfaces | this repository | each surface needs a contract decision first |
 | C3 Instruments | **this repository, after B7 and the compatibility policy** | the envelope, the carrier and four instruments are accepted ([#34](https://github.com/drevendev/Devostasis/issues/34)); the carrier moves the configuration and bundle contracts, which is why the policy comes first |
@@ -55,10 +54,10 @@ statement; the fix belongs in this repository, not in the rule.
 | Compatibility policy | **this repository, then the owner** | `devostasis.contract-compatibility.v1` is accepted (`PV-COMPAT-002` by `PV-REV-COMPAT-002`, [#34](https://github.com/drevendev/Devostasis/issues/34)); adopting it is what makes the Phase C contract moves safe for an adopter |
 | `PV-CAL-004` predictive validity | elapsed time | needs calendar days of bundles, not more bundles (see the self-review) |
 | Judgements owed to us | delivered | all four, listed below; one of them is a required repair |
-| Accepted judgements not yet adopted | **this repository, and the owner for one** | the Vital repairs of [#33](https://github.com/drevendev/Devostasis/issues/33) (Direction closed-target and incomplete, Debt partial, Horizon partial, T9; Integrity totality was adopted in 0.1.9), the Phase B and C contracts of [#34](https://github.com/drevendev/Devostasis/issues/34), and `PV-REV-RECEIPT-IDENTITY-003` on [#19](https://github.com/drevendev/Devostasis/issues/19), the fifth identity move, which the owner has to want |
+| Accepted judgements not yet adopted | **this repository, and the owner for one** | the Phase C contracts of [#34](https://github.com/drevendev/Devostasis/issues/34) (GitLab, instruments, the compatibility policy), and `PV-REV-RECEIPT-IDENTITY-003` on [#19](https://github.com/drevendev/Devostasis/issues/19), the fifth identity move, which the owner has to want. The Vital repairs of [#33](https://github.com/drevendev/Devostasis/issues/33) and B3 are adopted in 0.2.0 |
 | Audit handoffs | this repository | about forty `REPAIR REQUIRED` static audits since 2026-09-20, catalogued in [#35](https://github.com/drevendev/Devostasis/issues/35); 0.1.9 repairs the store, transport, decoder and payload families, the timestamp and lineage families are open |
 | Review of 2026-09-30 | this repository, research for four | [#48](https://github.com/drevendev/Devostasis/issues/48): its defects are repaired in 0.1.9; what needs work or a decision is #38 to #46, four of them `for:researcher` (#39, #40, #42, #43) |
-| 0.2.0 candidate | research review, then this repository | the owner asked for a large next release on 2026-09-30 and the research process produced a candidate specification (`PV-RELEASE-020-001`, not yet accepted); [#47](https://github.com/drevendev/Devostasis/issues/47) maps its sixteen packages onto the issues here |
+| "Evidence Observatory" candidate | research review, then this repository | the owner asked for a large next release on 2026-09-30; 0.2.0 shipped the part of it that rests on accepted contracts, and the candidate specification (`PV-RELEASE-020-001`, not yet accepted) keeps the rest; [#47](https://github.com/drevendev/Devostasis/issues/47) maps its sixteen packages onto the issues here |
 
 The four judgements the research process owed this repository about work
 already shipped have all been delivered:
@@ -67,7 +66,7 @@ already shipped have all been delivered:
 | --- | --- | --- |
 | `PV-REV-REGISTERS-001` | whether a `Target: <id>` marker is auditable enough under G7, and whether a bulk-editable register is gameable | ACCEPT (J1..J6, cases REG-01..08): the literal marker satisfies G7; editability stays provenance-visible; no new rule |
 | `PV-REV-FLEET-001` | whether `devostasis.fleet.v1` is right to declare no cross-project ordering | ACCEPT (FLEET-01..10): `aggregate` and `cross_project_order` stay exactly null; a control plane that routes across repositories owns that policy outside Devostasis |
-| `PV-REV-DIRECTION-CLOSED-TARGET-001` | calibration finding 9: closing a delivered target un-links the work that delivered it | REPAIR REQUIRED: Direction linkage must be state-neutral, an active change request linked to a resolvable declared target stays linked when the target closes; versioned Direction rule, cases DIR-CLOSED-01..09; not yet adopted, tracked in [#33](https://github.com/drevendev/Devostasis/issues/33) |
+| `PV-REV-DIRECTION-CLOSED-TARGET-001` | calibration finding 9: closing a delivered target un-links the work that delivered it | REPAIR REQUIRED: Direction linkage must be state-neutral, an active change request linked to a resolvable declared target stays linked when the target closes; versioned Direction rule, cases DIR-CLOSED-01..09; adopted in 0.2.0 as `direction.bands.v2` ([#33](https://github.com/drevendev/Devostasis/issues/33)) |
 | `PV-SPEC-001` | the conformance review of every adoption since the specification was last reviewed, including B5 | two passes on 2026-09-07: the 0.1.8 adoption reused the ORDER identifiers (repaired before the tag, #16); the post-repair pass found the runtime conformant and the public status prose stale, which 0.1.9 reconciles in `PROVENANCE.md` and here |
 
 Delivered judgements and their adoption. Under the standing obligation above
@@ -83,8 +82,9 @@ an owner decision:
 | `PV-REV-TEST-VECTORS-004/005/007` | [#22](https://github.com/drevendev/Devostasis/issues/22) | adopted in 0.1.9: `R3`, `R4`, `T4`, `T5`, `T7` vectors; the T5 diagnostic and the T7 upper-bound path in the evaluators; whether the GitHub adapter emits `retention_semantics` is a fleet-wide decision still open there, and since the Clutter adoption it also decides whether a capped branch head resolution can ever prove a floor on GitHub |
 | `PV-CLUTTER-INCOMPLETE-001`, `PV-ISSUE-026-RECONCILE-001`, `PV-REV-PR-031-003` | [#26](https://github.com/drevendev/Devostasis/issues/26) | adopted in 0.1.9: `clutter.bands.v1`, cases `CLU-INCOMPLETE-01..20` executable; an incomplete component is a confirmed burden floor, never a manufactured band, and a `PARTIAL` count proves one only with its subset proof (`CLU-PARTIAL-TRUST-01..08`) |
 | `PV-INT-TOTALITY-001` | [#33](https://github.com/drevendev/Devostasis/issues/33) | adopted in 0.1.9 under the same Integrity rule version, in place of the unresolved superset the review of 2026-09-30 found could omit the band it emitted ([#48](https://github.com/drevendev/Devostasis/issues/48)); `INT-TOTAL-01..06` and `08..13` executable |
-| `PV-REV-DIRECTION-CLOSED-TARGET-001`, `PV-DEBT-PARTIAL-001`, `PV-HORIZON-PARTIAL-001`, `PV-DIRECTION-INCOMPLETE-001`, `PV-TEST-004` | [#33](https://github.com/drevendev/Devostasis/issues/33) | **not adopted**: accepted repairs of three Vitals and the final T9 reconciliation, none of which had an issue here until the review of 2026-09-25 read the registry; each is a versioned rule adoption with named cases |
-| `PV-REV-HIST-002`, `PV-REV-GITLAB-003`, the instrument contracts, `PV-COMPAT-002`, `PV-CONFORMANCE-SURFACE-001`, `PV-RENDER-CLINICAL-001` | [#34](https://github.com/drevendev/Devostasis/issues/34) | **not adopted**: the Phase B and C contracts this roadmap called blocked by research; they are ours now, sequenced after B7 and the compatibility policy |
+| `PV-REV-DIRECTION-CLOSED-TARGET-001`, `PV-DEBT-PARTIAL-001`, `PV-HORIZON-PARTIAL-001`, `PV-DIRECTION-INCOMPLETE-001`, `PV-TEST-004` | [#33](https://github.com/drevendev/Devostasis/issues/33) | adopted in 0.2.0: `direction.bands.v2`, `horizon.bands.v2`, `debt.bands.v2`, one rule version each; `DIR-CLOSED-01..09`, `DIR-INCOMPLETE-01..16`, `HOR-PARTIAL-01..16`, `DEBT-PARTIAL-01..16` executable; T9 held by its generator over the nine former gap families |
+| `PV-REV-HIST-002` | [#34](https://github.com/drevendev/Devostasis/issues/34) | adopted in 0.2.0 as target B3: `integrity.bands.v1+ci-unit-004+hist-002`, HIST-01..20 executable except HIST-14, which has no accepted migration to execute |
+| `PV-REV-GITLAB-003`, the instrument contracts, `PV-COMPAT-002`, `PV-CONFORMANCE-SURFACE-001`, `PV-RENDER-CLINICAL-001` | [#34](https://github.com/drevendev/Devostasis/issues/34) | **not adopted**: the Phase C contracts this roadmap called blocked by research; they are ours now, sequenced after B7 and the compatibility policy |
 | `PV-REV-RECEIPT-IDENTITY-003` | [#19](https://github.com/drevendev/Devostasis/issues/19) | **not adopted**: the fifth identity move, a fresh receipt, observations and manifest lineage with historical verification dispatch; it needs the owner to want it, and the contract document to implement from |
 
 One judgement is ours to ask for rather than to wait on: `ORDER-01..15` are
@@ -108,12 +108,12 @@ share for Direction, and its own attention order is actionable.
 
 ### B1. Executable conformance vectors — the format is built, the vectors are owed
 
-The specification names **63 conformance cases with no test behind them**
-(T3, T6, T8, T9, R5..R53, ART-05, ART-08..ART-11, ART-15, RPT-4..RPT-6,
-RPT-9). It named 70 until 0.1.9 adopted the seven exact vectors the research
-process has accepted so far (`T2`, `R1`, `R2`, `R3`, `R4`, `T4`, `T5`, `T7`);
-the rest are still the research process's to produce, one accepted family per
-unit.
+The specification names **62 conformance cases with no test behind them**
+(T3, T6, T8, R5..R53, ART-05, ART-08..ART-11, ART-15, RPT-4..RPT-6, RPT-9).
+It named 70 until 0.1.9 adopted the seven exact vectors the research process
+has accepted so far (`T2`, `R1`, `R2`, `R3`, `R4`, `T4`, `T5`, `T7`), and 63
+until 0.2.0 held T9 to its accepted table with a generator; the rest are
+still the research process's to produce, one accepted family per unit.
 
 The half that was ours shipped in 0.1.8: `devostasis.vectors.v1`, a runner, a
 `devostasis vectors` command and a published schema
@@ -144,17 +144,6 @@ one workflow, its own `GITHUB_TOKEN`, no secret. The point is not the number
 of adopters but the first feedback from a consumer who did not write the
 contract. The only remaining blocker is the owner choosing a repository.
 
-### B3. Durable revision history across bundles — accepted by research, ours to build
-
-Integrity history is reconstructed from what the provider still exposes;
-parent-level surfaces cannot prove earlier failures, which is diagnosed as
-`HISTORY_PROVENANCE_PARENT_LEVEL_ONLY`. Persisting `revision_history_state`
-per revision across bundles closes that gap, with policy provenance and
-replay-or-`INCOMPARABLE` on semantic changes. The contract is `PV-HIST-002`,
-accepted by `PV-REV-HIST-002` on 2026-09-08
-([#34](https://github.com/drevendev/Devostasis/issues/34)); it changes
-Integrity's history source, not the consumer surface, so it can go before
-the Phase C contract moves.
 
 ### Also open from the reporting review
 
@@ -163,6 +152,15 @@ fixture for the store. Ours, and covered by B1's format.
 
 ### Done
 
+- **B3** (0.2.0): durable revision history across bundles, `PV-HIST-002`
+  (accepted by `PV-REV-HIST-002`). The union of every attempt observed per
+  parent per revision is carried from the immediate predecessor
+  (`ci.revision_history_carried` in, `derived.revision_history` out), so a
+  failure the provider stops showing still counts while its revision is in
+  the window, and a gap in the chain is explicit rather than bridged by an
+  older bundle. Parent-level and incomplete favorable evidence is
+  `UNKNOWN_HISTORY`, never a reconstructed pass (R52). It changed Integrity's
+  history source, not the consumer surface.
 - **B5** (0.1.8): the band ordering of `PV-BAND-ORDER-001`, adopted.
   `delta.json` is `devostasis.delta.v2`, emits `IMPROVED` and `WORSENED` where
   a Vital declares an order over the pair, and names the ordering it applied.
@@ -279,9 +277,12 @@ trustworthy.
 
 ## What ends the loop
 
-**0.2 is reached when** Phase A and Phase B are closed, which includes one
+**0.2 was defined here as** Phase A and Phase B closed, which includes one
 consumer outside this repository depending on a bundle, and no accepted
-research unit is waiting for adoption.
+research unit waiting for adoption. 0.2.0 shipped on 2026-10-01 before that,
+at the owner's request for a large release (#47), as the release that adopts
+every accepted Vital and history contract. What the definition still asks for,
+B7 and the adoption of the Phase C contracts of #34, is now the bar for 0.3.
 
 **1.0 is reached when** the contract identifiers have a compatibility policy,
 a second provider is implemented, and the calibration corpus is large enough
@@ -377,15 +378,17 @@ Judged since:
 8. **Per-Vital rule version boundary.** Accepted by
    `PV-REV-RULEBOUNDARY-001`: a Vital whose `rule_id` changed is
    `INCOMPARABLE` on its own while the bundle stays `COMPARABLE`.
+9. **Closing a delivered target un-links the work that delivered it.**
+   Direction counted links to *open* targets, so completing a target removed
+   the linkage of the pull requests that delivered it while they were still
+   in the 28-day window. Measured here: closing A1 and B6 took the linked
+   count from 2 of 6 to 0. Repaired in `direction.bands.v2` (0.2.0,
+   `PV-REV-DIRECTION-CLOSED-TARGET-001`): on the same store this repository
+   reads 9 of 18 active change requests traced, `MIXED`, where the open-target
+   count said 4 of 18, `SCATTERED`.
 
 Open:
 
-9. **Closing a delivered target un-links the work that delivered it.**
-   Direction counts links to *open* targets, so completing a target removes
-   the linkage of the pull requests that delivered it while they are still in
-   the 28-day window. Measured here: closing A1 and B6 took the linked count
-   from 2 of 6 to 0. Never closing a target would keep the band higher than
-   finishing the work. Awaiting `PV-REV-DIRECTION-CLOSED-TARGET-001`.
 10. **Activity can declare an interval wider than its evidence.** Declared
     since 0.1.7 with `INTERVAL_EXCEEDS_EVIDENCE_WINDOW`; whether collection
     should widen instead is [issue #9](https://github.com/drevendev/Devostasis/issues/9).
