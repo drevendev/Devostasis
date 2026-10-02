@@ -4,6 +4,58 @@ Ordered by what unblocks what, not by what is interesting. Every item names
 who or what blocks it, so a reader can tell the difference between work not
 started and work that cannot start.
 
+## Release state and next steps — 2026-10-02
+
+The latest tagged release on `master` is **v0.1.9**. **0.2.0 is prepared,
+not released**: [#53](https://github.com/drevendev/Devostasis/pull/53) is still
+open and there is no `v0.2.0` tag. The adoption statements below describe the
+implementation on `release/0.2.0`, not availability on `master`. Phase A is
+closed; Phase B has four completed items in the released version and five
+in this branch, where B3 is implemented. B1 and B7 remain open. The
+specification still names 62 cases without executable proof in this branch.
+
+The next work is ordered by the evidence each step makes possible:
+
+1. **Finish and release 0.2.0.** Admit only the carried history reconstructed
+   from the verified predecessor, reject duplicate carried revision ids, and
+   reconcile the pending maintenance branches. Merge the release only after
+   review and CI, then tag it; an unreleased branch is not a completed release.
+2. **Restore sustained observation and complete Phase B.** The latest public
+   evidence in [#32](https://github.com/drevendev/Devostasis/issues/32) records
+   an Actions billing refusal and a fleet history ending on 2026-09-10; check
+   and restore the private observer before claiming fresh calibration data.
+   Repair the GitHub run-listing ceiling
+   ([#51](https://github.com/drevendev/Devostasis/issues/51)), keep external
+   check-app history uncertainty explicit
+   ([#52](https://github.com/drevendev/Devostasis/issues/52)), adopt the
+   compatibility policy, finish B1, and run a B7 pilot selected by the owner.
+3. **Deliver the accepted reach contracts in small packages.** GitLab,
+   Coverage, TestState, Deployment and Work follow the existing Phase C gates.
+   The additional CLI and Explorer composition in
+   [#47](https://github.com/drevendev/Devostasis/issues/47) still needs its
+   independent G1 judgement; acceptance of its component contracts does not
+   accept the whole candidate.
+4. **Make the evidence usable as bounded work.** The proposed consumer
+   work-scope surface in [#54](https://github.com/drevendev/Devostasis/issues/54)
+   projects five typed queues (`review`, `finish_merge`, `implement_issue`,
+   `research`, `analyze_code`) with stable ids, exact revisions, explicit
+   consumer priority, acceptance, dependencies, freshness and coverage.
+   [#55](https://github.com/drevendev/Devostasis/issues/55) supplies
+   revision-bound findings and source slices;
+   [#56](https://github.com/drevendev/Devostasis/issues/56) supplies the GitLab
+   CI and durable handoff recipe. These are proposals requiring a contract,
+   not implemented or accepted core semantics. A companion consumer library
+   may keep task selection outside the observational engine.
+
+The recommended next major product increment is **Evidence to Action**:
+trusted observations plus reproducible, bounded work scopes for an outside
+consumer. Its success criterion is a developer or agent selecting one task
+from verified evidence, recovering explicitly missing input, and verifying
+the stated acceptance without rediscovering the whole repository. GitLab
+and the Instruments expand that evidence; a presentation-only release does
+not satisfy this consumer criterion. No queue grants permission to merge,
+claim or deploy, and business priority remains explicit consumer policy.
+
 ## How this roadmap is worked
 
 ```text
@@ -57,7 +109,7 @@ statement; the fix belongs in this repository, not in the rule.
 | Accepted judgements not yet adopted | **this repository, and the owner for one** | the Phase C contracts of [#34](https://github.com/drevendev/Devostasis/issues/34) (GitLab, instruments, the compatibility policy), and `PV-REV-RECEIPT-IDENTITY-003` on [#19](https://github.com/drevendev/Devostasis/issues/19), the fifth identity move, which the owner has to want. The Vital repairs of [#33](https://github.com/drevendev/Devostasis/issues/33) and B3 are adopted in 0.2.0 |
 | Audit handoffs | this repository | about forty `REPAIR REQUIRED` static audits since 2026-09-20, catalogued in [#35](https://github.com/drevendev/Devostasis/issues/35); 0.1.9 repairs the store, transport, decoder and payload families, the timestamp and lineage families are open |
 | Review of 2026-09-30 | this repository, research for four | [#48](https://github.com/drevendev/Devostasis/issues/48): its defects are repaired in 0.1.9; what needs work or a decision is #38 to #46, four of them `for:researcher` (#39, #40, #42, #43) |
-| "Evidence Observatory" candidate | research review, then this repository | the owner asked for a large next release on 2026-09-30; 0.2.0 shipped the part of it that rests on accepted contracts, and the candidate specification (`PV-RELEASE-020-001`, not yet accepted) keeps the rest; [#47](https://github.com/drevendev/Devostasis/issues/47) maps its sixteen packages onto the issues here |
+| "Evidence Observatory" candidate | research review, then this repository | the owner asked for a large next release on 2026-09-30; the pending 0.2.0 branch implements the part that rests on accepted contracts, and the candidate specification (`PV-RELEASE-020-001`, not yet accepted) keeps the rest; [#47](https://github.com/drevendev/Devostasis/issues/47) maps its sixteen packages onto the issues here |
 
 The four judgements the research process owed this repository about work
 already shipped have all been delivered:
@@ -279,9 +331,9 @@ trustworthy.
 
 **0.2 was defined here as** Phase A and Phase B closed, which includes one
 consumer outside this repository depending on a bundle, and no accepted
-research unit waiting for adoption. 0.2.0 shipped on 2026-10-01 before that,
-at the owner's request for a large release (#47), as the release that adopts
-every accepted Vital and history contract. What the definition still asks for,
+research unit waiting for adoption. The pending 0.2.0 adoption release is
+scoped to ship before that, at the owner's request for a large release (#47),
+with the accepted Vital repairs and durable history. What the definition still asks for,
 B7 and the adoption of the Phase C contracts of #34, is now the bar for 0.3.
 
 **1.0 is reached when** the contract identifiers have a compatibility policy,

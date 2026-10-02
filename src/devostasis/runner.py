@@ -138,6 +138,7 @@ def check_receipt_config(project: ResolvedProject, obs: ObservationSet) -> None:
 
 
 HISTORY_SOURCE_NOT_PREDECESSOR = "HISTORY_SOURCE_NOT_PREDECESSOR"
+HISTORY_CONTENT_MISMATCH = "HISTORY_CONTENT_MISMATCH"
 
 
 def attach_revision_history(obs: ObservationSet, predecessor: Predecessor) -> ObservationSet:
@@ -146,8 +147,9 @@ def attach_revision_history(obs: ObservationSet, predecessor: Predecessor) -> Ob
     The source is the bundle the comparison resolved, the immediate
     predecessor, never an older one. A set that already states carried history
     (rebuilt from a bundle's own observations) is kept only when it names that
-    same predecessor: carried history is canonical input, and consuming it
-    against another chain would break the chain it records.
+    same predecessor and exactly matches the observation reconstructed from
+    its verified contents. Naming a source alone cannot prove its history:
+    accepting edited records would let an earlier failure disappear.
     """
     carried = revision_history.carried_observation(
         predecessor.status,
@@ -166,6 +168,11 @@ def attach_revision_history(obs: ObservationSet, predecessor: Predecessor) -> Ob
             f"{HISTORY_SOURCE_NOT_PREDECESSOR}: the observations carry revision history from "
             f"{revision_history.carried_source_bundle(obs) or 'no bundle'} ({stated.status}), this store's predecessor is "
             f"{predecessor.bundle_id or 'none'} ({predecessor.status}); durable history is consumed only from the immediate predecessor"
+        )
+    if canonical.canonical_bytes(stated.to_dict()) != canonical.canonical_bytes(carried.to_dict()):
+        raise BundleError(
+            f"{HISTORY_CONTENT_MISMATCH}: the stated revision history does not match the observation reconstructed "
+            f"from the verified immediate predecessor {predecessor.bundle_id or 'none'}; records and provenance cannot be substituted"
         )
     return obs
 

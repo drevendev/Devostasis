@@ -45,11 +45,11 @@
     {
       "id": "v0.2",
       "title": "Release 0.2: phases A and B closed, one outside consumer, no unadopted research unit",
-      "state": "closed"
+      "state": "open"
     },
     {
       "id": "v0.3",
-      "title": "Release 0.3: phases A and B closed, one outside consumer, no unadopted research unit (the bar 0.2.0 shipped before)",
+      "title": "Release 0.3: phases A and B closed, one outside consumer, no unadopted research unit (the bar deferred from the 0.2.0 adoption release)",
       "state": "open"
     },
     {

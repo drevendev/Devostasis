@@ -7,8 +7,8 @@
       "title": "Conformance cases named in the specification have no executable fixture",
       "state": "open",
       "opened": "2026-09-05",
-      "updated": "2026-09-30",
-      "cost": "docs/spec/conformance.md named T2-T9, R1-R53, ART-05, ART-08-ART-11, ART-15 and RPT-4-RPT-9 with no test behind them, so the public coverage claim is larger than the proof. The vector format and runner exist since 0.1.8, and 0.1.9 transcribed the accepted exact vectors the research process delivered (T2, R1, R2, R3, R4, T4, T5, T7) together with whole accepted families (INT-UNKNOWN, INT-TOTAL, CLU-INCOMPLETE, ACT-COV); sixty-three of the seventy named cases still have no evidence, and several (T3, T6, T8, the bundle and store cases) need a conformance surface this format does not yet carry (issues #20, #23)."
+      "updated": "2026-10-02",
+      "cost": "docs/spec/conformance.md named T2-T9, R1-R53, ART-05, ART-08-ART-11, ART-15 and RPT-4-RPT-9 with no test behind them, so the public coverage claim is larger than the proof. The vector format and runner exist since 0.1.8, and 0.1.9 transcribed the accepted exact vectors the research process delivered (T2, R1, R2, R3, R4, T4, T5, T7) together with whole accepted families (INT-UNKNOWN, INT-TOTAL, CLU-INCOMPLETE, ACT-COV). The pending 0.2.0 branch holds T9 to its accepted table with a generator, leaving sixty-two named cases without executable proof. Several (T3, T6, T8, the bundle and store cases) need further conformance capabilities or accepted vectors (issues #20, #23)."
     },
     {
       "id": "D-2",

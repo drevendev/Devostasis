@@ -8,6 +8,7 @@ history does to the identity of the bundle that consumed it.
 
 from __future__ import annotations
 
+import copy
 import shutil
 
 import pytest
@@ -226,6 +227,65 @@ def test_a_build_refuses_observations_that_carry_history_from_another_predecesso
     replayed.observed_at = "2026-09-07T12:00:00Z"
     with pytest.raises(BundleError, match="HISTORY_SOURCE_NOT_PREDECESSOR"):
         build_from_observations(single_project(LOCATOR, config_version="1"), replayed, store)
+
+
+@pytest.mark.parametrize("changed", ["records", "attempts", "lineage", "source_observed_at", "basis", "freshness", "source_ref"])
+def test_a_build_refuses_changed_history_even_when_it_names_the_right_predecessor(tmp_path, changed):
+    """Naming the verified predecessor is not proof of the history it actually contains."""
+    from devostasis.runner import attach_revision_history, find_predecessor
+
+    store = FilesystemHistoryStore(tmp_path)
+    _, previous, _ = _chain(store)
+    project = single_project(LOCATOR, config_version="1")
+    obs = _obs("2026-09-08T12:00:00Z", _passing([1, 2, 3, 5]) + [_record("r", 4, [_run(RUN_R, [(1, "VERIFY_PASS")])])])
+    predecessor = find_predecessor(store, project, PROJECT_ID, obs.observed_at)
+    obs = attach_revision_history(obs, predecessor)
+    stated = copy.deepcopy(obs.get(CARRIED).to_dict())
+    assert stated["value"]["source_bundle_id"] == previous.bundle_id
+    if changed == "records":
+        stated["value"]["records"] = []
+    elif changed == "attempts":
+        failed = next(r for r in stated["value"]["records"] if r["revision"] == "r")
+        failed["parent_groups"][0]["attempts"] = [{"attempt": 1, "state": "VERIFY_PASS"}]
+    elif changed in ("lineage", "source_observed_at", "basis"):
+        stated["value"][changed] = "forged"
+    else:
+        stated[changed] = "STALE" if changed == "freshness" else "bundle:forged"
+    obs.replace(Observation.from_dict(stated))
+    with pytest.raises(BundleError, match="HISTORY_CONTENT_MISMATCH"):
+        build_from_observations(project, obs, store)
+
+
+def test_a_build_accepts_an_unchanged_carrier_and_reproduces_the_same_bundle(tmp_path):
+    import json
+
+    store = FilesystemHistoryStore(tmp_path)
+    _chain(store)
+    project = single_project(LOCATOR, config_version="1")
+    obs = _obs("2026-09-08T12:00:00Z", _passing([1, 2, 3, 5]) + [_record("r", 4, [_run(RUN_R, [(1, "VERIFY_PASS")])])])
+    built = build_from_observations(project, obs, store)
+    replayed = ObservationSet.from_dict(json.loads(built.members["observations.json"]))
+    rebuilt = build_from_observations(project, replayed, store)
+    assert rebuilt.bundle_id == built.bundle_id
+    assert rebuilt.members == built.members
+    assert _states(rebuilt)["r"] == "FAILURE_OBSERVED"
+
+
+@pytest.mark.parametrize("lineage", [LINEAGE, REPLAYABLE_LINEAGE])
+def test_duplicate_carried_revisions_cannot_overwrite_a_recorded_failure(lineage):
+    from devostasis.revision_history import encode, parent_from_current, union_record
+    from devostasis.vitals import integrity
+
+    obs = _obs("2026-09-08T12:00:00Z", _passing([1, 2, 3, 5]) + [_record("r", 4, [_run(RUN_R, [(1, "VERIFY_PASS")])])])
+    failed = _record("r", 4, [_run(RUN_R, [(1, "VERIFY_FAIL")])])
+    passed = _record("r", 4, [_run(RUN_R, [(1, "VERIFY_PASS")])])
+    records = [failed, passed]
+    if lineage == LINEAGE:
+        records = [encode(union_record(r["revision"], r["committed_at"], [parent_from_current(p, "test") for p in r["parents"]], [])) for r in records]
+    add(obs, CARRIED, {"lineage": lineage, "records": records}, "record")
+    result = integrity.evaluate(obs)
+    assert (result.band, result.evaluation_status) == (None, "UNKNOWN")
+    assert any(code.startswith("REVISION_HISTORY_CARRY_MALFORMED") for code in result.diagnostics)
 
 
 def test_a_build_leaves_the_callers_observation_set_as_it_was(tmp_path):

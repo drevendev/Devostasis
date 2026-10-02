@@ -248,10 +248,14 @@ def _carried_records(value: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         "basis": value.get("basis"),
     }
     records: list[dict[str, Any]] = []
+    seen: set[str] = set()
     for position, record in enumerate(raw):
         where = f"carried record {position}"
-        if not isinstance(record, dict) or not isinstance(record.get("revision"), str) or not isinstance(record.get("committed_at"), str):
+        if not isinstance(record, dict) or not isinstance(record.get("revision"), str) or not record["revision"] or not isinstance(record.get("committed_at"), str):
             raise HistoryShapeError(f"{where}: no revision or committed_at")
+        if record["revision"] in seen:
+            raise HistoryShapeError(f"{where}: duplicate revision {record['revision']}")
+        seen.add(record["revision"])
         timeutil.parse_ts(record["committed_at"])
         if lineage == LINEAGE:
             parents = parents_from_groups(record.get("parent_groups") or [], where)

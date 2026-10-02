@@ -135,7 +135,13 @@ is carried and the gap is explicit (`REVISION_HISTORY_GAP`, HIST-08, -18,
 -20). `verify` checks that the source a bundle names is the bundle its
 manifest follows (`HISTORY_SOURCE_MISMATCH`), and a build refuses
 observations that already carry history from another bundle
-(`HISTORY_SOURCE_NOT_PREDECESSOR`).
+(`HISTORY_SOURCE_NOT_PREDECESSOR`). A stated carrier must also match the
+canonical observation reconstructed from that verified predecessor, including
+its records and provenance (`HISTORY_CONTENT_MISMATCH`); an unchanged source
+id never authorizes replacement or deletion of a recorded attempt. Carried
+records name each nonempty immutable revision once. Duplicate revision ids
+are malformed history (`REVISION_HISTORY_CARRY_MALFORMED`), rather than a
+last-record-wins override of an earlier failure.
 
 **Reconciliation**, per revision of the current 14-day inventory: the carried
 union and the provider's current parents are merged by parent identity, and
