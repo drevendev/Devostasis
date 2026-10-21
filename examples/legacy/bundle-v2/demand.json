@@ -1,0 +1,104 @@
+{
+  "aggregate": null,
+  "attention_order": [
+    {
+      "level": "HIGH",
+      "vital_id": "integrity"
+    },
+    {
+      "level": "MEDIUM",
+      "vital_id": "direction"
+    },
+    {
+      "level": "MEDIUM",
+      "vital_id": "debt"
+    },
+    {
+      "level": "LOW",
+      "vital_id": "clutter"
+    },
+    {
+      "level": "LOW",
+      "vital_id": "flow"
+    },
+    {
+      "level": "MINIMAL",
+      "vital_id": "horizon"
+    },
+    {
+      "level": "MINIMAL",
+      "vital_id": "pulse"
+    }
+  ],
+  "canonical_semantics": "snapshot.json",
+  "contract": "devostasis.demand.v2",
+  "levels": [
+    "CRITICAL",
+    "HIGH",
+    "MEDIUM",
+    "LOW",
+    "MINIMAL",
+    "UNRESOLVED"
+  ],
+  "mapping_version": "devostasis-default-1",
+  "observed_at": "2026-09-05T12:00:00Z",
+  "schema": "devostasis.demand.v2",
+  "vitals": [
+    {
+      "band": "EXTENDED",
+      "evaluation_status": "AVAILABLE",
+      "gauge": 84,
+      "level": "MINIMAL",
+      "reason": "BAND:EXTENDED",
+      "vital_id": "horizon"
+    },
+    {
+      "band": "LIGHT",
+      "evaluation_status": "AVAILABLE",
+      "gauge": 10,
+      "level": "LOW",
+      "reason": "BAND:LIGHT",
+      "vital_id": "clutter"
+    },
+    {
+      "band": "MIXED",
+      "evaluation_status": "AVAILABLE",
+      "gauge": 60,
+      "level": "MEDIUM",
+      "reason": "BAND:MIXED",
+      "vital_id": "direction"
+    },
+    {
+      "band": "MOVING",
+      "evaluation_status": "AVAILABLE",
+      "gauge": 10,
+      "level": "LOW",
+      "reason": "BAND:MOVING",
+      "vital_id": "flow"
+    },
+    {
+      "band": "FLAKY",
+      "evaluation_status": "AVAILABLE",
+      "gauge": 62,
+      "level": "HIGH",
+      "reason": "BAND:FLAKY",
+      "vital_id": "integrity"
+    },
+    {
+      "band": "PRESENT",
+      "evaluation_status": "AVAILABLE",
+      "gauge": 11,
+      "level": "MEDIUM",
+      "reason": "BAND:PRESENT",
+      "vital_id": "debt"
+    },
+    {
+      "band": "SURGING",
+      "evaluation_status": "AVAILABLE",
+      "gauge": 82,
+      "level": "MINIMAL",
+      "reason": "BAND:SURGING",
+      "vital_id": "pulse"
+    }
+  ]
+}
