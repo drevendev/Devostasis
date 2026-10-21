@@ -75,6 +75,10 @@ class ImmutabilityError(HistoryStoreError):
     """Raised when an existing immutable bundle would be overwritten with different content."""
 
 
+class HistoryConflictError(HistoryStoreError):
+    """A publisher must rebuild against the latest committed predecessor."""
+
+
 class IdentityConflictError(HistoryStoreError):
     """Raised when a locator is claimed by a project that is not the one being written."""
 
@@ -89,6 +93,10 @@ class LatestState:
     manifest: dict[str, Any] | None
     snapshot: dict[str, Any] | None
     problems: list[str]
+    # The observation set the bundle was evaluated over, when it keeps one: the
+    # replay source of durable revision history for a bundle older than the
+    # carrier in its snapshot (PV-HIST-002, HIST-13).
+    observations: dict[str, Any] | None = None
 
 
 @dataclass
@@ -187,10 +195,12 @@ class FilesystemHistoryStore:
 
     def _read_index_at(self, directory: Path) -> dict[str, Any] | None:
         path = directory / "index.json"
-        if not path.exists():
-            return None
         try:
             index = canonical.load_file(path)
+        except FileNotFoundError:
+            return None
+        except PermissionError as exc:
+            raise HistoryStoreError(f"HISTORY_STORE_FORBIDDEN: index unreadable at {self._rel(directory)}") from exc
         except Exception as exc:  # noqa: BLE001
             raise HistoryStoreError(f"index unreadable at {self._rel(directory)}: {type(exc).__name__}") from exc
         problems = index_problems(index)
@@ -405,6 +415,7 @@ class FilesystemHistoryStore:
         try:
             manifest = canonical.loads(members["manifest.json"].decode("utf-8"))
             snapshot = canonical.loads(members["snapshot.json"].decode("utf-8")) if "snapshot.json" in members else None
+            observations = canonical.loads(members["observations.json"].decode("utf-8")) if "observations.json" in members else None
         except Exception as exc:  # noqa: BLE001
             return LatestState(True, False, expected_id, None, None, problems + [f"immutable bundle unreadable: {type(exc).__name__}"])
         if not isinstance(manifest, dict):
@@ -423,7 +434,7 @@ class FilesystemHistoryStore:
                 copied_id = None
             if copied_id is not None and copied_id != manifest.get("bundle_id") and not self._is_stale_copy(index, copied_id, manifest):
                 problems.append(f"latest pointer {copied_id} differs from index tail {manifest.get('bundle_id')}")
-        return LatestState(True, not problems, manifest.get("bundle_id"), manifest, snapshot, problems)
+        return LatestState(True, not problems, manifest.get("bundle_id"), manifest, snapshot, problems, observations if isinstance(observations, dict) else None)
 
     @staticmethod
     def _is_stale_copy(index: dict[str, Any], copied_id: str, tail_manifest: dict[str, Any]) -> bool:
@@ -563,6 +574,17 @@ class FilesystemHistoryStore:
         indexed bundle, which the next commit replaces, and never an index
         that names a bundle the copy contradicts.
         """
+        from .workscope.bundle import locked
+        from .workscope.model import ScopeError
+
+        self.root.mkdir(parents=True, exist_ok=True)
+        try:
+            with locked(self.root / ".history-store-lock"):
+                return self._commit_locked(bundle, bands, gauges, top_attention)
+        except ScopeError as exc:
+            raise HistoryConflictError(f"HISTORY_WRITE_CONFLICT: {exc}") from exc
+
+    def _commit_locked(self, bundle, bands, gauges, top_attention):
         from .demand import top_attention as _top
 
         problems = self._binding_problems(bundle)
@@ -575,6 +597,15 @@ class FilesystemHistoryStore:
             self._relocate(location)
         directory = location.directory
         path = self.put_immutable(bundle, directory)
+        index = self.read_index(bundle.project_key, directory)
+        entries = index["bundles"]
+        if entries and not any(e["bundle_id"] == bundle.bundle_id for e in entries):
+            tail = entries[-1]
+            if (bundle.observed_at, bundle.bundle_id) > (tail["observed_at"], tail["bundle_id"]):
+                if bundle.manifest.get("previous_bundle_id") != tail["bundle_id"]:
+                    # Preserve the immutable candidate; never publish a stale writer
+                    # as canonical latest. The caller retries after rebuilding.
+                    raise HistoryConflictError("HISTORY_WRITE_CONFLICT: predecessor changed; rebuild against latest")
         bands = bands if bands is not None else bundle.bands()
         gauges = gauges if gauges is not None else bundle.gauges()
         if top_attention is None:

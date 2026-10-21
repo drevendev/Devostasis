@@ -16,6 +16,7 @@ CONFORMANCE = ROOT / "docs" / "spec" / "conformance.md"
 CITATION = re.compile(r"`(test_[a-z0-9_]*\*?)`")
 DEFINITION = re.compile(r"^def (test_[a-z0-9_]+)", re.MULTILINE)
 VECTOR_CITATION = re.compile(r"`vector:([A-Z0-9-]+)`")
+BRIDGE_CITATION = re.compile(r"`bridge:([A-Z0-9-]+)`")
 
 
 def _defined_tests() -> set[str]:
@@ -57,6 +58,13 @@ def test_the_specification_index_lists_every_specification_page():
     pages = {path.name for path in (ROOT / "docs" / "spec").glob("*.md")} - {"README.md"}
     missing = sorted(name for name in pages if f"]({name})" not in index)
     assert not missing, f"docs/spec/README.md does not link: {missing}"
+
+
+def test_the_conformance_table_and_bridge_name_the_same_cases():
+    from surface_bridge import load_suite
+    corpus = {case["case"] for case in load_suite()}
+    cited = set(BRIDGE_CITATION.findall(CONFORMANCE.read_text(encoding="utf-8")))
+    assert cited == corpus
 
 
 def test_every_contract_identifier_the_code_declares_is_documented():

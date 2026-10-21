@@ -1,0 +1,13 @@
+"""Offline, revision-bound source evidence; independent of the seven Vitals."""
+
+LEGACY_CONTRACT = "devostasis.code-analysis.v1"
+LEGACY_POLICY = "devostasis.code-policy.v1"
+LEGACY_ENGINE = "devostasis.code-engine.v1"
+LEGACY_PACKET = "devostasis.code-packet.v1"
+LEGACY_COMPARISON = "devostasis.code-comparison.v1"
+CONTRACT = "devostasis.code-analysis.v2"
+POLICY = "devostasis.code-policy.v2"
+ENGINE = "devostasis.code-engine.v2"
+PACKET = "devostasis.code-packet.v2"
+COMPARISON = "devostasis.code-comparison.v2"
+HISTORY_PROOF = "devostasis.git-history-proof.v1"

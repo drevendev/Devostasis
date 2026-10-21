@@ -1,0 +1,778 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "project",
+    "outcome_map",
+    "observed_at",
+    "configured",
+    "coverage",
+    "revisions",
+    "parents",
+    "children",
+    "rerun_links"
+  ],
+  "properties": {
+    "contract": {
+      "const": "devostasis.ci-normalization.v1"
+    },
+    "project": {
+      "$ref": "#/$defs/project"
+    },
+    "outcome_map": {
+      "enum": [
+        "devostasis.ci-outcomes.github.v1",
+        "devostasis.ci-outcomes.gitlab.v1"
+      ]
+    },
+    "observed_at": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "configured": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "coverage": {
+      "enum": [
+        "COMPLETE",
+        "PARTIAL",
+        "STALE",
+        "UNAVAILABLE"
+      ]
+    },
+    "revisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/revision"
+      },
+      "maxItems": 10000
+    },
+    "parents": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parent"
+          },
+          "maxItems": 10000
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pages"
+          ],
+          "properties": {
+            "pages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "ordinal",
+                  "has_next",
+                  "items"
+                ],
+                "properties": {
+                  "ordinal": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "has_next": {
+                    "type": "boolean"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/parent"
+                    },
+                    "maxItems": 10000
+                  }
+                }
+              },
+              "minItems": 1,
+              "maxItems": 1000
+            }
+          }
+        }
+      ]
+    },
+    "children": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/child"
+      },
+      "maxItems": 10000
+    },
+    "rerun_links": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rerun_link"
+      },
+      "maxItems": 10000
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/Devostasis/schemas/ci-normalization.schema.json",
+  "$defs": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "forge_instance",
+        "immutable_project_id",
+        "default_branch"
+      ],
+      "properties": {
+        "provider": {
+          "enum": [
+            "github",
+            "gitlab"
+          ]
+        },
+        "forge_instance": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "immutable_project_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "default_branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface",
+        "id"
+      ],
+      "properties": {
+        "surface": {
+          "enum": [
+            "actions",
+            "checks",
+            "pipelines"
+          ]
+        },
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "committed_at",
+        "default_branch"
+      ],
+      "properties": {
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "committed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2048
+        },
+        "default_branch": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "parent": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "surface",
+            "revision",
+            "observed_at",
+            "coverage",
+            "native"
+          ],
+          "properties": {
+            "surface": {
+              "const": "actions"
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "observed_at": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "coverage": {
+              "enum": [
+                "COMPLETE",
+                "PARTIAL",
+                "STALE",
+                "UNAVAILABLE"
+              ]
+            },
+            "native": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "head_sha",
+                "status",
+                "conclusion",
+                "run_attempt"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "head_sha": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "status": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "conclusion": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "run_attempt": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "check_suite_id": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "workflow_id": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "event": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "html_url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "updated_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "completed_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "surface",
+            "revision",
+            "observed_at",
+            "coverage",
+            "native"
+          ],
+          "properties": {
+            "surface": {
+              "const": "checks"
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "observed_at": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "coverage": {
+              "enum": [
+                "COMPLETE",
+                "PARTIAL",
+                "STALE",
+                "UNAVAILABLE"
+              ]
+            },
+            "native": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "head_sha",
+                "status",
+                "conclusion"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "head_sha": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "status": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "conclusion": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "app": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [],
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "slug": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    }
+                  }
+                },
+                "url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "updated_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "completed_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "surface",
+            "revision",
+            "observed_at",
+            "coverage",
+            "native"
+          ],
+          "properties": {
+            "surface": {
+              "const": "pipelines"
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "observed_at": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "coverage": {
+              "enum": [
+                "COMPLETE",
+                "PARTIAL",
+                "STALE",
+                "UNAVAILABLE"
+              ]
+            },
+            "native": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "sha",
+                "status"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "sha": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "status": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "ref": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "source": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "web_url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "updated_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "finished_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "child": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "surface",
+            "revision",
+            "observed_at",
+            "coverage",
+            "native",
+            "parent"
+          ],
+          "properties": {
+            "surface": {
+              "const": "check-run"
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "observed_at": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "coverage": {
+              "enum": [
+                "COMPLETE",
+                "PARTIAL",
+                "STALE",
+                "UNAVAILABLE"
+              ]
+            },
+            "native": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "head_sha",
+                "status",
+                "conclusion"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "head_sha": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "status": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "conclusion": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                }
+              }
+            },
+            "parent": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/reference"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "surface",
+            "revision",
+            "observed_at",
+            "coverage",
+            "native",
+            "parent"
+          ],
+          "properties": {
+            "surface": {
+              "const": "job"
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "observed_at": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "coverage": {
+              "enum": [
+                "COMPLETE",
+                "PARTIAL",
+                "STALE",
+                "UNAVAILABLE"
+              ]
+            },
+            "native": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "sha",
+                "status"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "sha": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "status": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 2048
+                }
+              }
+            },
+            "parent": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/reference"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "rerun_link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract",
+        "provider",
+        "forge_instance",
+        "project_id",
+        "revision",
+        "earlier",
+        "later",
+        "status",
+        "evidence_ref"
+      ],
+      "properties": {
+        "contract": {
+          "const": "devostasis.ci-rerun-link.v1"
+        },
+        "provider": {
+          "enum": [
+            "github",
+            "gitlab"
+          ]
+        },
+        "forge_instance": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "earlier": {
+          "$ref": "#/$defs/reference"
+        },
+        "later": {
+          "$ref": "#/$defs/reference"
+        },
+        "status": {
+          "enum": [
+            "AVAILABLE",
+            "UNKNOWN",
+            "UNAVAILABLE",
+            "FORBIDDEN",
+            "ERROR"
+          ]
+        },
+        "evidence_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2048
+        }
+      }
+    }
+  },
+  "description": "Bounded provider-native offline acquisition facts. Runtime additionally enforces the 16 MiB bound, timestamps, provider/map/surface and immutable revision bindings, unique revision metadata, contiguous page ordinals and explicit rerun proof scope. Canonical output flattens pages, sorts and deduplicates identical facts. Evidence links are acquisition claims, not provider signatures."
+}
