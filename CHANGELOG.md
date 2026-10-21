@@ -3,7 +3,26 @@
 All notable changes to this project are documented here. Semantic changes to a
 contract or a policy always come with a version bump of that contract.
 
-## 0.2.0 (2026-10-01)
+## 0.2.0 (unreleased)
+
+Release-readiness review, 2026-10-02:
+
+- A saved carried-history observation is admitted only when its canonical
+  content and provenance match what the verified immediate predecessor
+  supplies. Previously the correct source bundle id and acquisition status
+  were enough to admit edited records, including removal of a prior failure.
+  The build now refuses those inputs with `HISTORY_CONTENT_MISMATCH`.
+- A duplicate carried revision id fails closed with
+  `REVISION_HISTORY_CARRY_MALFORMED`, in both the current carrier and replay
+  from 0.1.x. Previously the last duplicate could overwrite an observed
+  failure. These are admission repairs under the existing accepted history
+  contract; valid evidence, contract ids, thresholds and windows are unchanged.
+- Pending maintenance from #36, #37 and #50 is integrated into the release:
+  weekly Dependabot updates, cancellation of superseded CI runs, and the
+  Hungry Crab configuration and ledger. The two attribution receipts are
+  retained together rather than losing one to their add/add conflict.
+- The roadmap distinguishes the tagged 0.1.9 release from the pending 0.2.0
+  adoption branch and names the next consumer-facing development sequence.
 
 The adoption release. Every accepted research contract about the Vitals and
 their history that this repository had not adopted, and that needs no owner

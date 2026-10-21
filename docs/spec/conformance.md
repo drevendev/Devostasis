@@ -521,6 +521,17 @@ accepted case.
 | gauges establish no order | a gauge that moved inside a band is UNCHANGED | `test_a_gauge_that_moved_inside_one_band_is_not_a_direction` |
 | ordered bands are emittable | every ordered band is one its Vital emits, and the unordered ones are exactly the descriptive and evidence states | `test_every_ordered_band_is_a_band_its_vital_can_emit`, `test_the_bands_left_unordered_are_exactly_the_descriptive_and_evidence_states` |
 
+## Carried-history admission (implementation regressions)
+
+These regressions enforce the accepted predecessor and immutable-revision
+requirements without assigning new research case identifiers.
+
+| Boundary | Meaning | Test |
+| --- | --- | --- |
+| carrier content | edited records, attempts, lineage or provenance cannot replace the verified predecessor's history, even with its correct bundle id | `test_a_build_refuses_changed_history_even_when_it_names_the_right_predecessor` |
+| exact rebuild | an unchanged admitted carrier reproduces all bundle members and keeps the recorded failure | `test_a_build_accepts_an_unchanged_carrier_and_reproduces_the_same_bundle` |
+| duplicate revision | neither current nor replayable carried lineage can overwrite a failure with a second record for the same revision | `test_duplicate_carried_revisions_cannot_overwrite_a_recorded_failure` |
+
 ## The vector runner (target B1)
 
 | Case | Meaning | Test |

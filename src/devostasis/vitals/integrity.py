@@ -194,6 +194,25 @@ def _bearing(history: Reconciled, revisions: list[dict[str, Any]]) -> list[dict[
     return [r for r in records if r["parents"] or r.get("unresolved")]
 
 
+def _unknown_current(revisions: list[dict[str, Any]], diagnostics: list[str], history: Reconciled) -> dict[str, Any]:
+    """Retain the accepted current-verdict diagnostic beside an independent admission/history gap."""
+    active = [r for r in revisions if _record_consistent(r) and r.get("parents")
+              and isinstance(r.get("committed_at"), str)]
+    if not active:
+        return {}
+    latest = _newest(active)
+    current = latest.get("current_verdict") or VERDICT_UNKNOWN
+    if current not in VERDICTS:
+        diagnostics.append(f"CURRENT_VERDICT_UNRECOGNIZED:{current}")
+        current = VERDICT_UNKNOWN
+    if current != VERDICT_UNKNOWN:
+        return {}
+    diagnostics.append(f"CURRENT_VERDICT_UNKNOWN:{latest['revision']}")
+    return {"unknown_verdict_rule": UNKNOWN_RULE, "current_revision": {
+        "revision": latest["revision"], "committed_at": latest["committed_at"],
+        "current_verdict": current, "history_state": history.records.get(latest["revision"], {}).get("history_state", latest["history_state"])}}
+
+
 def evaluate(obs: ObservationSet) -> VitalResult:
     diagnostics: list[str] = []
     reconciled = reconcile(obs)
@@ -230,7 +249,7 @@ def evaluate(obs: ObservationSet) -> VitalResult:
         # shape its lineage declares, is a coverage defect, not a pass.
         diagnostics.extend(f"REVISION_RECORD_INCONSISTENT:{_record_label(r)}" for r in inconsistent)
         diagnostics.extend(reconciled.problems)
-        return _unknown(obs, history, diagnostics)
+        return _unknown(obs, {**history, **_unknown_current(revisions, diagnostics, reconciled)}, diagnostics)
     active = [r for r in revisions if r.get("parents")]
     provenance: dict[str, int] = {}
     for r in active:
@@ -276,8 +295,16 @@ def evaluate(obs: ObservationSet) -> VitalResult:
         # R52 and PV-HIST-002: history nobody can prove is neither a pass nor a
         # zero, and T9 puts it above every conservative branch.
         diagnostics.extend(f"REVISION_HISTORY_UNKNOWN:{r['revision']}" for r in unknown_history)
+        current_gap = _unknown_current(revisions, diagnostics, reconciled)
+        if current_gap:
+            current_gap["failure_ratio_14d"] = ratio(f, n) if n else None
+            strength = sample_strength(n)
+            if strength is not None:
+                current_gap["sample_strength"] = strength
+            if strength == SAMPLE_SPARSE:
+                diagnostics.append(SPARSE_DIAGNOSTIC)
         return _result(
-            obs, None, EVAL_UNKNOWN, None, None, {**counts, **history}, diagnostics,
+            obs, None, EVAL_UNKNOWN, None, None, {**counts, **history, **current_gap}, diagnostics,
             f"The verification history of {len(unknown_history)} recent revisions cannot be proven complete; {f} of {n} decisive revisions failed, and no band is claimed around the unknown ones.",
         )
 

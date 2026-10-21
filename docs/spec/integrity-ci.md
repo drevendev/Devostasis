@@ -135,7 +135,13 @@ is carried and the gap is explicit (`REVISION_HISTORY_GAP`, HIST-08, -18,
 -20). `verify` checks that the source a bundle names is the bundle its
 manifest follows (`HISTORY_SOURCE_MISMATCH`), and a build refuses
 observations that already carry history from another bundle
-(`HISTORY_SOURCE_NOT_PREDECESSOR`).
+(`HISTORY_SOURCE_NOT_PREDECESSOR`). A stated carrier must also match the
+canonical observation reconstructed from that verified predecessor, including
+its records and provenance (`HISTORY_CONTENT_MISMATCH`); an unchanged source
+id never authorizes replacement or deletion of a recorded attempt. Carried
+records name each nonempty immutable revision once. Duplicate revision ids
+are malformed history (`REVISION_HISTORY_CARRY_MALFORMED`), rather than a
+last-record-wins override of an earlier failure.
 
 **Reconciliation**, per revision of the current 14-day inventory: the carried
 union and the provider's current parents are merged by parent identity, and
@@ -150,6 +156,25 @@ Retries never add samples (HIST-03), a newer revision is a distinct one
 When the current series is partial or unusable, carried records are kept, so
 history crosses a bundle whose verification evidence could not be read. A
 current verdict is never carried (HIST-16).
+
+Current inventory admission validates every row before treating absence as
+branch departure. Duplicate current ids are diagnosed as
+`REVISION_RECORD_DUPLICATE:<revision>`; malformed rows and contradictory
+coverage prevent a completeness claim. Ambiguous current records cannot
+replace carried facts. Current timestamps are parsed before reconciliation;
+a different instant for a known revision yields
+`IMMUTABLE_COMMIT_TIME_MISMATCH` and preserves its prior time and attempts.
+Equivalent timezone representations name the same instant.
+
+Attempt completeness requires exactly the observed identities 1..latest,
+with work bounded by the observed cardinality. A missing or extra identity
+cannot establish completeness. Unknown state vocabulary is malformed input;
+the legitimate `UNKNOWN` outcome is retained as incomplete history and never
+proves absence of failure. Successive states of one attempt, including
+`VERIFY_UNRESOLVED` then `VERIFY_PASS`, remain valid observations. An observed
+failure remains absorbing even when the rest of history is incomplete.
+These are admission repairs within the existing history lineage and accepted
+rules, not new thresholds, external-check semantics or a migration.
 
 **Lineage.** A carried union of `devostasis.ci-history.v2` is read as it is.
 The revision records a 0.1.x bundle keeps in `ci.revision_verdicts_14d`
