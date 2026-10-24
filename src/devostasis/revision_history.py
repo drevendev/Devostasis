@@ -486,8 +486,11 @@ def carried_observation(
         series = next((o for o in previous_observations.get("observations") or [] if isinstance(o, dict) and o.get("observation_id") == REVISIONS), None)
     if series is not None:
         # A bundle older than this carrier: replay its revision records.
-        records = series.get("value") if series.get("status") in (AVAILABLE, PARTIAL) and isinstance(series.get("value"), list) else []
-        replayable = [_replay_source(record) for record in _in_window(records, observed_at)]
+        records = series.get("value") if series.get("status") in (AVAILABLE, PARTIAL) else []
+        windowed_records = _in_window(records, observed_at)
+        # Preserve malformed value-bearing evidence for carried-record admission.
+        replayable = ([_replay_source(record) for record in windowed_records]
+                      if isinstance(windowed_records, list) else windowed_records)
         value = {"lineage": REPLAYABLE_LINEAGE, "records": replayable, "basis": BASIS_SERIES, "source_series_status": series.get("status"), **source}
         return Observation(observation_id=CARRIED, status=AVAILABLE, value_type="record", value=value, evidence_ref=evidence, **common)
     return Observation(observation_id=CARRIED, status=UNKNOWN, value_type="record", reason_code=PREDECESSOR_CARRIES_NO_HISTORY, evidence_ref=evidence, **common)

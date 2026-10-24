@@ -765,3 +765,18 @@ findings. They do not assign or replace research case identifiers.
 | DEV-CARRY-ARRAY-02 | Malformed history cannot yield a favorable Vital despite four current passing revisions (15 variants) | `test_malformed_carried_array_cannot_produce_a_favorable_vital` |
 | DEV-CARRY-ARRAY-03 | Omitted and actual empty arrays remain compatible (6 variants) | `test_omitted_and_empty_carried_arrays_remain_compatible` |
 | DEV-CARRY-ARRAY-04 | Valid v1/v2 carried failures survive admission (2 variants) | `test_valid_carried_failure_survives_array_admission` |
+
+## Legacy carried-series conversion (issue #83, bounded implementation repair)
+
+These implementation-local checks cover malformed value-bearing legacy series.
+They do not accept the separate status/coverage contract in issue #87 or claim
+complete acquisition from an empty array or a valid `PARTIAL` series.
+
+| Case | Obligation | Executable |
+| --- | --- | --- |
+| DEV-LEGACY-ARRAY-01 | Preserve invalid values for admission under AVAILABLE/PARTIAL (10 variants) | `test_legacy_conversion_preserves_malformed_series_for_admission` |
+| DEV-LEGACY-ARRAY-02 | Public reconciliation/evaluation rejects malformed legacy history despite four current passes (10 variants) | `test_legacy_malformed_series_cannot_produce_a_favorable_vital` |
+| DEV-LEGACY-ARRAY-03 | Actual empty arrays retain conversion shape compatibility (2 variants) | `test_legacy_real_empty_array_retains_conversion_compatibility` |
+| DEV-LEGACY-ARRAY-04 | Valid passing/failing attempts retain projection and window filtering (4 variants) | `test_legacy_valid_attempts_and_window_projection_survive` |
+| DEV-LEGACY-ARRAY-05 | A missing value is malformed rather than known empty (2 variants) | `test_legacy_missing_value_is_malformed_rather_than_empty` |
+| DEV-LEGACY-ARRAY-06 | Legacy failure crosses four generations with exact bundle replay (2 variants) | `test_legacy_failure_survives_four_generations_and_exact_replay` |

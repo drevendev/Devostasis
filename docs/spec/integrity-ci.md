@@ -151,8 +151,17 @@ numbers, strings and objects are malformed, not empty evidence. Such malformed
 carriers retain `REVISION_HISTORY_CARRY_MALFORMED` and an `UNKNOWN` Integrity
 result even when the current revision sample passes. Valid carried failures
 remain absorbing. This is a bounded admission repair for issue #83, not a
-change to the history lineage or Vital policy. Legacy predecessor conversion
-and parent-kind conflict reconciliation are separate remaining #83 work.
+change to the history lineage or Vital policy. Parent-kind conflict propagation
+and reconciliation remain separate #83 work.
+
+The pre-carrier (0.1.x) conversion also preserves a malformed or missing `value`
+from an `AVAILABLE` or `PARTIAL` revision series in the replayable v1 carrier's
+`records`. It must reach the same admission error instead of being replaced by
+an empty array. Actual lists retain their existing window filtering and canonical
+attempt projection, including observed failures. This bounded conversion repair
+does not resolve legacy non-value-bearing status handling, complete-empty
+acquisition proof, or inventory-level uncertainty for valid `PARTIAL` history
+(issue #87); it makes no completeness claim for those cases.
 
 **Reconciliation**, per revision of the current 14-day inventory: the carried
 union and the provider's current parents are merged by parent identity, and
