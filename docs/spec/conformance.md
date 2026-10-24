@@ -752,3 +752,16 @@ Admission, canonical input, paging and legacy rule boundaries are also checked b
 `test_partial_inventory_and_partial_parent_cannot_prove_favorable_history`,
 `test_normalization_is_opt_in_and_delta_names_the_rule_boundary` and
 `test_bridge_wrong_assertion_still_fails_with_optimized_python`.
+
+## Carried-array admission (issue #83, bounded implementation repair)
+
+These implementation-local checks cover three carried-record array readers,
+not the separate legacy predecessor conversion or parent-kind reconciliation
+findings. They do not assign or replace research case identifiers.
+
+| Case | Obligation | Executable |
+| --- | --- | --- |
+| DEV-CARRY-ARRAY-01 | Explicit false-like invalid arrays fail admission (15 variants) | `test_explicit_malformed_carried_array_is_rejected` |
+| DEV-CARRY-ARRAY-02 | Malformed history cannot yield a favorable Vital despite four current passing revisions (15 variants) | `test_malformed_carried_array_cannot_produce_a_favorable_vital` |
+| DEV-CARRY-ARRAY-03 | Omitted and actual empty arrays remain compatible (6 variants) | `test_omitted_and_empty_carried_arrays_remain_compatible` |
+| DEV-CARRY-ARRAY-04 | Valid v1/v2 carried failures survive admission (2 variants) | `test_valid_carried_failure_survives_array_admission` |

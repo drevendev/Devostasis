@@ -144,6 +144,16 @@ records name each nonempty immutable revision once. Duplicate revision ids
 are malformed history (`REVISION_HISTORY_CARRY_MALFORMED`), rather than a
 last-record-wins override of an earlier failure.
 
+At carried-record admission, v2 `parent_groups` and `unresolved`, and replayable
+v1 `parents`, must be arrays when explicitly present. Omission defaults to an
+empty array; an actual empty array remains valid. Explicit `null`, booleans,
+numbers, strings and objects are malformed, not empty evidence. Such malformed
+carriers retain `REVISION_HISTORY_CARRY_MALFORMED` and an `UNKNOWN` Integrity
+result even when the current revision sample passes. Valid carried failures
+remain absorbing. This is a bounded admission repair for issue #83, not a
+change to the history lineage or Vital policy. Legacy predecessor conversion
+and parent-kind conflict reconciliation are separate remaining #83 work.
+
 **Reconciliation**, per revision of the current 14-day inventory: the carried
 union and the provider's current parents are merged by parent identity, and
 the state is a function of the union alone. An observed `VERIFY_FAIL` is

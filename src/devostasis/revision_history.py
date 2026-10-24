@@ -266,15 +266,18 @@ def _carried_records(value: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         seen.add(record["revision"])
         timeutil.parse_ts(record["committed_at"])
         if lineage == LINEAGE:
-            parents = parents_from_groups(record.get("parent_groups") or [], where)
-            unresolved = record.get("unresolved") or []
+            parents = parents_from_groups(record.get("parent_groups", []), where)
+            unresolved = record.get("unresolved", [])
             if not isinstance(unresolved, list) or not all(isinstance(reason, str) for reason in unresolved):
                 raise HistoryShapeError(f"{where}: unresolved is not a list of reasons")
             records.append(union_record(record["revision"], record["committed_at"], merge_parents(parents)[0], unresolved))
         elif lineage == REPLAYABLE_LINEAGE:
             # HIST-13: replayed from the canonical attempts the older record kept,
             # never copied from the state it derived under the older semantics.
-            parents = [parent_from_current(p, where) for p in record.get("parents") or []]
+            previous_parents = record.get("parents", [])
+            if not isinstance(previous_parents, list):
+                raise HistoryShapeError(f"{where}: parents is not a list")
+            parents = [parent_from_current(p, where) for p in previous_parents]
             records.append(union_record(record["revision"], record["committed_at"], merge_parents(parents)[0], []))
         else:
             # HIST-15: no replay and no accepted migration from this lineage; the
