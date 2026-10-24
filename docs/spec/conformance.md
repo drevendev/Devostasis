@@ -780,3 +780,20 @@ complete acquisition from an empty array or a valid `PARTIAL` series.
 | DEV-LEGACY-ARRAY-04 | Valid passing/failing attempts retain projection and window filtering (4 variants) | `test_legacy_valid_attempts_and_window_projection_survive` |
 | DEV-LEGACY-ARRAY-05 | A missing value is malformed rather than known empty (2 variants) | `test_legacy_missing_value_is_malformed_rather_than_empty` |
 | DEV-LEGACY-ARRAY-06 | Legacy failure crosses four generations with exact bundle replay (2 variants) | `test_legacy_failure_survives_four_generations_and_exact_replay` |
+
+## Parent-kind conflict persistence (issue #83, bounded implementation repair)
+
+These implementation-local cases cover structural contradictions through v1
+admission and later v2 reconciliation. They do not assign research identifiers
+or resolve issue #87's separate inventory/status compatibility work.
+
+| Case | Obligation | Executable |
+| --- | --- | --- |
+| DEV-PARENT-KIND-01 | Both v1 parent orders retain conflicts and failures from either kind (6 variants) | `test_v1_kind_conflict_is_retained_in_both_orders` |
+| DEV-PARENT-KIND-02 | Repeated complete-current passes cannot clear v1/v2 conflicts (12 variants) | `test_kind_conflict_survives_repeated_complete_current_passes` |
+| DEV-PARENT-KIND-03 | Same-kind and distinct-parent unions remain compatible (4 variants) | `test_valid_parent_union_remains_compatible` |
+| DEV-PARENT-KIND-04 | Duplicate parent ids across v2 groups remain malformed (2 variants) | `test_v2_duplicate_parent_groups_still_fail_admission` |
+| DEV-PARENT-KIND-05 | Complete evidence repairs lineage gaps without clearing kind conflicts (2 variants) | `test_complete_evidence_repairs_lineage_gap_but_not_kind_conflict` |
+| DEV-PARENT-KIND-06 | Every structural kind marker survives a simultaneous lineage repair | `test_all_structural_kind_markers_survive_lineage_repair` |
+| DEV-PARENT-KIND-07 | Normal expiry and branch departure still remove a conflicted revision (2 variants) | `test_conflicts_do_not_prevent_normal_revision_removal` |
+| DEV-PARENT-KIND-08 | Legacy/current-origin conflicts cross four verified bundles with exact replay (8 variants) | `test_kind_conflict_crosses_four_bundles_and_exact_replay` |

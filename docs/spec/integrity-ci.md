@@ -151,8 +151,7 @@ numbers, strings and objects are malformed, not empty evidence. Such malformed
 carriers retain `REVISION_HISTORY_CARRY_MALFORMED` and an `UNKNOWN` Integrity
 result even when the current revision sample passes. Valid carried failures
 remain absorbing. This is a bounded admission repair for issue #83, not a
-change to the history lineage or Vital policy. Parent-kind conflict propagation
-and reconciliation remain separate #83 work.
+change to the history lineage or Vital policy.
 
 The pre-carrier (0.1.x) conversion also preserves a malformed or missing `value`
 from an `AVAILABLE` or `PARTIAL` revision series in the replayable v1 carrier's
@@ -176,6 +175,19 @@ Retries never add samples (HIST-03), a newer revision is a distinct one
 When the current series is partial or unusable, carried records are kept, so
 history crosses a bundle whose verification evidence could not be read. A
 current verdict is never carried (HIST-16).
+
+**Parent-kind contradictions** are structural uncertainty, not missing attempt
+coverage. Replayable v1 admission retains `PARENT_KIND_CONFLICT:<parent_id>`
+when one immutable parent id has conflicting kinds, regardless of parent order.
+Reconciliation retains these markers even beside a later complete current PASS,
+and subsequent v2 carriers keep them. The affected revision cannot become
+`PASS_ONLY_OBSERVED` merely because current attempts are complete. An observed
+`VERIFY_FAIL` from either kind remains absorbing. Genuine incompatible-lineage
+uncertainty can still be repaired by complete evidence under HIST-15/HIST-19;
+its repair does not clear a parent-kind contradiction. Normal expiry and proven
+departure from the complete branch inventory still remove the revision.
+This issue #83 repair preserves the existing history lineage and Vital policy;
+it does not resolve the separate legacy status/coverage questions in issue #87.
 
 Current inventory admission validates every row before treating absence as
 branch departure. Duplicate current ids are diagnosed as

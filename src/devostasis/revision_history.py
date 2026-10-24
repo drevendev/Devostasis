@@ -278,7 +278,8 @@ def _carried_records(value: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
             if not isinstance(previous_parents, list):
                 raise HistoryShapeError(f"{where}: parents is not a list")
             parents = [parent_from_current(p, where) for p in previous_parents]
-            records.append(union_record(record["revision"], record["committed_at"], merge_parents(parents)[0], []))
+            merged, conflicts = merge_parents(parents)
+            records.append(union_record(record["revision"], record["committed_at"], merged, conflicts))
         else:
             # HIST-15: no replay and no accepted migration from this lineage; the
             # old record stays historical evidence in its own bundle, and the
@@ -400,9 +401,10 @@ def reconcile(obs: ObservationSet) -> Reconciled:
         prior_parents = prior["parents"] if prior else []
         unresolved = list(prior.get("unresolved") or []) if prior else []
         if unresolved and visible and all(parent_complete(p) for p in visible):
-            # HIST-15, HIST-19: complete current evidence repairs a prior that
-            # could not be carried; anything less leaves the revision unknown.
-            unresolved = []
+            # HIST-15, HIST-19: complete current evidence repairs a history gap,
+            # not a contradiction in an immutable parent's kind.
+            unresolved = [reason for reason in unresolved
+                          if reason.startswith("PARENT_KIND_CONFLICT:")]
         parents, conflicts = merge_parents(prior_parents, visible)
         records[revision] = union_record(revision, committed_at, parents, unresolved + conflicts)
     return Reconciled(records=records, source=source, problems=problems)
