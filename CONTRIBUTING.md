@@ -98,6 +98,10 @@ adapter against a repository you can read with
 
 ## Pull request checklist
 
+For distribution changes, also run the [installed-wheel gate](docs/wheel-verification.md).
+It installs the actual wheel in a clean environment outside the source checkout;
+the editable source-test run above covers a different boundary.
+
 - the description carries `Target: <id>` when the change advances a declared
   target, and the id exists in `.devostasis/targets.json`;
 - tests pass on Python 3.12 or newer, and no new dependency was added to the

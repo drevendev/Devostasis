@@ -14,6 +14,20 @@ permissions:
   contents: read
 
 jobs:
+  wheel-smoke:
+    name: Installed wheel (Ubuntu, Python 3.12)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build and verify the installed wheel outside checkout
+        run: python scripts/wheel_smoke.py
+
   test:
     name: Tests (Python ${{ matrix.python }})
     runs-on: ubuntu-latest
