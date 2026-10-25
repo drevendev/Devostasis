@@ -14,6 +14,7 @@ from .contracts import ACTIVITY_SCHEMA
 from .normalize import CI_REVISIONS, INV_COMMITS, INV_CRS, INV_ISSUES, INV_RELEASES
 from .observations import ObservationSet
 from .policy import ACTIVITY
+from .revision_history import _series_records
 
 BASIS_PREVIOUS = "PREVIOUS_BUNDLE"
 BASIS_WINDOW = "OBSERVATION_WINDOW_28D"
@@ -130,7 +131,11 @@ def build_activity(
     verification_items: list[dict[str, Any]] = []
     verified = failed = unresolved = 0
     if ci is not None and ci.has_value:
-        for rev in ci.value:
+        admitted, _, problems = _series_records(ci)
+        coverage_notes.extend(f"VERIFICATION_INPUT_INADMISSIBLE:{problem}" for problem in problems)
+        if admitted is None:
+            coverage_notes.append(f"VERIFICATION:{ci.status}:{ci.freshness}")
+        for rev in admitted or []:
             if not rev.get("parents") or not _in_interval(rev.get("committed_at"), start, end):
                 continue
             verified += 1

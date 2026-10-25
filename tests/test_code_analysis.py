@@ -263,7 +263,7 @@ def test_code_shallow_history_retains_explicit_partial_coverage(tmp_path):
     git(tmp_path, "clone", "--depth=1", repo.as_uri(), str(clone))
     result = analyze(clone, at=NEXT)[4]["analysis.json"]
     assert result["history"]["status"] == "PARTIAL"
-    assert "SHALLOW_HISTORY" in result["history"]["reasons"]
+    assert "HISTORY_GRAPH_INCOMPLETE" in result["history"]["reasons"]
 
 
 def test_code_sha256_repository_proofs_replay_with_explicit_object_format(tmp_path):

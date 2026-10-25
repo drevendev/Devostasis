@@ -5,16 +5,20 @@ from copy import deepcopy
 
 from ..canonical import canonical_bytes, digest
 from ..workscope.model import fields, instant, number, path, require, strings
-from . import COMPARISON, ENGINE, PACKET
+from . import COMPARISON, PACKET, CONTRACT, LEGACY_COMPARISON, LEGACY_PACKET
 from .bundle import decode, sarif
 
 
 def compare(before, after):
     a, b = before["analysis.json"], after["analysis.json"]
     reasons = []
+    if a["engine"] != b["engine"]: reasons.append("ANALYSIS_LINEAGE_CHANGED")
+    if (a["subject"].get("roots_complete") is False or b["subject"].get("roots_complete") is False):
+        reasons.append("LOCAL_REPOSITORY_IDENTITY_UNPROVEN")
     if a["subject"]["repository_id"] != b["subject"]["repository_id"]: reasons.append("LOCAL_REPOSITORY_IDENTITY_CHANGED")
     if before["policy.json"] != after["policy.json"]: reasons.append("ANALYSIS_POLICY_CHANGED")
-    result = {"contract": COMPARISON, "before": before["manifest.json"]["bundle_id"], "after": after["manifest.json"]["bundle_id"],
+    contract = COMPARISON if any(v["manifest.json"]["contract"] == CONTRACT for v in (before, after)) else LEGACY_COMPARISON
+    result = {"contract": contract, "before": before["manifest.json"]["bundle_id"], "after": after["manifest.json"]["bundle_id"],
               "status": "INCOMPARABLE" if reasons else "COMPARABLE", "reasons": reasons, "findings": [], "files": [],
               "authority": "STATIC_FINDING_TRANSITIONS; no health, productivity, improvement or acceptance judgement"}
     if reasons: return result
@@ -50,7 +54,7 @@ def packet(decoded, paths, max_files=20, max_bytes=1024 * 1024):
         data = decode(raw["sources"][filename], max_bytes); total += len(data)
         require(total <= max_bytes, "source packet byte budget")
         files.append({"path": filename, "object_id": entries[filename]["object_id"], "size": len(data), "base64": raw["sources"][filename]})
-    value = {"contract": PACKET, "analysis_bundle_id": decoded["manifest.json"]["bundle_id"], "subject": deepcopy(raw["subject"]),
+    value = {"contract": PACKET if decoded["manifest.json"]["contract"] == CONTRACT else LEGACY_PACKET, "analysis_bundle_id": decoded["manifest.json"]["bundle_id"], "subject": deepcopy(raw["subject"]),
              "budget": {"max_files": max_files, "max_bytes": max_bytes}, "files": files, "total_bytes": total,
              "authority": "PINNED_LOCAL_SOURCE_ONLY; no live freshness, independent acceptance or execution authority"}
     value["packet_id"] = digest(value)
@@ -82,7 +86,7 @@ def work_evidence(decoded, inventory, at=None):
     # SARIF artifact uses encoded URI references for external consumers.
     report = canonical_bytes(sarif(analysis, encode_paths=False))
     value = empty_evidence()
-    entry = source("sarif.v1", ENGINE, "1", deepcopy(inventory["subject"]), observed, report)
+    entry = source("sarif.v1", analysis["engine"], "1", deepcopy(inventory["subject"]), observed, report)
     if analysis["coverage"] != "COMPLETE":
         entry.update(status="PARTIAL", reason="CODE_SOURCE_COVERAGE_" + analysis["coverage"])
     value["sources"].append(entry)

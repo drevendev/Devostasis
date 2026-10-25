@@ -32,7 +32,8 @@ is provider-native, never heuristic:
 - generic GitHub Checks: `check_suite.id`; re-requests keep the same id, so
   earlier outcomes are not observable (`PARENT_LEVEL_ONLY` provenance).
 
-When Actions runs exist for a revision, check suites created by Actions are
+In the historical GitHub collector, when Actions runs exist for a revision,
+check suites created by Actions are
 not collected again (overlap de-duplication). External check apps are only
 collected when no Actions runs exist at all (see the adapter document).
 
@@ -143,6 +144,24 @@ records name each nonempty immutable revision once. Duplicate revision ids
 are malformed history (`REVISION_HISTORY_CARRY_MALFORMED`), rather than a
 last-record-wins override of an earlier failure.
 
+At carried-record admission, v2 `parent_groups` and `unresolved`, and replayable
+v1 `parents`, must be arrays when explicitly present. Omission defaults to an
+empty array; an actual empty array remains valid. Explicit `null`, booleans,
+numbers, strings and objects are malformed, not empty evidence. Such malformed
+carriers retain `REVISION_HISTORY_CARRY_MALFORMED` and an `UNKNOWN` Integrity
+result even when the current revision sample passes. Valid carried failures
+remain absorbing. This is a bounded admission repair for issue #83, not a
+change to the history lineage or Vital policy.
+
+The pre-carrier (0.1.x) conversion also preserves a malformed or missing `value`
+from an `AVAILABLE` or `PARTIAL` revision series in the replayable v1 carrier's
+`records`. It must reach the same admission error instead of being replaced by
+an empty array. Actual lists retain their existing window filtering and canonical
+attempt projection, including observed failures. This bounded conversion repair
+does not resolve legacy non-value-bearing status handling, complete-empty
+acquisition proof, or inventory-level uncertainty for valid `PARTIAL` history
+(issue #87); it makes no completeness claim for those cases.
+
 **Reconciliation**, per revision of the current 14-day inventory: the carried
 union and the provider's current parents are merged by parent identity, and
 the state is a function of the union alone. An observed `VERIFY_FAIL` is
@@ -157,6 +176,38 @@ When the current series is partial or unusable, carried records are kept, so
 history crosses a bundle whose verification evidence could not be read. A
 current verdict is never carried (HIST-16).
 
+**Parent-kind contradictions** are structural uncertainty, not missing attempt
+coverage. Replayable v1 admission retains `PARENT_KIND_CONFLICT:<parent_id>`
+when one immutable parent id has conflicting kinds, regardless of parent order.
+Reconciliation retains these markers even beside a later complete current PASS,
+and subsequent v2 carriers keep them. The affected revision cannot become
+`PASS_ONLY_OBSERVED` merely because current attempts are complete. An observed
+`VERIFY_FAIL` from either kind remains absorbing. Genuine incompatible-lineage
+uncertainty can still be repaired by complete evidence under HIST-15/HIST-19;
+its repair does not clear a parent-kind contradiction. Normal expiry and proven
+departure from the complete branch inventory still remove the revision.
+This issue #83 repair preserves the existing history lineage and Vital policy;
+it does not resolve the separate legacy status/coverage questions in issue #87.
+
+Current inventory admission validates every row before treating absence as
+branch departure. Duplicate current ids are diagnosed as
+`REVISION_RECORD_DUPLICATE:<revision>`; malformed rows and contradictory
+coverage prevent a completeness claim. Ambiguous current records cannot
+replace carried facts. Current timestamps are parsed before reconciliation;
+a different instant for a known revision yields
+`IMMUTABLE_COMMIT_TIME_MISMATCH` and preserves its prior time and attempts.
+Equivalent timezone representations name the same instant.
+
+Attempt completeness requires exactly the observed identities 1..latest,
+with work bounded by the observed cardinality. A missing or extra identity
+cannot establish completeness. Unknown state vocabulary is malformed input;
+the legitimate `UNKNOWN` outcome is retained as incomplete history and never
+proves absence of failure. Successive states of one attempt, including
+`VERIFY_UNRESOLVED` then `VERIFY_PASS`, remain valid observations. An observed
+failure remains absorbing even when the rest of history is incomplete.
+These are admission repairs within the existing history lineage and accepted
+rules, not new thresholds, external-check semantics or a migration.
+
 **Lineage.** A carried union of `devostasis.ci-history.v2` is read as it is.
 The revision records a 0.1.x bundle keeps in `ci.revision_verdicts_14d`
 (`devostasis.ci-history.v1`) are replayed from the attempts they kept, never
@@ -170,8 +221,10 @@ historical evidence.
 ## The newest revision
 
 The newest in-scope revision speaks for the current state. Its verdict is
-read as it was composed: decisive verdicts stand; `VERIFY_UNRESOLVED` makes
-the band a conservative superset over the completions the evidence admits;
+read as it was composed: decisive verdicts stand; under accepted
+PV-INTEGRITY-TOTALITY-001, `VERIFY_UNRESOLVED` permits only an already-true
+established historical FAILING predicate to emit DEGRADED/FAILING/EXACT; all
+other unresolved regions are UNKNOWN without a band or reachability claim;
 positively observed `NOT_EXECUTED` and `NON_VERIFY_TERMINAL` fall back to the
 latest decisive revision and are diagnosed. `UNKNOWN` is none of those: it is
 the absence of an observation (a `startup_failure`, a conclusion this version
@@ -198,3 +251,71 @@ verification degrades instead of claiming `CLEAN`; INT-UNKNOWN-01..06; T2, R1
 and R2 as vectors ([conformance.md](conformance.md)). The `ci` vector kind
 ([vectors.md](vectors.md)) executes a case at the normalization boundary this
 page describes.
+
+## Offline GitLab normalization and independence (0.6)
+
+`devostasis.ci-outcomes.gitlab.v1` is a pure native status map: success→VERIFY_PASS,
+failed→VERIFY_FAIL, canceled→NON_VERIFY_TERMINAL, skipped/manual/scheduled→NOT_EXECUTED.
+Created/waiting_for_resource/preparing/waiting_for_callback/pending/running/canceling
+are VERIFY_UNRESOLVED. Every other value is UNKNOWN. This boundary is available
+to offline conformance without claiming a core GitLab collector or complete
+pipeline retry history. The explicit provider/map pair is checked before use.
+The optional governed RAW_RUNS rule and its exact compatibility boundary are in
+[vitals.md](vitals.md) and [conformance-surface.md](conformance-surface.md).
+
+## Versioned native evidence admission (0.6, opt in)
+
+`devostasis.adapters.ci.observations(evidence, subject)` exposes the offline
+`devostasis.ci-normalization.v1` contract. `schemas/ci-normalization.schema.json`
+publishes its closed input: project/provider/outcome-map lineage, observation
+anchor, configured/inventory coverage, immutable revision metadata, native
+parent/child snapshots and explicit rerun links. It admits at most 10,000 rows
+per inventory, 1,000 parent pages and 16 MiB canonical input. Native SHA fields
+must match revision metadata, parent keys cannot change admitted revisions,
+evidence cannot postdate the observation, and unknown fields/lineages fail.
+Unknown future outcomes stay UNKNOWN. Contiguous page ordinals are required;
+an unfinished last page makes the series PARTIAL. Canonical facts flatten
+transport pages, sort and deduplicate identical observations.
+
+The new path retains distinct provider-native ids: Actions workflow_run.id
+with numeric run_attempt; generic check_suite.id; GitLab pipeline.id. For
+same-id snapshots, the greatest Actions attempt wins, then observation time;
+Checks/GitLab use observation time without inventing numeric attempt history.
+Conflicting latest states are UNKNOWN. Only exact Actions check_suite_id
+deduplicates a linked suite; Actions governs, suite provenance/failure remains.
+A newer disagreeing suite makes current state UNKNOWN. Unlinked same-app
+suites and descriptively identical runs remain independent parents.
+
+`devostasis.ci-rerun-link.v1` requires provider/forge/project/revision scope,
+earlier/later native references and AVAILABLE evidence_ref. Only a unique
+acyclic linear chain collapses; cycle, fork, fan-in, unavailable or cross-scope
+proof preserves all parents and degrades coverage. These links are recorded
+acquisition claims, not cryptographic provider attestations. Cross-id histories
+retain failures without inventing contiguous attempt completeness.
+
+Current composition uses UNKNOWN > FAIL > UNRESOLVED > PASS > nonverification
+terminal > not executed. Children remain provenance when parents exist. With
+only children, latest snapshots per child compose one explicitly degraded
+REVISION_CHILD_AGGREGATE_RAW; child failures cannot prove a canonical parent
+failed (allowed-failure jobs exist), so history stays UNKNOWN_HISTORY. A
+current raw verdict cannot become an AVAILABLE governed result. Partial parent
+evidence cannot prove favorable complete history. Known parent failures stay
+absorbing across current retries and persisted predecessor unions.
+
+Default-branch window/order is determined by immutable committed_at, then SHA,
+never CI completion/retry time. Off-branch/expired revisions are explicitly
+excluded; missing time or branch association leaves ordering UNKNOWN and the
+required series PARTIAL. The metadata discloses latest_decisive_default_branch,
+verification units, native/retained/aliased parent identities, current attempts,
+excluded revisions, diagnostics and coverage. Historical counts remain one
+per immutable revision. A broken predecessor cannot erase a proved failure
+into favorable unknown history; the real store gap is retained.
+
+Integrity replays raw native facts and compares all four emitted observation
+envelopes, including normalized records and provenance, before evaluation.
+Altered project/time/provider/version/digest/records/metadata are refused. This
+introduces the optional rule described in [vitals.md](vitals.md); absent these
+inputs, the historical collector, evaluator, bundle shapes and bytes replay
+unchanged. No core GitLab collection or accepted compatibility migration is
+introduced. R11–R53 implementation fixtures exercise this boundary and durable
+history; independent whole-case fidelity acceptance remains pending.

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/Devostasis/schemas/code-history-proof.schema.json",
+  "description": "Shape of bounded proof v1; executable admission authenticates Git object types/hashes, reachability, frontier, budgets and every derived history claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "commits",
+    "trees",
+    "blobs",
+    "omitted",
+    "frontier"
+  ],
+  "properties": {
+    "contract": {
+      "const": "devostasis.git-history-proof.v1"
+    },
+    "commits": {
+      "type": "object",
+      "maxProperties": 50000,
+      "propertyNames": {
+        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "contentEncoding": "base64"
+      }
+    },
+    "trees": {
+      "type": "object",
+      "maxProperties": 50000,
+      "propertyNames": {
+        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "contentEncoding": "base64"
+      }
+    },
+    "blobs": {
+      "type": "object",
+      "maxProperties": 50000,
+      "propertyNames": {
+        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "contentEncoding": "base64"
+      }
+    },
+    "omitted": {
+      "type": "object",
+      "maxProperties": 100000,
+      "propertyNames": {
+        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+      },
+      "additionalProperties": {
+        "enum": [
+          "OBJECT_UNAVAILABLE",
+          "OBJECT_BYTE_CAP",
+          "OBJECT_COUNT_CAP",
+          "PROOF_BYTE_CAP",
+          "TIME_CAP"
+        ]
+      }
+    },
+    "frontier": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+      }
+    }
+  }
+}

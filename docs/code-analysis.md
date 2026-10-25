@@ -36,7 +36,7 @@ metadata and source bytes are included; keep real analysis bundles private
 when those inputs are private. The public example is entirely synthetic:
 
 ```sh
-devostasis code verify --bundle examples/code/bundle
+devostasis code verify --bundle examples/code-v2/bundle
 ```
 
 Python coverage is COMPLETE, PARTIAL or NOT_APPLICABLE. Other languages remain
@@ -46,8 +46,18 @@ the admitted Python scope, with the recorded static resolution assumptions.
 It does not prove runtime behavior or the absence of defects in other languages.
 The local identity derives from the recorded root commit IDs, not a forge URL;
 shallow or unrelated roots and changed policy make comparisons INCOMPARABLE.
-History counts and root traversal are acquisition observations; their complete
-ancestry is not independently proved by the source tree proof (issue #73).
+New bundles use v2: authenticated raw commit/parent/tree/blob proof lets offline
+verification derive roots, ancestry completeness, window selection and edit
+counts independently. Counts use the declared MYERS_LF_BYTE_LINES_V1 algorithm,
+with no rename heuristics. Missing objects or graph/byte/work caps remain PARTIAL;
+partial roots cannot establish repository comparability. Historical v1 bundles
+in examples/code still replay exactly and report history ancestry UNPROVEN.
+Likewise, a tree binds an omitted blob's identity, not its separately recorded
+size. Verification checks the deterministic selection predicates and marks
+omitted blob sizes `UNPROVEN` in its operational `proof_scope` receipt. Byte-cap
+reasons that depend on those sizes remain acquisition claims; `VERIFIED` means
+the admitted proofs and recorded bundle replay, not proof of those omissions.
+The receipt is outside the immutable artifact and does not rewrite v1 bundles.
 
 Compare two verified bundles under the same policy:
 
@@ -88,4 +98,4 @@ No external runner, schedule, credentials or deployment is required for the
 offline commands. B1, B7 and release/review gates remain separate.
 
 See the [wire contract](spec/code-analysis.md) and
-[synthetic report](../examples/code/bundle/report.md).
+[synthetic v2 report](../examples/code-v2/bundle/report.md).

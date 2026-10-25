@@ -15,9 +15,9 @@ from ..canonical import canonical_bytes, digest, digest_bytes, loads
 from ..workscope.bundle import locked
 from ..workscope.model import fields, instant, number, path, require, revision, strings, timestamp
 from ..workscope.operations import no_links
-from . import CONTRACT, ENGINE
+from . import CONTRACT, ENGINE, LEGACY_CONTRACT, LEGACY_ENGINE, POLICY
 from .engine import RULES, evaluate, policy
-from .git import object_digest
+from .git import object_digest, source_selection
 
 MEMBERS = ("inputs.json", "policy.json", "analysis.json", "findings.sarif", "report.md")
 MAX_BUNDLE_BYTES = 128 * 1024 * 1024
@@ -33,17 +33,22 @@ def decode(value, cap):
 
 def admit(raw, config):
     policy(config)
-    fields(raw, ("subject", "observed_at", "entries", "sources", "history", "proof"))
+    proven = config["contract"] == POLICY
+    fields(raw, ("subject", "observed_at", "entries", "sources", "history", "proof", *(["history_proof"] if proven else [])))
     subject = raw["subject"]
-    fields(subject, ("kind", "object_format", "roots", "repository_id", "revision", "tree"))
+    fields(subject, ("kind", "object_format", "roots", "repository_id", "revision", "tree", *(["roots_complete"] if proven else [])))
     require(subject["kind"] == "LOCAL_GIT" and subject["object_format"] in ("sha1", "sha256"), "unsupported local source identity")
     width = 40 if subject["object_format"] == "sha1" else 64
     for ref in (subject["revision"], subject["tree"]):
         revision(ref); require(len(ref) == width, "Git object format mismatch")
     strings(subject["roots"], "root commits")
-    require(0 < len(subject["roots"]) <= 256 and subject["roots"] == sorted(subject["roots"]), "noncanonical root identity")
+    require((proven or subject["roots"]) and len(subject["roots"]) <= (10000 if proven else 256)
+            and subject["roots"] == sorted(subject["roots"]), "noncanonical root identity")
     for ref in subject["roots"]: revision(ref); require(len(ref) == width, "root format mismatch")
-    require(subject["repository_id"] == digest({"object_format": subject["object_format"], "roots": subject["roots"]}), "repository identity mismatch")
+    if proven:
+        require(type(subject["roots_complete"]) is bool, "root completeness must be boolean")
+    else:
+        require(subject["repository_id"] == digest({"object_format": subject["object_format"], "roots": subject["roots"]}), "repository identity mismatch")
     instant(raw["observed_at"])
     fields(raw["proof"], ("commit", "trees"))
     commit = decode(raw["proof"]["commit"], 1024 * 1024)
@@ -92,6 +97,8 @@ def admit(raw, config):
         require(entry["status"] in ("ADMITTED", "UNAVAILABLE", "UNSUPPORTED", "OUT_OF_SCOPE"), "inventory availability unknown")
         if entry["kind"] == "blob": number(entry["size"], 0, 2**63 - 1)
         else: require(entry["size"] is None, "submodule must not claim blob size")
+        selection = source_selection(safe, entry["mode"], entry["kind"], entry["size"], config, len(admitted), source_total)
+        require((entry["status"], entry["reason"]) == selection, "unjustified source selection")
         included = safe is not None and (not config["include"] or any(safe == p or safe.startswith(p + "/") for p in config["include"]))
         excluded = safe is not None and any(safe == p or safe.startswith(p + "/") for p in config["exclude"])
         if entry["status"] == "ADMITTED":
@@ -106,6 +113,10 @@ def admit(raw, config):
             require(entry["reason"] in ("UNSAFE_PATH", "SOURCE_LINK_OR_SUBMODULE", "FILE_BYTE_CAP", "FILE_COUNT_CAP", "TOTAL_BYTE_CAP"), "unavailable source reason unknown")
     require(seen == sorted(set(seen)) and set(raw["sources"]) == admitted, "duplicate, unordered or foreign source")
     require(len(admitted) <= config["budget"]["max_files"] and source_total <= config["budget"]["max_total_bytes"], "source budget exceeded")
+    if proven:
+        from .history_proof import admit_proven
+        admit_proven(raw, config)
+        return raw
     history = raw["history"]
     fields(history, ("status", "reasons", "start", "end", "commits")); strings(history["reasons"], "history reasons")
     require(instant(history["end"]) == instant(raw["observed_at"]) and instant(history["start"]) == instant(history["end"]) - timedelta(days=config["history"]["days"]), "history window mismatch")
@@ -136,7 +147,7 @@ def escape(value):
 
 def sarif(analysis, *, encode_paths=True):
     return {"version": "2.1.0", "$schema": "https://json.schemastore.org/sarif-2.1.0.json", "runs": [{
-        "tool": {"driver": {"name": "Devostasis Code Analysis", "version": ENGINE,
+        "tool": {"driver": {"name": "Devostasis Code Analysis", "version": analysis["engine"],
                             "rules": [{"id": r, "shortDescription": {"text": m}} for r, m in sorted(RULES.items())]}},
         "versionControlProvenance": [{"revisionId": analysis["subject"]["revision"]}],
         "properties": {"sourceCoverage": analysis["coverage"], "historyCoverage": analysis["history"]["status"], "authority": analysis["authority"]},
@@ -175,7 +186,7 @@ def build(raw, config):
     admit(raw, config); analysis = evaluate(raw, config)
     content = {"inputs.json": canonical_bytes(raw), "policy.json": canonical_bytes(config), "analysis.json": canonical_bytes(analysis),
                "findings.sarif": canonical_bytes(sarif(analysis)), "report.md": render(analysis)}
-    manifest = {"contract": CONTRACT, "engine": ENGINE, "subject": deepcopy(raw["subject"]),
+    manifest = {"contract": CONTRACT if "history_proof" in raw else LEGACY_CONTRACT, "engine": analysis["engine"], "subject": deepcopy(raw["subject"]),
                 "members": {name: digest_bytes(data) for name, data in sorted(content.items())}}
     manifest["bundle_id"] = digest(manifest); content["manifest.json"] = canonical_bytes(manifest)
     require(sum(map(len, content.values())) <= MAX_BUNDLE_BYTES, "analysis bundle byte cap")
@@ -188,7 +199,7 @@ def verify_content(content):
     require(all(canonical_bytes(value) == content[name] for name, value in decoded.items()), "analysis member is not canonical")
     manifest = decoded["manifest.json"]
     fields(manifest, ("contract", "engine", "subject", "members", "bundle_id"))
-    require(manifest["contract"] == CONTRACT and manifest["engine"] == ENGINE, "unsupported analysis lineage")
+    require((manifest["contract"], manifest["engine"]) in ((CONTRACT, ENGINE), (LEGACY_CONTRACT, LEGACY_ENGINE)), "unsupported analysis lineage")
     expected, replay = build(decoded["inputs.json"], decoded["policy.json"])
     require(expected == manifest and replay == content, "analysis bundle does not replay")
     return decoded
@@ -208,6 +219,20 @@ def read(root):
 
 def verify(root):
     return verify_content(read(root))
+
+
+def proof_scope(decoded):
+    """Operational verification limits, outside the immutable v1 artifact bytes."""
+    omitted = any(e["kind"] == "blob" and e["status"] != "ADMITTED" for e in decoded["inputs.json"]["entries"])
+    result = {"source_tree": "VERIFIED", "admitted_blobs": "VERIFIED",
+            "omitted_blob_sizes": "UNPROVEN" if omitted else "NOT_APPLICABLE",
+            "history_ancestry": "UNPROVEN"}
+    raw = decoded["inputs.json"]
+    if "history_proof" in raw:
+        result["history_ancestry"] = "VERIFIED" if raw["subject"]["roots_complete"] else "PARTIAL"
+        result["history_counts"] = "NOT_REQUESTED" if raw["history"]["status"] == "NOT_REQUESTED" else (
+            "VERIFIED" if raw["history"]["status"] == "COMPLETE" else "PARTIAL")
+    return result
 
 
 def publish(root, content):

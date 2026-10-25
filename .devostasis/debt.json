@@ -5,10 +5,11 @@
     {
       "id": "D-10",
       "title": "Native change hotspots and local roots rely on recorded acquisition rather than complete ancestry proofs",
-      "state": "open",
+      "state": "closed",
       "opened": "2026-10-08",
-      "updated": "2026-10-08",
-      "cost": "0.6 source proofs bind pinned commit/tree and admitted blob bytes, but replay of recorded history counts/root traversal is not independent admission of their complete ancestry. A rehashed recorded history can alter hotspots. Counts remain descriptive and separately covered, with no health or acceptance authority. Bounded historic object/parent proof and preserved v1 replay are issue #73."
+      "updated": "2026-10-21",
+      "cost": "Implemented in the pending 0.6 assurance increment: code-analysis v2 authenticates bounded commit/parent/tree/blob proofs and independently derives roots, selection, completeness and edit counts offline. Rehashed claims are rejected; caps/shallow/missing objects remain explicit PARTIAL. V1 exact bytes/replay retain their documented acquisition-only limit. Independent PR review and maintainer release remain pending; issue #73.",
+      "closed": "2026-10-21"
     },
     {
       "id": "D-7",
@@ -46,10 +47,11 @@
     {
       "id": "D-1",
       "title": "Conformance cases named in the specification have no executable fixture",
-      "state": "open",
+      "state": "closed",
       "opened": "2026-09-05",
-      "updated": "2026-10-02",
-      "cost": "docs/spec/conformance.md named T2-T9, R1-R53, ART-05, ART-08-ART-11, ART-15 and RPT-4-RPT-9 with no test behind them, so the public coverage claim is larger than the proof. The vector format and runner exist since 0.1.8, and 0.1.9 transcribed the accepted exact vectors the research process delivered (T2, R1, R2, R3, R4, T4, T5, T7) together with whole accepted families (INT-UNKNOWN, INT-TOTAL, CLU-INCOMPLETE, ACT-COV). The pending 0.2.0 branch holds T9 to its accepted table with a generator, leaving sixty-two named cases without executable proof. Several (T3, T6, T8, the bundle and store cases) need further conformance capabilities or accepted vectors (issues #20, #23)."
+      "updated": "2026-10-21",
+      "cost": "Closed as an implementation-fixture obligation in pending 0.6: the versioned bridge executes 63 permanent cases, materializing the former 62-case gap plus RPT-8. R11-R53 add 43 cases and 84 CI variants with native normalization and real governed/store/bundle lifecycles. B1 remains open for independent concrete-surface/whole-case exact-fixture acceptance and separate T9 cell-key delivery; capability or research expansion acceptance does not accept these local fixtures. No independent review is claimed.",
+      "closed": "2026-10-21"
     },
     {
       "id": "D-2",
