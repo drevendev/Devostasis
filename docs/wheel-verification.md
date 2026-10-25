@@ -25,8 +25,12 @@ Scratch files are removed on exit. Use `--scratch-root <existing-directory>` to
 select a temporary-files location outside the checkout. A successful run prints
 JSON with the wheel, environment and checks; any failed command exits nonzero.
 
-The separate CI job targets **Ubuntu/Python 3.12** at the exact PR head (or push
-SHA), alongside the existing source-test matrix. Windows can run the same script;
+The separate CI job targets **Ubuntu/Python 3.12** and uses the default checkout:
+for `pull_request` this is the GitHub-generated merge candidate (`github.sha`),
+matching the source-test matrix; for `push` and `workflow_dispatch` it is the
+triggering commit. Both jobs explicitly check that checkout HEAD equals
+`GITHUB_SHA` before running their checks.
+Windows can run the same script;
 only a recorded successful execution qualifies that version/platform. macOS,
 other wheel-consumer combinations, privileged path behavior, PyPI publication
 and release acceptance remain unqualified by this gate. The current 0.6.0
