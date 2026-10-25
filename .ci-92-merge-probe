@@ -1,0 +1,3 @@
+Temporary acceptance probe for issue #92. Close this PR without merging.
+This old head lacks scripts/wheel_smoke.py and declares version 0.1.9.
+The fixed PR base supplies the wheel smoke and version 0.6.0 package.
