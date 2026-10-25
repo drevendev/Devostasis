@@ -20,8 +20,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Prove tested workflow revision
+        run: |
+          actual="$(git rev-parse HEAD)"
+          echo "checkout=$actual event=$GITHUB_SHA"
+          test "$actual" = "$GITHUB_SHA"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -37,6 +40,11 @@ jobs:
         python: ["3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
+      - name: Prove tested workflow revision
+        run: |
+          actual="$(git rev-parse HEAD)"
+          echo "checkout=$actual event=$GITHUB_SHA"
+          test "$actual" = "$GITHUB_SHA"
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
