@@ -156,3 +156,22 @@ receipt is identity-bearing. Enabling a cache therefore never moves a
 C1 observed zero, C2 tier limitation, C3 permission denial, C4 truncated
 history, C5 stale cache, C6 connector ambiguity, C7 transient failure. See
 [conformance.md](conformance.md).
+
+## Optional sample-independence input (0.6)
+
+`ci.sample_semantics` is a RAW-OBS-V0 enum, RAW_RUNS or INDEPENDENT_REVISIONS.
+The governed Integrity extension consumes its status/freshness/value and adds
+it to input metadata. It never creates extra canonical revision records.
+Absent input retains historical evaluation. Unknown/stale/unsupported values
+fail closed under the versioned rule described in [vitals.md](vitals.md).
+
+## Optional native CI evidence (0.6)
+
+`ci.native_evidence` is an AVAILABLE/FRESH record of canonical input under
+`devostasis.ci-normalization.v1`; `ci.normalization_provenance` is its derived
+AVAILABLE/FRESH record. The helper also emits `ci.configured` and
+`ci.revision_verdicts_14d`. Integrity recomputes all four envelopes from native
+evidence and checks exact bindings before using them. The project and observation
+anchor must agree with the enclosing ObservationSet. See
+[integrity-ci.md](integrity-ci.md) and `schemas/ci-normalization.schema.json`.
+Absent both new inputs, historical observations retain their existing meaning.

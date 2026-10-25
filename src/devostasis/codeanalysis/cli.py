@@ -5,7 +5,7 @@ import sys
 
 from ..canonical import canonical_bytes, loads
 from ..workscope.model import require
-from .bundle import MAX_BUNDLE_BYTES, build, publish, verify
+from .bundle import MAX_BUNDLE_BYTES, build, proof_scope, publish, verify
 from .consumer import compare, packet, verify_packet, work_evidence
 from .engine import default_policy
 from .git import collect
@@ -42,7 +42,8 @@ def cmd(args):
         if args.operation == "compare":
             emit(compare(verify(args.before), verify(args.after)), args.output); return 0
         decoded = verify(args.bundle)
-        if args.operation == "verify": emit({"status": "VERIFIED", "bundle_id": decoded["manifest.json"]["bundle_id"]})
+        if args.operation == "verify": emit({"status": "VERIFIED", "bundle_id": decoded["manifest.json"]["bundle_id"],
+                                             "proof_scope": proof_scope(decoded)})
         elif args.operation == "show": emit(decoded["analysis.json"], args.output)
         elif args.operation == "sarif": emit(decoded["findings.sarif"], args.output)
         elif args.operation == "packet": emit(packet(decoded, args.path, args.max_files, args.max_bytes), args.output)

@@ -4,7 +4,10 @@ Implementation-owned companion, introduced in 0.6.0. No accepted research
 Vital rule, ordering or Work Instrument judgement changes. Its identifiers are
 `devostasis.code-analysis.v1`, `devostasis.code-policy.v1`,
 `devostasis.code-engine.v1`, `devostasis.code-packet.v1` and
-`devostasis.code-comparison.v1`. Case IDs below use the local DEV-CODE family.
+`devostasis.code-comparison.v1` for historical artifacts. New collection defaults to
+the corresponding `.v2` contracts and `devostasis.git-history-proof.v1`. Exact
+policy/manifest/engine dispatch preserves v1 bytes; mixed or unknown tuples fail.
+Case IDs below use the local DEV-CODE family.
 
 ## Admission and collection
 
@@ -45,6 +48,18 @@ UNSUPPORTED/LANGUAGE_UNSUPPORTED. UNAVAILABLE reasons are UNSAFE_PATH,
 SOURCE_LINK_OR_SUBMODULE, FILE_BYTE_CAP, FILE_COUNT_CAP and TOTAL_BYTE_CAP.
 `sources` maps exactly admitted paths to canonical base64 of unmodified bytes.
 
+Offline admission applies the collector's same ordered predicates: safe path,
+policy scope, regular blob mode, supported language, per-file bytes, preceding
+admitted-file count and preceding verified bytes plus current declared size.
+A recognized reason alone is insufficient to omit an otherwise eligible file.
+Path/mode and policy/count predicates are independently checked. A tree does
+not authenticate a blob's size when its bytes are omitted; byte-based omission
+predicates can only be replayed against that acquisition claim. They do not
+prove that the omission was necessary. `code verify` reports `proof_scope`
+outside the canonical members: source tree and admitted blobs VERIFIED,
+omitted blob sizes UNPROVEN (or NOT_APPLICABLE), history ancestry UNPROVEN.
+No unbounded blob read or new compatibility/migration rule is implied.
+
 `proof` contains the raw base64 commit object and an object-ID-to-base64 map
 of every reachable tree. Verification computes framed Git object hashes,
 checks the commit/tree link, expands all trees, checks the entire inventory and
@@ -53,7 +68,7 @@ commit proof to 1 MiB, expanded leaves to 100000. Missing/extra/duplicate tree,
 path or source data is rejected. SHA-1/SHA-256 Git format is explicit. This
 establishes a commitment to source bytes, not authenticated commit authorship.
 
-History contains `status`, unique `reasons`, `start`, `end`, `commits`. The
+Historical v1 history contains `status`, unique `reasons`, `start`, `end`, `commits`. The
 window is inclusive, ends at observed_at and spans policy days. COMPLETE means
 the bounded collector exhausted its selected non-merge ancestor walk;
 PARTIAL retains admitted rows and cap/shallow/path gaps; UNAVAILABLE admits no
@@ -62,7 +77,71 @@ Each commit has `revision`, `committed_at`, `changes`; changes contain `path`,
 `added`, `deleted` (both null for binary changes). Changes sort by path,
 commits by timestamp/full ID, with no duplicates. Counts, traversal roots and
 history completeness are recorded acquisition claims, not proved ancestry.
-Offline verification replays those observations; proof hardening is #73.
+Offline v1 verification replays those observations. Its operational proof scope
+continues to report history ancestry UNPROVEN; v2 provides the proof below.
+
+## Independent v2 history proof
+
+V2 adds `history_proof` to inputs and boolean `roots_complete` to subject. The
+closed proof has `contract`, `commits`, `trees`, `blobs`, `omitted`, `frontier`.
+Object maps hold canonical base64 raw objects keyed by their framed Git hashes;
+types, hashes, format widths and reachability are checked. Current source proof
+objects are reused without duplication. Unused extra objects/omissions fail.
+`omitted` maps required absent object IDs to OBJECT_UNAVAILABLE, OBJECT_BYTE_CAP,
+OBJECT_COUNT_CAP, PROOF_BYTE_CAP or TIME_CAP. These reasons disclose acquisition
+limits; they never establish that an omitted object was truly inaccessible.
+
+The verifier walks every parent edge from the pinned head, including merge
+parents, without pruning by commit timestamps. Commit raw headers bind parents,
+tree and committer epoch. Full roots are exactly the reachable parentless
+commits. Missing/unvisited edges form the sorted frontier. An empty frontier is
+required for `roots_complete=true` and ancestry COMPLETE. Partial repository
+identity additionally hashes `unproven_ancestry_anchor=revision`; it cannot
+establish a COMPARABLE pair. Full identity retains the object-format/root-set
+formula. None of this authenticates a forge identity or commit author.
+
+V2 history also records `ancestry_status` and
+`count_algorithm=MYERS_LF_BYTE_LINES_V1`. All proved non-merge ancestors in the
+inclusive window are selected by committer time, newest first up to max_commits,
+then emitted in ascending (time, full ID) order. Merge commits remain in the
+proof graph. A selected commit compares its complete tree to its sole parent's
+tree, or the empty tree for a proved root. There is no rename detection.
+
+Line counts use the shortest insertion/deletion edit distance over exact byte
+lines split only at LF, retaining LF and an unterminated final line. CR is a
+byte, not an extra separator. For distance D and old/new lengths N/M, added is
+(D+M-N)/2 and deleted is (D+N-M)/2. NUL-containing inputs are BINARY, with both
+counts null. Same-blob mode-only changes have zero counts. Git's configurable
+numstat/rename heuristics are not this algorithm. A separate dynamic-programming
+LCS test oracle checks these counts.
+
+Every change adds `count_status` and `reason`: VERIFIED, BINARY, UNAVAILABLE or
+OUT_OF_SCOPE/POLICY_EXCLUSION. Include/exclude prefixes also govern history;
+excluded blob bytes are never acquired for a diff. Missing blobs, unknown tree
+presence, unsafe paths and exhausted diff limits cannot become zero edits.
+Every commit adds `changes_complete`. Global COMPLETE requires complete ancestry,
+no selected-commit truncation and complete in-scope change proof. PARTIAL retains
+proved rows plus sorted reasons. History disabled remains NOT_REQUESTED while
+bounded ancestry still proves or explicitly limits local identity.
+
+V2 policy adds max_ancestors (1..10000, default 2000), max_objects (1..50000,
+default 10000), max_proof_bytes (1024..67108864, default 33554432), max_blob_bytes
+(1..4194304, default 4194304), max_diff_work (1..10000000, default 2000000), and
+max_diff_lines (1..200000, default 100000). Additional proof budgets exclude
+already admitted current-source objects. Tree expansion and Myers work share
+the deterministic work bound; references cap at 100000, frontier at 10000,
+individual commits at 1 MiB and trees at 8 MiB. Total canonical bundle remains
+128 MiB. No Git process, repository, network, external diff or clock is used by
+replay. Missing proof never becomes a COMPLETE claim by rehashing the envelope.
+
+V2 hotspots add `unproven_changes` and `count_status`; numeric totals contain
+only proved numeric edits. Coverage still describes the whole selected window.
+Operational `proof_scope` reports ancestry VERIFIED/PARTIAL and counts
+VERIFIED/PARTIAL/NOT_REQUESTED. Omitted source blob sizes remain UNPROVEN unless
+not applicable: history proof does not universally resolve source omission debt.
+The v1 schemas/examples remain frozen; separate `*-v2.schema.json`,
+`code-history-proof.schema.json` and `examples/code-v2` publish this lineage.
+Cross-engine comparisons are INCOMPARABLE with ANALYSIS_LINEAGE_CHANGED.
 
 ## Derived source evidence
 

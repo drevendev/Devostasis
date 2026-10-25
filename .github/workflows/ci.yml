@@ -54,6 +54,8 @@ jobs:
         run: python -m pytest -q
       - name: Conformance vectors through the command line
         run: devostasis vectors --quiet
+      - name: Versioned conformance operation bridge
+        run: python scripts/check_conformance_surface.py
       - name: Example bundle verifies from its own contents
         run: devostasis verify --bundle examples/sample-bundle
       - name: Work companion replay and deterministic handoff
@@ -78,6 +80,12 @@ jobs:
           devostasis work replay --bundle examples/code/work-bundle
           python scripts/make_code_examples.py
           git diff --exit-code -- examples/code
+          devostasis code verify --bundle examples/code-v2/bundle
+          devostasis code verify-packet --bundle examples/code-v2/bundle --packet examples/code-v2/packet.json
+          devostasis work verify --bundle examples/code-v2/work-bundle
+          devostasis work replay --bundle examples/code-v2/work-bundle
+          python scripts/make_code_examples.py --v2
+          git diff --exit-code -- examples/code-v2
       - name: Determinism check on the example observations
         run: |
           a=$(devostasis build --observations examples/observations.json --store /tmp/store-a --planning milestones --debt-label type:refactor --debt-mapping-version example-1 | head -n 1 | awk '{print $2}')

@@ -547,18 +547,47 @@ requirements without assigning new research case identifiers.
 | rejected | a case expecting refused evidence passes only when the evaluation raises with that code, and the refusal is its whole expectation | `test_a_rejected_case_passes_only_when_the_evidence_is_refused_with_that_code`, `test_rejected_is_the_whole_expectation_and_names_a_code` |
 | activity kind | the interval and the coverage notes of the activity member are checked | `test_the_activity_kind_checks_the_interval_and_the_coverage_it_discloses` |
 
-Cases not yet implemented as tests (T3, T6, T8, R5..R53, ART-05,
-ART-08..ART-11, ART-15, RPT-4..RPT-6, RPT-9) are listed in the ROADMAP under the
-synthetic fixture suite; T9 is implemented by its generator since 0.2.0, and
-its cell-key vectors are still the research process's to deliver. The research process delivers them as executable JSON
-vectors in the format of [vectors.md](vectors.md), one accepted family per
-unit; the ones accepted so far (T2, R1, R2, R3, R4, T4, T5, T7) are in the
-corpus above, and so are the twenty cases of `PV-CLUTTER-INCOMPLETE-001`,
-transcribed from the accepted contract the way `ORDER-01..15` were. The `ci` kind reaches the normalization boundary R5..R10 are
-about, so that family can be materialized against it (issue #20); `variants`
-and the dependency-group assertions close the T8 and part of the T6 gap of
-issue #23, while T3 and the bundle and store cases still need a surface this
-version does not publish.
+The successor operation bridge is documented in
+[conformance-surface.md](conformance-surface.md). It executes implementation
+materializations under the accepted capability contract, with exact-fixture and
+concrete-surface independent review still pending. R11..R53 now have exact-ID
+implementation fixtures below. B1 remains open for independent whole-case
+acceptance and separate T9 cell-key delivery.
+The existing v1 vector corpus and all permanent identifiers retain their meaning.
+
+## Versioned operation bridge (0.6 implementation materialization)
+
+Each citation resolves to one case in the closed bridge carrier. Native R5..R10
+assert normalization and revision contributions; full downstream fixture fidelity
+is an independent review obligation, not inferred from these checks.
+
+| Case | Executed obligation | Proof |
+| --- | --- | --- |
+| R5 | native GitHub skipped is NOT_EXECUTED, no decisive/failed contribution | `bridge:R5` |
+| R6 | native GitLab manual is NOT_EXECUTED, no decisive/failed contribution | `bridge:R6` |
+| R7 | native timed_out is VERIFY_FAIL, one failed decisive contribution | `bridge:R7` |
+| R8 | native cancelled is non-verification terminal | `bridge:R8` |
+| R9 | same-ID GitHub failure/GitLab failed normalization equivalence | `bridge:R9` |
+| R10 | future provider values are UNKNOWN without guessed contribution | `bridge:R10` |
+| T3 | one immutable revision, failed execution then ten successful RAW_RUNS retries stays DEGRADED / PROVISIONAL_NONINDEPENDENT | `bridge:T3` |
+| T6 | shared inventories feed Pulse/Flow/Clutter; shared dependency provenance and no aggregate fields | `bridge:T6` |
+| T8 | independent FORBIDDEN, UNKNOWN, ERROR, PARTIAL and STALE numeric substitutions under one ID | `bridge:T8` |
+| ART-05 | required member access denial cannot verify | `bridge:ART-05` |
+| ART-08 | canonical map/whitespace invariance; material scalar/type differences change digest | `bridge:ART-08` |
+| ART-09 | provider observation references resolve in identity-bound receipts; missing receipt binding fails | `bridge:ART-09` |
+| ART-10 | persisted public members verify/render without network/private dependencies | `bridge:ART-10` |
+| ART-11 | private/SNAP convenience evidence is outside public identity | `bridge:ART-11` |
+| ART-15 | same-ID differing canonical bytes collide without overwrite | `bridge:ART-15` |
+| RPT-4 | actual identical put is idempotent, differing put collides | `bridge:RPT-4` |
+| RPT-5 | incomplete immutable commit preserves prior latest | `bridge:RPT-5` |
+| RPT-6 | missing predecessor yields HISTORY_GAP, retains snapshot, invents no transition | `bridge:RPT-6` |
+| RPT-8 | store FORBIDDEN remains explicit HISTORY_GAP | `bridge:RPT-8` |
+| RPT-9 | deterministic two-reader/write conflict, OS lock, preserved candidates and rebuilt retry | `bridge:RPT-9` |
+
+Harness proof: `test_bridge_unknown_and_duplicate_lineage_never_skips`,
+`test_bridge_consumes_negative_assertions_and_wrong_expectations`,
+`test_unknown_input_and_assertion_paths_cannot_pass`,
+`test_t8_cannot_drop_a_required_substitution`.
 
 ## Companion regression evidence (implementation-owned)
 
@@ -647,3 +676,107 @@ not close B1's missing accepted exact fixtures or B7's sustained calibration.
 | DEV-PAGES-02 | changed total between pages is partial | `test_work_pagination_changed_total_between_pages_is_partial` |
 | DEV-PAGES-03 | valid exact full empty and header absent responses are complete | `test_work_pagination_valid_exact_full_empty_and_header_absent_responses_are_complete` |
 | DEV-PAGES-04 | github result caps and invalid totals are not complete | `test_work_pagination_github_result_caps_and_invalid_totals_are_not_complete` |
+
+## Independent Git history proof (0.6 implementation-local)
+
+| Boundary | Proof |
+| --- | --- |
+| authenticated ancestry/root/count/time/frontier/completeness | `test_rehashed_history_claims_require_authenticated_objects` |
+| offline replay without Git/subprocess | `test_offline_replay_has_no_git_repository_or_subprocess_dependency` |
+| all merge parents and clock-skew traversal | `test_graph_walk_does_not_prune_clock_skew_or_merge_parents` |
+| bounded partial proof never promotes COMPLETE | `test_bounded_proof_never_claims_complete_history` |
+| object kind/reachability | `test_wrongly_typed_historic_objects_fail_closed`, `test_valid_but_unreachable_historic_object_is_rejected` |
+| v1/v2 replay and comparison boundary | `test_v1_and_v2_replay_separately_and_do_not_compare_across_lineage`, `test_v2_frozen_example_replays_and_has_explicit_schemas` |
+| independent edit oracle | `test_byte_line_algorithm_matches_independent_lcs_oracle` |
+| exclusion applies before historical blob reads | `test_historic_proof_does_not_read_policy_excluded_blob_bytes` |
+
+## R11–R53 implementation materialization (0.6)
+
+The permanent-ID expansion of PV-TEST-002 is accepted by PV-REV-TEST-002;
+this local materialization still requires independent fidelity review. Later
+PV-CI-UNIT-004/PV-HIST-002 and fail-closed rules govern current/history distinctions.
+R17 raw children cannot prove a canonical parent failure or favorable history;
+R38 does not grant GitLab attempt-history completeness. Every CI checkpoint
+builds, persists and verifies a real bundle. The 43 cases contain 84 CI variants.
+
+| Case | Executed obligation | Proof |
+| --- | --- | --- |
+| R11 | degraded possible_bands is a nonauthoritative conservative superset; gauge/delta consume the bound | `bridge:R11` |
+| R12 | one failed parent plus five children contributes one failed immutable revision | `bridge:R12` |
+| R13 | GitHub suite failure and GitLab failed pipeline compose the same verdict/contribution | `bridge:R13` |
+| R14 | canonical parent aggregate governs; children remain provenance without double counting | `bridge:R14` |
+| R15 | same parent key collapses, proved rerun chain collapses, unproved distinct ids remain | `bridge:R15` |
+| R16 | passing and failing siblings compose one failed revision | `bridge:R16` |
+| R17 | child-only fallback declares REVISION_CHILD_AGGREGATE_RAW and degraded coverage; no canonical parent history is invented | `bridge:R17` |
+| R18 | latest decisive default-branch revision uses immutable commit time and SHA tie-break, never CI completion time | `bridge:R18` |
+| R19 | missing commit time or default-branch association leaves ordering UNKNOWN | `bridge:R19` |
+| R20 | enumeration and page boundaries preserve normalized records and governed results | `bridge:R20` |
+| R21 | distinct GitLab pipeline ids remain separate parents | `bridge:R21` |
+| R22 | same GitLab pipeline id retry has one current parent | `bridge:R22` |
+| R23 | distinct GitHub suite ids from one app remain separate parents | `bridge:R23` |
+| R24 | only scope-bound linear acyclic rerun proof collapses; cycles/forks/fan-in/unavailable proof preserve parents | `bridge:R24` |
+| R25 | parent enumeration and page order are invariant | `bridge:R25` |
+| R26 | Actions attempts share one run id and greatest observed attempt governs current state | `bridge:R26` |
+| R27 | distinct Actions run ids never merge by descriptive equality | `bridge:R27` |
+| R28 | exact workflow check_suite_id deduplicates overlap; unlinked same-app suites remain | `bridge:R28` |
+| R29 | passing Actions attempt followed by queued/running retry is currently unresolved | `bridge:R29` |
+| R30 | failing Actions attempt followed by queued/running retry is currently unresolved with failure retained | `bridge:R30` |
+| R31 | Actions/Checks/linked unresolved surfaces agree; newer disagreement or stale-only evidence fails closed | `bridge:R31` |
+| R32 | GitLab same-id retry in progress is unresolved after either prior polarity | `bridge:R32` |
+| R33 | greatest Actions attempt in progress governs despite earlier pass/fail attempts | `bridge:R33` |
+| R34 | unavailable or contradictory greatest attempt is UNKNOWN, never an older passing attempt | `bridge:R34` |
+| R35 | attempt order and page partitions do not change current or history | `bridge:R35` |
+| R36 | unresolved plus pass is unresolved, with zero current decisive samples | `bridge:R36` |
+| R37 | unresolved plus fail is one current failed revision | `bridge:R37` |
+| R38 | GitHub linked and GitLab sibling current verdicts agree without assuming favorable pipeline history completeness | `bridge:R38` |
+| R39 | sibling order and page partitions are invariant | `bridge:R39` |
+| R40 | unresolved-only evidence is neither PASS nor NO_RECENT_RUNS | `bridge:R40` |
+| R41 | unresolved plus canceled and skipped remains unresolved | `bridge:R41` |
+| R42 | UNKNOWN dominates failure and unresolved current siblings while historical failure remains | `bridge:R42` |
+| R43 | PASS to unresolved to PASS lifecycle keeps one immutable contribution | `bridge:R43` |
+| R44 | prior failure survives current pending verification in real durable history | `bridge:R44` |
+| R45 | prior pass survives in history while current verification remains unresolved | `bridge:R45` |
+| R46 | fail then pass changes current verdict but historical contribution remains failure | `bridge:R46` |
+| R47 | PASS to FAIL to PASS keeps absorbing failure in the same revision | `bridge:R47` |
+| R48 | Actions/Checks/linked/GitLab prior failure survives pending retry in real stores | `bridge:R48` |
+| R49 | historical attempt/sibling order and pagination are invariant | `bridge:R49` |
+| R50 | never-decisive unresolved evidence has no fabricated passing historical contribution | `bridge:R50` |
+| R51 | 14-day expiry is by immutable commit time, never rerun time | `bridge:R51` |
+| R52 | lost retained-failure proof with a broken predecessor becomes UNKNOWN_HISTORY, never favorable history | `bridge:R52` |
+| R53 | same-polarity retries keep one immutable contribution and unchanged counts | `bridge:R53` |
+
+Admission, canonical input, paging and legacy rule boundaries are also checked by
+`test_governed_integrity_refuses_forged_native_projections`,
+`test_native_input_unknown_shapes_and_ambiguous_bindings_fail_closed`,
+`test_page_transport_and_enumeration_do_not_change_canonical_observations`,
+`test_partial_inventory_and_partial_parent_cannot_prove_favorable_history`,
+`test_normalization_is_opt_in_and_delta_names_the_rule_boundary` and
+`test_bridge_wrong_assertion_still_fails_with_optimized_python`.
+
+## Carried-array admission (issue #83, bounded implementation repair)
+
+These implementation-local checks cover three carried-record array readers,
+not the separate legacy predecessor conversion or parent-kind reconciliation
+findings. They do not assign or replace research case identifiers.
+
+| Case | Obligation | Executable |
+| --- | --- | --- |
+| DEV-CARRY-ARRAY-01 | Explicit false-like invalid arrays fail admission (15 variants) | `test_explicit_malformed_carried_array_is_rejected` |
+| DEV-CARRY-ARRAY-02 | Malformed history cannot yield a favorable Vital despite four current passing revisions (15 variants) | `test_malformed_carried_array_cannot_produce_a_favorable_vital` |
+| DEV-CARRY-ARRAY-03 | Omitted and actual empty arrays remain compatible (6 variants) | `test_omitted_and_empty_carried_arrays_remain_compatible` |
+| DEV-CARRY-ARRAY-04 | Valid v1/v2 carried failures survive admission (2 variants) | `test_valid_carried_failure_survives_array_admission` |
+
+## Legacy carried-series conversion (issue #83, bounded implementation repair)
+
+These implementation-local checks cover malformed value-bearing legacy series.
+They do not accept the separate status/coverage contract in issue #87 or claim
+complete acquisition from an empty array or a valid `PARTIAL` series.
+
+| Case | Obligation | Executable |
+| --- | --- | --- |
+| DEV-LEGACY-ARRAY-01 | Preserve invalid values for admission under AVAILABLE/PARTIAL (10 variants) | `test_legacy_conversion_preserves_malformed_series_for_admission` |
+| DEV-LEGACY-ARRAY-02 | Public reconciliation/evaluation rejects malformed legacy history despite four current passes (10 variants) | `test_legacy_malformed_series_cannot_produce_a_favorable_vital` |
+| DEV-LEGACY-ARRAY-03 | Actual empty arrays retain conversion shape compatibility (2 variants) | `test_legacy_real_empty_array_retains_conversion_compatibility` |
+| DEV-LEGACY-ARRAY-04 | Valid passing/failing attempts retain projection and window filtering (4 variants) | `test_legacy_valid_attempts_and_window_projection_survive` |
+| DEV-LEGACY-ARRAY-05 | A missing value is malformed rather than known empty (2 variants) | `test_legacy_missing_value_is_malformed_rather_than_empty` |
+| DEV-LEGACY-ARRAY-06 | Legacy failure crosses four generations with exact bundle replay (2 variants) | `test_legacy_failure_survives_four_generations_and_exact_replay` |
