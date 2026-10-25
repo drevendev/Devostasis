@@ -22,8 +22,8 @@ ROOT = Path(__file__).resolve().parents[1]
 AT = "2026-10-08T12:00:00Z"
 
 
-def generate():
-    config = default_policy()
+def generate(*, legacy=True):
+    config = default_policy(legacy=legacy)
     config["limits"]["complexity"] = 1
     with tempfile.TemporaryDirectory(prefix="devostasis-synthetic-code-") as directory:
         repo = Path(directory)
@@ -63,7 +63,8 @@ def generate():
 
 
 if __name__ == "__main__":
-    destination = ROOT / "examples/code"
-    for name, data in generate().items():
+    legacy = "--v2" not in sys.argv[1:]
+    destination = ROOT / ("examples/code" if legacy else "examples/code-v2")
+    for name, data in generate(legacy=legacy).items():
         file = destination / name; file.parent.mkdir(parents=True, exist_ok=True); file.write_bytes(data)
     print(destination)

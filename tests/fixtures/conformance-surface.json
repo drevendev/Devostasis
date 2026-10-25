@@ -1,0 +1,1157 @@
+{
+  "schema": "devostasis.conformance-bridge.v1",
+  "source": "PV-CONFORMANCE-SURFACE-001; PV-REV-CONFORMANCE-SURFACE-001; implementation materialization awaiting independent fixture review",
+  "cases": [
+    {
+      "case": "R5",
+      "scenario": "ci-native.v1",
+      "given": {
+        "variants": [
+          {
+            "name": "skipped",
+            "provider": "github",
+            "mapping": "devostasis.ci-outcomes.github.v1",
+            "status": "completed",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      "checks": [
+        {
+          "path": [
+            "skipped",
+            "outcome"
+          ],
+          "equals": "NOT_EXECUTED"
+        },
+        {
+          "path": [
+            "skipped",
+            "revision_verdict"
+          ],
+          "equals": "NOT_EXECUTED"
+        },
+        {
+          "path": [
+            "skipped",
+            "decisive"
+          ],
+          "equals": 0
+        },
+        {
+          "path": [
+            "skipped",
+            "failed"
+          ],
+          "equals": 0
+        }
+      ]
+    },
+    {
+      "case": "R6",
+      "scenario": "ci-native.v1",
+      "given": {
+        "variants": [
+          {
+            "name": "manual",
+            "provider": "gitlab",
+            "mapping": "devostasis.ci-outcomes.gitlab.v1",
+            "status": "manual",
+            "conclusion": null
+          }
+        ]
+      },
+      "checks": [
+        {
+          "path": [
+            "manual",
+            "outcome"
+          ],
+          "equals": "NOT_EXECUTED"
+        },
+        {
+          "path": [
+            "manual",
+            "revision_verdict"
+          ],
+          "equals": "NOT_EXECUTED"
+        },
+        {
+          "path": [
+            "manual",
+            "decisive"
+          ],
+          "equals": 0
+        },
+        {
+          "path": [
+            "manual",
+            "failed"
+          ],
+          "equals": 0
+        }
+      ]
+    },
+    {
+      "case": "R7",
+      "scenario": "ci-native.v1",
+      "given": {
+        "variants": [
+          {
+            "name": "timeout",
+            "provider": "github",
+            "mapping": "devostasis.ci-outcomes.github.v1",
+            "status": "completed",
+            "conclusion": "timed_out"
+          }
+        ]
+      },
+      "checks": [
+        {
+          "path": [
+            "timeout",
+            "outcome"
+          ],
+          "equals": "VERIFY_FAIL"
+        },
+        {
+          "path": [
+            "timeout",
+            "revision_verdict"
+          ],
+          "equals": "VERIFY_FAIL"
+        },
+        {
+          "path": [
+            "timeout",
+            "decisive"
+          ],
+          "equals": 1
+        },
+        {
+          "path": [
+            "timeout",
+            "failed"
+          ],
+          "equals": 1
+        }
+      ]
+    },
+    {
+      "case": "R8",
+      "scenario": "ci-native.v1",
+      "given": {
+        "variants": [
+          {
+            "name": "cancelled",
+            "provider": "github",
+            "mapping": "devostasis.ci-outcomes.github.v1",
+            "status": "completed",
+            "conclusion": "cancelled"
+          }
+        ]
+      },
+      "checks": [
+        {
+          "path": [
+            "cancelled",
+            "outcome"
+          ],
+          "equals": "NON_VERIFY_TERMINAL"
+        },
+        {
+          "path": [
+            "cancelled",
+            "revision_verdict"
+          ],
+          "equals": "NON_VERIFY_TERMINAL"
+        },
+        {
+          "path": [
+            "cancelled",
+            "decisive"
+          ],
+          "equals": 0
+        },
+        {
+          "path": [
+            "cancelled",
+            "failed"
+          ],
+          "equals": 0
+        }
+      ]
+    },
+    {
+      "case": "R9",
+      "scenario": "ci-native.v1",
+      "given": {
+        "variants": [
+          {
+            "name": "github",
+            "provider": "github",
+            "mapping": "devostasis.ci-outcomes.github.v1",
+            "status": "completed",
+            "conclusion": "failure"
+          },
+          {
+            "name": "gitlab",
+            "provider": "gitlab",
+            "mapping": "devostasis.ci-outcomes.gitlab.v1",
+            "status": "failed",
+            "conclusion": null
+          }
+        ]
+      },
+      "checks": [
+        {
+          "path": [
+            "github",
+            "outcome"
+          ],
+          "equals": "VERIFY_FAIL"
+        },
+        {
+          "path": [
+            "github",
+            "revision_verdict"
+          ],
+          "equals": "VERIFY_FAIL"
+        },
+        {
+          "path": [
+            "github",
+            "decisive"
+          ],
+          "equals": 1
+        },
+        {
+          "path": [
+            "github",
+            "failed"
+          ],
+          "equals": 1
+        },
+        {
+          "path": [
+            "gitlab",
+            "outcome"
+          ],
+          "equals": "VERIFY_FAIL"
+        },
+        {
+          "path": [
+            "gitlab",
+            "revision_verdict"
+          ],
+          "equals": "VERIFY_FAIL"
+        },
+        {
+          "path": [
+            "gitlab",
+            "decisive"
+          ],
+          "equals": 1
+        },
+        {
+          "path": [
+            "gitlab",
+            "failed"
+          ],
+          "equals": 1
+        }
+      ]
+    },
+    {
+      "case": "R10",
+      "scenario": "ci-native.v1",
+      "given": {
+        "variants": [
+          {
+            "name": "github",
+            "provider": "github",
+            "mapping": "devostasis.ci-outcomes.github.v1",
+            "status": "completed",
+            "conclusion": "future-result"
+          },
+          {
+            "name": "gitlab",
+            "provider": "gitlab",
+            "mapping": "devostasis.ci-outcomes.gitlab.v1",
+            "status": "future-result",
+            "conclusion": null
+          }
+        ]
+      },
+      "checks": [
+        {
+          "path": [
+            "github",
+            "outcome"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "github",
+            "revision_verdict"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "github",
+            "decisive"
+          ],
+          "equals": 0
+        },
+        {
+          "path": [
+            "github",
+            "failed"
+          ],
+          "equals": 0
+        },
+        {
+          "path": [
+            "gitlab",
+            "outcome"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "gitlab",
+            "revision_verdict"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "gitlab",
+            "decisive"
+          ],
+          "equals": 0
+        },
+        {
+          "path": [
+            "gitlab",
+            "failed"
+          ],
+          "equals": 0
+        }
+      ]
+    },
+    {
+      "case": "T3",
+      "scenario": "independence.v1",
+      "given": {
+        "attempts": [
+          "failure",
+          "success",
+          "success",
+          "success",
+          "success",
+          "success",
+          "success",
+          "success",
+          "success",
+          "success",
+          "success"
+        ],
+        "sample_semantics": "RAW_RUNS"
+      },
+      "checks": [
+        {
+          "path": [
+            "canonical_revision_count"
+          ],
+          "equals": 1
+        },
+        {
+          "path": [
+            "result",
+            "evaluation_status"
+          ],
+          "equals": "DEGRADED"
+        },
+        {
+          "path": [
+            "result",
+            "derived",
+            "sample_strength"
+          ],
+          "equals": "PROVISIONAL_NONINDEPENDENT"
+        },
+        {
+          "path": [
+            "result",
+            "derived",
+            "decisive_count_14d"
+          ],
+          "equals": 1
+        },
+        {
+          "path": [
+            "result",
+            "derived",
+            "failed_count_14d"
+          ],
+          "equals": 1
+        },
+        {
+          "path": [
+            "result",
+            "derived",
+            "current_revision",
+            "current_verdict"
+          ],
+          "equals": "VERIFY_PASS"
+        },
+        {
+          "path": [
+            "result",
+            "diagnostics"
+          ],
+          "contains": "CI_NONINDEPENDENT_SAMPLE"
+        },
+        {
+          "path": [
+            "result",
+            "rule_id"
+          ],
+          "equals": "integrity.bands.v1+ci-unit-004+hist-002+independence-001"
+        }
+      ]
+    },
+    {
+      "case": "T6",
+      "scenario": "multi-vital.v1",
+      "given": {
+        "inventories": {
+          "git.default_branch.commits_28d": [
+            {
+              "sha": "r",
+              "committed_at": "2026-09-04T00:00:00Z"
+            }
+          ],
+          "forge.change_requests.inventory": [
+            {
+              "number": 1,
+              "state": "OPEN",
+              "created_at": "2026-09-01T00:00:00Z",
+              "updated_at": "2026-09-04T00:00:00Z",
+              "merged_at": null
+            },
+            {
+              "number": 2,
+              "state": "CLOSED",
+              "created_at": "2026-09-02T00:00:00Z",
+              "updated_at": "2026-09-04T00:00:00Z",
+              "merged_at": "2026-09-04T00:00:00Z"
+            }
+          ],
+          "forge.issues.inventory": [
+            {
+              "number": 1,
+              "state": "OPEN",
+              "created_at": "2026-07-01T00:00:00Z",
+              "updated_at": "2026-07-01T00:00:00Z"
+            }
+          ],
+          "git.nondefault_branches.inventory": []
+        },
+        "observation_id": null,
+        "variants": [
+          {
+            "name": "shared",
+            "status": "AVAILABLE",
+            "freshness": "FRESH"
+          }
+        ]
+      },
+      "checks": [
+        {
+          "path": [
+            "shared",
+            "vitals",
+            "pulse",
+            "dependency_group_ids"
+          ],
+          "contains": "FLOW_PULSE_ACTIVITY"
+        },
+        {
+          "path": [
+            "shared",
+            "vitals",
+            "flow",
+            "dependency_group_ids"
+          ],
+          "contains": "FLOW_PULSE_ACTIVITY"
+        },
+        {
+          "path": [
+            "shared",
+            "vitals",
+            "flow",
+            "dependency_group_ids"
+          ],
+          "contains": "CLUTTER_FLOW_FORGE"
+        },
+        {
+          "path": [
+            "shared",
+            "vitals",
+            "clutter",
+            "dependency_group_ids"
+          ],
+          "contains": "CLUTTER_FLOW_FORGE"
+        },
+        {
+          "path": [
+            "shared",
+            "sources",
+            "forge.change_requests.open_count",
+            "derived_from"
+          ],
+          "equals": [
+            "forge.change_requests.inventory"
+          ]
+        },
+        {
+          "path": [
+            "shared",
+            "sources",
+            "forge.change_requests.updated_count_28d",
+            "derived_from"
+          ],
+          "equals": [
+            "forge.change_requests.inventory"
+          ]
+        },
+        {
+          "path": [
+            "shared",
+            "sources",
+            "forge.change_requests.stale_open_count_14d",
+            "derived_from"
+          ],
+          "equals": [
+            "forge.change_requests.inventory"
+          ]
+        },
+        {
+          "path": [
+            "shared",
+            "snapshot",
+            "aggregate_health"
+          ],
+          "absent": true
+        },
+        {
+          "path": [
+            "shared",
+            "snapshot",
+            "score"
+          ],
+          "absent": true
+        },
+        {
+          "path": [
+            "shared",
+            "snapshot",
+            "aggregate"
+          ],
+          "absent": true
+        },
+        {
+          "path": [
+            "shared",
+            "vitals",
+            "flow",
+            "band"
+          ],
+          "equals": "MOVING"
+        },
+        {
+          "path": [
+            "shared",
+            "vitals",
+            "pulse",
+            "band"
+          ],
+          "equals": "QUIET"
+        },
+        {
+          "path": [
+            "shared",
+            "vitals",
+            "clutter",
+            "band"
+          ],
+          "equals": "LIGHT"
+        }
+      ]
+    },
+    {
+      "case": "T8",
+      "scenario": "multi-vital.v1",
+      "given": {
+        "inventories": {
+          "git.default_branch.commits_28d": [
+            {
+              "sha": "r",
+              "committed_at": "2026-09-04T00:00:00Z"
+            }
+          ],
+          "forge.change_requests.inventory": [
+            {
+              "number": 1,
+              "state": "OPEN",
+              "created_at": "2026-09-01T00:00:00Z",
+              "updated_at": "2026-09-04T00:00:00Z",
+              "merged_at": null
+            },
+            {
+              "number": 2,
+              "state": "CLOSED",
+              "created_at": "2026-09-02T00:00:00Z",
+              "updated_at": "2026-09-04T00:00:00Z",
+              "merged_at": "2026-09-04T00:00:00Z"
+            }
+          ],
+          "forge.issues.inventory": [
+            {
+              "number": 1,
+              "state": "OPEN",
+              "created_at": "2026-07-01T00:00:00Z",
+              "updated_at": "2026-07-01T00:00:00Z"
+            }
+          ],
+          "git.nondefault_branches.inventory": []
+        },
+        "observation_id": "forge.change_requests.open_count",
+        "variants": [
+          {
+            "name": "FORBIDDEN",
+            "status": "FORBIDDEN",
+            "freshness": "FRESH"
+          },
+          {
+            "name": "UNKNOWN",
+            "status": "UNKNOWN",
+            "freshness": "FRESH"
+          },
+          {
+            "name": "ERROR",
+            "status": "ERROR",
+            "freshness": "FRESH"
+          },
+          {
+            "name": "PARTIAL",
+            "status": "PARTIAL",
+            "freshness": "FRESH"
+          },
+          {
+            "name": "STALE",
+            "status": "AVAILABLE",
+            "freshness": "STALE"
+          }
+        ]
+      },
+      "checks": [
+        {
+          "path": [
+            "FORBIDDEN",
+            "vitals",
+            "flow",
+            "evaluation_status"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "FORBIDDEN",
+            "vitals",
+            "flow",
+            "band"
+          ],
+          "equals": null
+        },
+        {
+          "path": [
+            "FORBIDDEN",
+            "vitals",
+            "clutter",
+            "evaluation_status"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "FORBIDDEN",
+            "vitals",
+            "clutter",
+            "band"
+          ],
+          "equals": null
+        },
+        {
+          "path": [
+            "UNKNOWN",
+            "vitals",
+            "flow",
+            "evaluation_status"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "UNKNOWN",
+            "vitals",
+            "flow",
+            "band"
+          ],
+          "equals": null
+        },
+        {
+          "path": [
+            "UNKNOWN",
+            "vitals",
+            "clutter",
+            "evaluation_status"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "UNKNOWN",
+            "vitals",
+            "clutter",
+            "band"
+          ],
+          "equals": null
+        },
+        {
+          "path": [
+            "ERROR",
+            "vitals",
+            "flow",
+            "evaluation_status"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "ERROR",
+            "vitals",
+            "flow",
+            "band"
+          ],
+          "equals": null
+        },
+        {
+          "path": [
+            "ERROR",
+            "vitals",
+            "clutter",
+            "evaluation_status"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "ERROR",
+            "vitals",
+            "clutter",
+            "band"
+          ],
+          "equals": null
+        },
+        {
+          "path": [
+            "PARTIAL",
+            "vitals",
+            "flow",
+            "evaluation_status"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "PARTIAL",
+            "vitals",
+            "flow",
+            "band"
+          ],
+          "equals": null
+        },
+        {
+          "path": [
+            "PARTIAL",
+            "vitals",
+            "clutter",
+            "evaluation_status"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "PARTIAL",
+            "vitals",
+            "clutter",
+            "band"
+          ],
+          "equals": null
+        },
+        {
+          "path": [
+            "STALE",
+            "vitals",
+            "flow",
+            "evaluation_status"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "STALE",
+            "vitals",
+            "flow",
+            "band"
+          ],
+          "equals": null
+        },
+        {
+          "path": [
+            "STALE",
+            "vitals",
+            "clutter",
+            "evaluation_status"
+          ],
+          "equals": "UNKNOWN"
+        },
+        {
+          "path": [
+            "STALE",
+            "vitals",
+            "clutter",
+            "band"
+          ],
+          "equals": null
+        }
+      ]
+    },
+    {
+      "case": "ART-05",
+      "scenario": "bundle.v1",
+      "given": {
+        "operation": "member-forbidden"
+      },
+      "checks": [
+        {
+          "path": [
+            "access"
+          ],
+          "equals": "FORBIDDEN"
+        },
+        {
+          "path": [
+            "verified"
+          ],
+          "equals": false
+        }
+      ]
+    },
+    {
+      "case": "ART-08",
+      "scenario": "bundle.v1",
+      "given": {
+        "operation": "canonical"
+      },
+      "checks": [
+        {
+          "path": [
+            "same_bytes"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "same_digest"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "scalar_differs"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "type_differs"
+          ],
+          "equals": true
+        }
+      ]
+    },
+    {
+      "case": "ART-09",
+      "scenario": "bundle.v1",
+      "given": {
+        "operation": "receipt"
+      },
+      "checks": [
+        {
+          "path": [
+            "original_verified"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "missing_receipt_verified"
+          ],
+          "equals": false
+        },
+        {
+          "path": [
+            "references_resolve"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "receipt_binding_rejected"
+          ],
+          "equals": true
+        }
+      ]
+    },
+    {
+      "case": "ART-10",
+      "scenario": "bundle.v1",
+      "given": {
+        "operation": "public"
+      },
+      "checks": [
+        {
+          "path": [
+            "verified"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "report_present"
+          ],
+          "equals": true
+        }
+      ]
+    },
+    {
+      "case": "ART-11",
+      "scenario": "bundle.v1",
+      "given": {
+        "operation": "private"
+      },
+      "checks": [
+        {
+          "path": [
+            "same_id"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "same_members"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "verified"
+          ],
+          "equals": true
+        }
+      ]
+    },
+    {
+      "case": "ART-15",
+      "scenario": "bundle.v1",
+      "given": {
+        "operation": "collision"
+      },
+      "checks": [
+        {
+          "path": [
+            "collision"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "unchanged"
+          ],
+          "equals": true
+        }
+      ]
+    },
+    {
+      "case": "RPT-4",
+      "scenario": "history-store.v1",
+      "given": {
+        "operation": "idempotent"
+      },
+      "checks": [
+        {
+          "path": [
+            "same_path"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "same_index"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "collision"
+          ],
+          "equals": true
+        }
+      ]
+    },
+    {
+      "case": "RPT-5",
+      "scenario": "history-store.v1",
+      "given": {
+        "operation": "failed-commit"
+      },
+      "checks": [
+        {
+          "path": [
+            "failed"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "latest_preserved"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "first_verified"
+          ],
+          "equals": true
+        }
+      ]
+    },
+    {
+      "case": "RPT-6",
+      "scenario": "history-store.v1",
+      "given": {
+        "operation": "missing-predecessor"
+      },
+      "checks": [
+        {
+          "path": [
+            "comparison"
+          ],
+          "equals": "HISTORY_GAP"
+        },
+        {
+          "path": [
+            "snapshot_present"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "transitions"
+          ],
+          "equals": [
+            "INCOMPARABLE"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "RPT-8",
+      "scenario": "history-store.v1",
+      "given": {
+        "operation": "forbidden"
+      },
+      "checks": [
+        {
+          "path": [
+            "comparison"
+          ],
+          "equals": "HISTORY_GAP"
+        },
+        {
+          "path": [
+            "previous_preserved"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "forbidden_explicit"
+          ],
+          "equals": true
+        }
+      ]
+    },
+    {
+      "case": "RPT-9",
+      "scenario": "history-store.v1",
+      "given": {
+        "operation": "two-writers"
+      },
+      "checks": [
+        {
+          "path": [
+            "conflict"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "checkpoint_latest_a"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "immutable_candidates_preserved"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "retry_uses_a"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "latest_retry"
+          ],
+          "equals": true
+        },
+        {
+          "path": [
+            "locked_writer_refused"
+          ],
+          "equals": true
+        }
+      ]
+    }
+  ]
+}

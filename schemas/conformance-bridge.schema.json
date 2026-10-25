@@ -1,0 +1,1118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/drevendev/Devostasis/schemas/conformance-bridge.schema.json",
+  "description": "Source-checkout executable bridge. Runtime additionally checks unique permanent IDs/variants, exact operation lineage, whole T8 matrix, all input fields and every assertion path.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "source",
+    "cases"
+  ],
+  "properties": {
+    "schema": {
+      "const": "devostasis.conformance-bridge.v1"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "case",
+              "scenario",
+              "given",
+              "checks"
+            ],
+            "properties": {
+              "case": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scenario": {
+                "const": "ci-native.v1"
+              },
+              "given": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "variants"
+                ],
+                "properties": {
+                  "variants": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "name",
+                        "provider",
+                        "mapping",
+                        "status",
+                        "conclusion"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "provider": {
+                          "enum": [
+                            "github",
+                            "gitlab"
+                          ]
+                        },
+                        "mapping": {
+                          "enum": [
+                            "devostasis.ci-outcomes.github.v1",
+                            "devostasis.ci-outcomes.gitlab.v1"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "conclusion": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "checks": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "not_equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "not_equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "contains"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "contains": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "absent"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "absent": {
+                          "const": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "case",
+              "scenario",
+              "given",
+              "checks"
+            ],
+            "properties": {
+              "case": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scenario": {
+                "const": "independence.v1"
+              },
+              "given": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "attempts",
+                  "sample_semantics"
+                ],
+                "properties": {
+                  "attempts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sample_semantics": {
+                    "enum": [
+                      "RAW_RUNS",
+                      "INDEPENDENT_REVISIONS"
+                    ]
+                  }
+                }
+              },
+              "checks": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "not_equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "not_equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "contains"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "contains": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "absent"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "absent": {
+                          "const": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "case",
+              "scenario",
+              "given",
+              "checks"
+            ],
+            "properties": {
+              "case": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scenario": {
+                "const": "multi-vital.v1"
+              },
+              "given": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "observation_id",
+                  "variants",
+                  "inventories"
+                ],
+                "properties": {
+                  "observation_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "variants": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "name",
+                        "status",
+                        "freshness"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "status": {
+                          "enum": [
+                            "AVAILABLE",
+                            "PARTIAL",
+                            "FORBIDDEN",
+                            "UNKNOWN",
+                            "ERROR"
+                          ]
+                        },
+                        "freshness": {
+                          "enum": [
+                            "FRESH",
+                            "STALE"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "inventories": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "git.default_branch.commits_28d",
+                      "forge.change_requests.inventory",
+                      "forge.issues.inventory",
+                      "git.nondefault_branches.inventory"
+                    ],
+                    "properties": {
+                      "git.default_branch.commits_28d": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      },
+                      "forge.change_requests.inventory": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      },
+                      "forge.issues.inventory": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      },
+                      "git.nondefault_branches.inventory": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "checks": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "not_equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "not_equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "contains"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "contains": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "absent"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "absent": {
+                          "const": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "case",
+              "scenario",
+              "given",
+              "checks"
+            ],
+            "properties": {
+              "case": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scenario": {
+                "const": "bundle.v1"
+              },
+              "given": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operation"
+                ],
+                "properties": {
+                  "operation": {
+                    "enum": [
+                      "canonical",
+                      "member-forbidden",
+                      "receipt",
+                      "public",
+                      "private",
+                      "collision"
+                    ]
+                  }
+                }
+              },
+              "checks": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "not_equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "not_equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "contains"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "contains": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "absent"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "absent": {
+                          "const": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "case",
+              "scenario",
+              "given",
+              "checks"
+            ],
+            "properties": {
+              "case": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scenario": {
+                "const": "history-store.v1"
+              },
+              "given": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operation"
+                ],
+                "properties": {
+                  "operation": {
+                    "enum": [
+                      "idempotent",
+                      "failed-commit",
+                      "missing-predecessor",
+                      "forbidden",
+                      "two-writers"
+                    ]
+                  }
+                }
+              },
+              "checks": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "not_equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "not_equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "contains"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "contains": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "absent"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "absent": {
+                          "const": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "case",
+              "scenario",
+              "given",
+              "checks"
+            ],
+            "properties": {
+              "case": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "scenario": {
+                "const": "vital-consumers.v1"
+              },
+              "given": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "observed_at",
+                  "observations"
+                ],
+                "properties": {
+                  "observed_at": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  },
+                  "observations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "observation_id",
+                        "value_type",
+                        "status",
+                        "value"
+                      ],
+                      "properties": {
+                        "observation_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2048
+                        },
+                        "value_type": {
+                          "enum": [
+                            "count",
+                            "ratio",
+                            "duration",
+                            "boolean",
+                            "enum",
+                            "string",
+                            "set",
+                            "series",
+                            "record"
+                          ]
+                        },
+                        "status": {
+                          "enum": [
+                            "AVAILABLE",
+                            "PARTIAL",
+                            "UNAVAILABLE",
+                            "FORBIDDEN",
+                            "UNKNOWN",
+                            "ERROR"
+                          ]
+                        },
+                        "freshness": {
+                          "enum": [
+                            "FRESH",
+                            "STALE",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "value": {},
+                        "coverage": {
+                          "type": [
+                            "object",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "minItems": 1
+                  }
+                }
+              },
+              "checks": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "not_equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "not_equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "contains"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "contains": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "absent"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "absent": {
+                          "const": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "case",
+              "scenario",
+              "given",
+              "checks"
+            ],
+            "properties": {
+              "case": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "scenario": {
+                "const": "ci-revisions.v1"
+              },
+              "given": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "variants"
+                ],
+                "properties": {
+                  "variants": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "name",
+                        "steps"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2048
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "history",
+                              "evidence"
+                            ],
+                            "properties": {
+                              "history": {
+                                "enum": [
+                                  "BASELINE",
+                                  "CONTINUE",
+                                  "GAP"
+                                ]
+                              },
+                              "evidence": {
+                                "$ref": "ci-normalization.schema.json"
+                              }
+                            }
+                          },
+                          "minItems": 1
+                        }
+                      }
+                    },
+                    "minItems": 1
+                  }
+                }
+              },
+              "checks": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "not_equals"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "not_equals": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "contains"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "contains": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "absent"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "integer"
+                            ]
+                          }
+                        },
+                        "absent": {
+                          "const": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
