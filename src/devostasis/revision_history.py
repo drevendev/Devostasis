@@ -67,6 +67,7 @@ STATES = (FAILURE_OBSERVED, PASS_ONLY_OBSERVED, NO_DECISIVE_OBSERVED, UNKNOWN_HI
 CONTRIBUTION = {FAILURE_OBSERVED: "VERIFY_FAIL", PASS_ONLY_OBSERVED: "VERIFY_PASS", NO_DECISIVE_OBSERVED: None, UNKNOWN_HISTORY: None}
 
 ACTIONS_KIND = "github_actions_workflow_run"
+ATTEMPT_STATES = {"VERIFY_PASS", "VERIFY_FAIL", "VERIFY_UNRESOLVED", "NON_VERIFY_TERMINAL", "NOT_EXECUTED", "UNKNOWN"}
 
 # Where the carried history came from.
 SOURCE_CARRIED = "CARRIED"
@@ -102,6 +103,8 @@ def _attempts(raw: Any, where: str) -> list[dict[str, Any]]:
     for attempt in raw:
         if not isinstance(attempt, dict) or not isinstance(attempt.get("state"), str):
             raise HistoryShapeError(f"{where}: an attempt carries no state")
+        if attempt["state"] not in ATTEMPT_STATES:
+            raise HistoryShapeError(f"{where}: unknown attempt state {attempt['state']!r}")
         number = attempt.get("attempt")
         if number is not None and (isinstance(number, bool) or not isinstance(number, int) or number < 1):
             raise HistoryShapeError(f"{where}: attempt number {number!r} is not a positive integer")
@@ -183,10 +186,15 @@ def merge_parents(*groups: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], 
 def parent_complete(parent: dict[str, Any]) -> bool:
     """Every attempt of an Actions run, 1..latest, is in the union. A check suite never is."""
     latest = parent.get("latest_attempt")
-    if parent.get("kind") != ACTIONS_KIND or not isinstance(latest, int) or latest < 1:
+    if parent.get("kind") != ACTIONS_KIND or type(latest) is not int or latest < 1:
         return False
-    numbers = {a["attempt"] for a in parent["attempts"] if isinstance(a.get("attempt"), int)}
-    return set(range(1, latest + 1)) <= numbers
+    attempts = parent["attempts"]
+    if any(type(a.get("attempt")) is not int or not 1 <= a["attempt"] <= latest
+           or a.get("state") not in ATTEMPT_STATES - {"UNKNOWN"} for a in attempts):
+        return False
+    # Bound work by observed evidence, never by an untrusted declared maximum.
+    # Several successive states of one attempt still represent one identity.
+    return len({a["attempt"] for a in attempts}) == latest
 
 
 def union_state(parents: list[dict[str, Any]], unresolved: list[str]) -> tuple[str, bool]:
@@ -299,11 +307,40 @@ class Reconciled:
         return {"lineage": LINEAGE, "source": dict(self.source), "records": [encode(record) for record in ordered]}
 
 
-def _series_records(series: Observation | None) -> tuple[list[dict[str, Any]] | None, bool]:
+def _series_records(series: Observation | None) -> tuple[list[dict[str, Any]] | None, bool, list[str]]:
     """The current revision records and whether they are the whole 14-day inventory."""
     if series is None or series.status not in (AVAILABLE, PARTIAL) or series.freshness != FRESH or not isinstance(series.value, list):
-        return None, False
-    return [r for r in series.value if isinstance(r, dict) and isinstance(r.get("revision"), str)], series.status == AVAILABLE
+        return None, False, []
+    records, problems, seen, duplicates = [], [], set(), set()
+    for position, record in enumerate(series.value):
+        ref = record.get("revision") if isinstance(record, dict) else None
+        if isinstance(ref, str) and ref:
+            if ref in seen:
+                duplicates.add(ref)
+            seen.add(ref)
+        try:
+            if not isinstance(record, dict) or not isinstance(ref, str) or not ref:
+                raise HistoryShapeError("no immutable revision")
+            if not isinstance(record.get("committed_at"), str):
+                raise HistoryShapeError("no committed_at")
+            timeutil.parse_ts(record["committed_at"])
+            if not isinstance(record.get("parents"), list):
+                raise HistoryShapeError("parents is not a list")
+            for parent in record["parents"]:
+                parent_from_current(parent, f"revision {ref}")
+            if (record.get("history_state") not in CONTRIBUTION
+                    or record.get("historical_contribution") != CONTRIBUTION[record["history_state"]]
+                    or not isinstance(record.get("current_verdict"), (str, type(None)))):
+                raise HistoryShapeError("inconsistent history contribution or current verdict")
+        except (HistoryShapeError, ValueError, TypeError) as exc:
+            problems.append(f"REVISION_RECORD_INCONSISTENT:{ref if isinstance(ref, str) else position}:{exc}")
+            continue
+        records.append(record)
+    problems.extend(f"REVISION_RECORD_DUPLICATE:{ref}" for ref in sorted(duplicates))
+    if series.status == AVAILABLE and isinstance(series.coverage, dict) and any(series.coverage.get(key) is False
+            for key in ("complete", "runs_complete", "attempts_complete", "suites_complete")):
+        problems.append("REVISION_SERIES_COVERAGE_INCOMPLETE")
+    return [r for r in records if r["revision"] not in duplicates], series.status == AVAILABLE and not problems, problems
 
 
 def reconcile(obs: ObservationSet) -> Reconciled:
@@ -332,7 +369,8 @@ def reconcile(obs: ObservationSet) -> Reconciled:
             source = {"status": SOURCE_MALFORMED}
             problems.append(f"REVISION_HISTORY_CARRY_MALFORMED:{exc}")
 
-    current, inventory_complete = _series_records(obs.get(REVISIONS))
+    current, inventory_complete, current_problems = _series_records(obs.get(REVISIONS))
+    problems.extend(current_problems)
     current_by_rev = {r["revision"]: r for r in current or []}
     records: dict[str, dict[str, Any]] = {}
 
@@ -345,15 +383,17 @@ def reconcile(obs: ObservationSet) -> Reconciled:
 
     for revision, record in current_by_rev.items():
         committed_at = record.get("committed_at")
-        if not isinstance(committed_at, str):
-            problems.append(f"REVISION_RECORD_INCONSISTENT:{revision}")
-            continue
+        prior = records.get(revision)
+        if prior:
+            if timeutil.parse_ts(committed_at) != timeutil.parse_ts(prior["committed_at"]):
+                problems.append(f"IMMUTABLE_COMMIT_TIME_MISMATCH:{revision}")
+                continue
+            committed_at = prior["committed_at"]
         try:
             visible = [parent_from_current(p, f"revision {revision}") for p in record.get("parents") or []]
         except HistoryShapeError as exc:
             problems.append(f"REVISION_RECORD_INCONSISTENT:{revision}:{exc}")
             continue
-        prior = records.get(revision)
         prior_parents = prior["parents"] if prior else []
         unresolved = list(prior.get("unresolved") or []) if prior else []
         if unresolved and visible and all(parent_complete(p) for p in visible):

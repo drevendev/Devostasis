@@ -281,3 +281,15 @@ non-monotonic observation boundary; the immutable authority of the comparison;
 ACT-COV-01..05 as `activity` vectors. RPT-4..RPT-6 and RPT-9, including an
 executable permission-domain fixture, remain open implementation work named by
 PV-REV-REPORT-001.
+
+## Publication conflict and permission checkpoint (0.6)
+
+Canonical commit uses a nonblocking OS lock across store publication, including
+rename, immutable put, index and latest copy. A second publisher gets explicit
+HISTORY_WRITE_CONFLICT. Before an advancing non-duplicate candidate reaches the
+index, its previous_bundle_id must equal the current indexed tail. A stale writer
+keeps its immutable candidate and must rebuild against latest; no silent overwrite
+or favorable history replacement occurs. Indexed duplicates remain idempotent.
+Failure before immutable commit leaves the prior latest authoritative. Index
+PermissionError is HISTORY_STORE_FORBIDDEN, never absence/BASELINE. See the
+versioned RPT operation scenarios in [conformance-surface.md](conformance-surface.md).

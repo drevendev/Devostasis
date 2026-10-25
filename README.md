@@ -211,15 +211,27 @@ For this unreleased checkout:
 pip install -e .
 ```
 
-After the 0.5.0 release tag is published:
+After the 0.6.0 release tag is published:
 
 ```bash
 pip install git+https://github.com/drevendev/devostasis@v0.6.0
 ```
 
-Observe one repository (a GitHub token is read from `DEVOSTASIS_GITHUB_TOKEN`,
+Produce your first seven-Vital report without a configuration file:
+
+```bash
+devostasis run --repo drevendev/Devostasis --store ./history-local
+devostasis verify --bundle history-local/projects/github.com/drevendev/devostasis/latest
+```
+
+Open `history-local/projects/github.com/drevendev/devostasis/latest/report.md`.
+The first successful run is a `BASELINE`; later runs compare with the previous
+verified bundle. Unavailable API evidence remains explicit, and planning/debt
+without configured registers or mappings remains undeclared/uninstrumented.
+
+A GitHub token is read from `DEVOSTASIS_GITHUB_TOKEN`,
 `GITHUB_TOKEN`, `GH_TOKEN` or `gh auth token`; public repositories work
-without one, with a low rate limit):
+without one, with a low rate limit. For separate observation and evaluation:
 
 ```bash
 devostasis observe --repo owner/name --out observations.json
@@ -332,6 +344,9 @@ gauges, accepted band ordering and executable conformance vectors. The
 pending 0.2.0 adoption adds the accepted Vital repairs and durable Integrity
 history; 0.3.0 adds the separate Evidence to Action companion and 0.4.0 adds
 reproducible consumer handoff and accepted receipt/compatibility contracts.
+0.5.0 adds bound consumer operations and portable private history; 0.6.0 adds
+native offline Python analysis and verified source packets. The cumulative
+release is still under review, including inherited history-admission repairs.
 Its GitLab work collector does not yet implement the core GitLab Vital
 adapter or the accepted Instruments carrier.
 
@@ -354,3 +369,8 @@ than patched ad hoc.
 ## License
 
 [MIT](LICENSE).
+
+The 0.6 release candidate adds independently replayable Git history proof and a
+versioned conformance operation bridge. See the [0.2–0.6 acceptance ledger](docs/release-acceptance.md)
+for implementation checks, historical compatibility and pending independent
+review/release gates. Existing published pins remain unchanged until release.

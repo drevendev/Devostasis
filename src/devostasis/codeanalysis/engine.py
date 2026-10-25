@@ -9,24 +9,28 @@ import tokenize
 
 from ..canonical import digest
 from ..workscope.model import fields, number, path, require, strings
-from . import ENGINE, POLICY
+from . import ENGINE, LEGACY_ENGINE, LEGACY_POLICY, POLICY
 
 RULES = {"DS-PY-SYNTAX": "Python syntax cannot be parsed", "DS-PY-COMPLEXITY": "Function decision count exceeds policy",
          "DS-PY-FUNCTION-SIZE": "Function line span exceeds policy", "DS-PY-FILE-SIZE": "File line count exceeds policy",
          "DS-PY-BARE-EXCEPT": "Bare except also catches process control exceptions", "DS-PY-IMPORT-CYCLE": "Static import cycle"}
 
 
-def default_policy():
-    return {"contract": POLICY, "version": "default-1", "grammar": "PYTHON_3_12", "include": [],
+def default_policy(*, legacy=False):
+    value = {"contract": LEGACY_POLICY if legacy else POLICY, "version": "default-1" if legacy else "default-2", "grammar": "PYTHON_3_12", "include": [],
         "exclude": [".venv", "build", "dist", "vendor", "node_modules"], "source_roots": [".", "src"],
         "budget": {"max_files": 2000, "max_file_bytes": 1024 * 1024, "max_total_bytes": 16 * 1024 * 1024, "seconds": 120},
         "limits": {"complexity": 15, "function_lines": 80, "file_lines": 600},
         "history": {"enabled": True, "days": 28, "max_commits": 500}}
+    if not legacy:
+        value["history"].update(max_ancestors=2000, max_objects=10000, max_proof_bytes=32 * 1024 * 1024,
+                                max_blob_bytes=4 * 1024 * 1024, max_diff_work=2_000_000, max_diff_lines=100000)
+    return value
 
 
 def policy(value):
     fields(value, ("contract", "version", "grammar", "include", "exclude", "source_roots", "budget", "limits", "history"))
-    require(value["contract"] == POLICY and value["grammar"] == "PYTHON_3_12", "unsupported code policy")
+    require(value["contract"] in (POLICY, LEGACY_POLICY) and value["grammar"] == "PYTHON_3_12", "unsupported code policy")
     from ..workscope.model import text
     text(value["version"])
     strings(value["include"], "included roots", paths=True); strings(value["exclude"], "excluded roots", paths=True)
@@ -40,7 +44,14 @@ def policy(value):
     require(value["budget"]["max_file_bytes"] <= value["budget"]["max_total_bytes"], "per-file budget exceeds total")
     fields(value["limits"], ("complexity", "function_lines", "file_lines"))
     for v in value["limits"].values(): number(v, 1, 100000)
-    fields(value["history"], ("enabled", "days", "max_commits"))
+    history_keys = ("enabled", "days", "max_commits")
+    if value["contract"] == POLICY:
+        history_keys += ("max_ancestors", "max_objects", "max_proof_bytes", "max_blob_bytes", "max_diff_work", "max_diff_lines")
+        for key, low, high in (("max_ancestors", 1, 10000), ("max_objects", 1, 50000),
+                ("max_proof_bytes", 1024, 64 * 1024 * 1024), ("max_blob_bytes", 1, 4 * 1024 * 1024),
+                ("max_diff_work", 1, 10_000_000), ("max_diff_lines", 1, 200000)):
+            number(value["history"].get(key), low, high)
+    fields(value["history"], history_keys)
     require(type(value["history"]["enabled"]) is bool, "explicit history enablement required")
     number(value["history"]["days"], 1, 3650); number(value["history"]["max_commits"], 1, 10000)
     return value
@@ -189,21 +200,27 @@ def evaluate(raw, config):
     for component in components:
         finding("DS-PY-IMPORT-CYCLE", component[0], "cycle:" + digest(component)[7:], 1, 1, {"paths": component}, component)
     findings.sort(key=lambda f: (f["path"], f["line"], f["rule"], f["symbol"]))
-    history = raw["history"]; changes = defaultdict(lambda: {"revisions": set(), "added": 0, "deleted": 0, "binary": 0})
+    proven = "history_proof" in raw
+    history = raw["history"]; changes = defaultdict(lambda: {"revisions": set(), "added": 0, "deleted": 0, "binary": 0, "unproven": 0})
     for commit in history["commits"]:
         for change in commit["changes"]:
             if change["path"] not in entries or entries[change["path"]]["status"] == "OUT_OF_SCOPE": continue
             cell = changes[change["path"]]; cell["revisions"].add(commit["revision"])
-            if change["added"] is None: cell["binary"] += 1
+            if proven and change["count_status"] == "UNAVAILABLE": cell["unproven"] += 1
+            elif change["added"] is None: cell["binary"] += 1
             else: cell["added"] += change["added"]; cell["deleted"] += change["deleted"]
     hotspots = [{"path": p, "revisions": len(c["revisions"]), "added": c["added"], "deleted": c["deleted"],
                  "binary_changes": c["binary"], "coverage": history["status"]} for p, c in changes.items()]
+    if proven:
+        for hotspot in hotspots:
+            hotspot["unproven_changes"] = changes[hotspot["path"]]["unproven"]
+            hotspot["count_status"] = "PARTIAL" if hotspot["unproven_changes"] else "VERIFIED"
     hotspots.sort(key=lambda h: (-h["revisions"], -(h["added"] + h["deleted"]), h["path"]))
     unknown = any(r["status"] in ("UNAVAILABLE", "PARSE_ERROR") for r in output)
     applicable = any(e["status"] == "ADMITTED" or
                      (e["path"] and e["path"].endswith(".py") and e["status"] == "UNAVAILABLE")
                      for e in raw["entries"])
-    return {"engine": ENGINE, "subject": deepcopy(raw["subject"]), "observed_at": raw["observed_at"],
+    return {"engine": ENGINE if proven else LEGACY_ENGINE, "subject": deepcopy(raw["subject"]), "observed_at": raw["observed_at"],
             "coverage": "PARTIAL" if unknown else "COMPLETE" if applicable else "NOT_APPLICABLE", "files": output, "findings": findings,
             "imports": imports, "import_cycles": components, "hotspots": hotspots,
             "history": {k: deepcopy(v) for k, v in history.items() if k != "commits"},

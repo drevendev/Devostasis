@@ -5,7 +5,37 @@ contract or a policy always come with a version bump of that contract.
 
 ## 0.6.0 (unreleased)
 
-Offline Repository Analysis, target E4, issue #72.
+Offline Repository Analysis and executable assurance, targets E4/B1, issues #72/#73.
+
+- Default native analysis v2 carries bounded authenticated commit/parent/tree/blob
+  history proof; offline replay derives roots, window membership, edit counts and
+  completeness. Merge ancestry, clock skew, shallow/missing objects and resource
+  caps remain explicit. V1 bundle/packet/example bytes retain exact replay.
+- Publish a versioned source-checkout conformance operation bridge with 63 permanent
+  implementation fixtures, consumed RAW_RUNS provenance, shared multi-Vital evidence,
+  all T8 substitutions, canonical bundle and actual HistoryStore checkpoints.
+- Materialize R11–R53 (43 permanent cases, 84 CI variants) with native parent
+  identities, explicit rerun proof, exact Actions/suite overlap, unresolved current
+  composition and failure-sticky store lifecycles. Versioned opt-in normalization
+  replays raw facts before governed Integrity; altered/partial evidence fails
+  closed and old observation/bundle replay remains unchanged. Public schemas
+  expose seven bridge scenarios and the bounded native input contract.
+- Serialize canonical store publication and reject stale advancing predecessors
+  with explicit retry conflict while preserving immutable candidates. Store index
+  permission denial remains FORBIDDEN/HISTORY_GAP.
+- Add per-version 0.2–0.6 acceptance ledger and independent review/release gates;
+  B1 exact research acceptance and sustained external B7 evidence remain open.
+
+- Release-readiness repairs: reject ambiguous/malformed current CI inventory
+  before it can remove carried failures; preserve immutable revision time;
+  require exact bounded attempt identities and retain UNKNOWN history. Activity
+  shares current-record admission and exposes rejected verification inputs.
+- Replay native source-selection predicates instead of accepting a recognized
+  omission reason alone. Operational verification explicitly distinguishes
+  proved source/tree bytes from unproven omitted sizes and history ancestry;
+  canonical v1 artifact bytes and existing lineages remain unchanged.
+- Reconcile the October 21 release state/sequence and add a tested direct
+  first-report path; the v0.6.0 installation remains conditional on publication.
 
 - New stdlib-only `code` companion: immutable local Git snapshot, Python 3.12
   AST structure, six scoped findings, declared-module import cycles and bounded
@@ -24,9 +54,9 @@ Offline Repository Analysis, target E4, issue #72.
   GitHub totals while preserving observed partial rows (#70).
 - Isolate inherited Git context and unrelated credential environment variables
   from local analysis subprocesses and synthetic diagnostics (#74).
-- Independent ancestry/count proof remains documented debt (#73); external
-  scheduling/adoption is deferred (#71). Existing Vitals, core/work replay,
-  B1/B7 and upstream release/review gates retain their contracts.
+- Independent ancestry/count proof is implemented under the separate v2 lineage
+  (#73); v1 retains its historical limits. External scheduling/adoption remains
+  deferred (#71), and B1/B7 and upstream release/review gates remain explicit.
 
 ## 0.5.0 (unreleased)
 

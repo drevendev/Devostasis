@@ -4,7 +4,75 @@ Ordered by what unblocks what, not by what is interesting. Every item names
 who or what blocks it, so a reader can tell the difference between work not
 started and work that cannot start.
 
-## Release state and next steps — 2026-10-08
+## Release state and next steps — 2026-10-21
+
+The project is at **release stabilization**, with Phase A closed and Phase B
+five of seven items implemented. B1 now has 63 operation-bridge implementation
+fixtures, materializing the former 62-case gap and RPT-8. R11–R53 contribute
+43 permanent cases with 84 CI variants. Independent whole-case/concrete-surface
+acceptance and separate T9 cell-key delivery remain open; B7 still needs
+sustained outside-consumer evidence. The latest
+published version is **v0.1.9**; 0.2.0 through 0.6.0 remain unreleased.
+
+The audit began with a clean working tree. All local and fetched remote heads
+are ancestors of upstream `release/0.6.0` at `22a2894`, including the original
+maintenance commits and the Dependabot correction merged through #79. Nine
+earlier PRs remain open: #36/#37/#50/#53/#57/#59/#64/#69/#75. There is no
+unrepresented development branch to recover. Inclusion in the release branch
+does not publish its code on `master` or create a release tag.
+
+Upstream CI for the 0.6 source head `09d497f` passed on Python 3.12/3.13/3.14
+in [run 39030444073](https://github.com/drevendev/Devostasis/actions/runs/39030444073).
+The Dependabot merge head `22a2894` also passed
+[CI](https://github.com/drevendev/Devostasis/actions/runs/39169319950).
+The old `action_required` run is historical evidence, not the current CI state.
+These successful checks do not resolve the October 14/16/18 admission reviews
+on #57/#75 or approve a later repaired head.
+
+### Delivery order
+
+1. **Finish the admission repairs before release.** Current malformed or
+   duplicate revision records must not erase carried failures or inflate the
+   sample. Admit timestamps before reconciliation, preserve immutable revision
+   time, check exact attempt identities without allocation by their declared
+   maximum, and retain UNKNOWN attempt evidence. Exercise actual four-bundle
+   evaluator/store chains and current/historical replay. Source omissions must
+   satisfy path/mode/scope and deterministic budget predicates; omitted blob
+   sizes remain acquisition claims, explicitly unproven by a tree proof.
+2. **Propagate and review every final release head.** Preserve the prepared
+   sequence: corrected #57 into `release/0.2.0`, then #53, #59, #64, #69 and #75
+   into `master`, with their respective tags under CONTRIBUTING.md. Carry the
+   history repair into descendants, include #79's Dependabot correction in
+   0.6, and verify each changed head independently. Reconcile #36/#37/#50 after
+   their delivered commits land. A green matrix is evidence, not acceptance.
+3. **Make the existing product straightforward to try.** The README now starts
+   with a direct single-repository report and its actual path (#78). Retain
+   source-install instructions until publication is confirmed. #63 still needs
+   actual scheduled Dependabot execution; the configuration correction alone
+   does not complete that operational acceptance.
+4. **Complete assurance before increasing reach.** Work the outstanding
+   timestamp/lineage/store audit families (#35), the remaining exact B1 cases
+   (#20/#23) and independently proved source-history ancestry/counts (#73).
+   Keep partial coverage, historical compatibility and evidence limits visible.
+
+### Assurance delivered within the 0.6 release candidate
+
+The owner brought **independently verifiable history and executable assurance**
+into 0.6 rather than a later release: bounded commit/parent/tree
+proofs for #73, hostile rehashed-history controls, and the missing executable
+conformance boundaries for B1. This strengthens the proof objects on which
+both work routing and native hotspots depend. The v2 proof and versioned operation bridge are implemented; concrete-surface,
+exact-fixture and release review remain pending. The [acceptance ledger](docs/release-acceptance.md)
+tracks every prepared version. This does not complete B1 or publish a release.
+
+The larger product milestone remains a real outside consumer completing work
+from verified scopes with retained results and calendar history. Deployment
+and scheduling remain owner-deferred in #71; they are not silently reinstated
+by this audit. Once B7 and existing compatibility/review gates are met, extend
+reach with the accepted core GitLab adapter and Instrument carrier. The
+existing GitLab work collector does not implement that core adapter.
+
+## Historical 0.6 implementation snapshot — 2026-10-08
 
 **0.6.0 Offline Repository Analysis (E4) is prepared on
 `zendreven/release-0.6.0`, carrying the pending 0.2–0.5 ancestry.**
@@ -24,7 +92,7 @@ completion, without external deployment or independent acceptance claims.
 
 Debt found during this increment: contradictory pagination completeness (#70,
 fixed with regressions), and independently verifiable history/root/count proof
-(#73, currently recorded acquisition observations). Protected scheduled consumer
+(#73, implemented as v2 in the assurance increment; v1 remains recorded observations). Protected scheduled consumer
 adoption (#71) is deferred by the owner. Inherited local Git context and excess
 credential environment forwarding were isolated and regression-tested (#74).
 Native language expansion and calibrated
@@ -80,7 +148,7 @@ start that matrix automatically in the fork.
 | Release the implemented increments | #57 into upstream `release/0.2.0`, then #53, #59, #64 and #69 into `master`, with each release tag | Maintainer workflow approval, independent review and green checks on each final head; carried maintenance PRs #36/#37/#50 are reconciled when their commits land |
 | Activate the selected outside consumer | Install a reviewed exact pin, project/policy binding, protected runner, durable writer and regular observation schedule | Actual private deployment receipts and verified stored generations; a recipe or shadow probe alone does not complete B7 |
 | Qualify useful repeated operation | Complete large-project GitLab collection (#62), recover private fleet observation (#32), and collect independent consumer feedback | Repeated complete inventories, explicit partial/failure recovery, real calendar-day history and one completed bounded task with original acceptance evidence |
-| Close the remaining assurance gaps | B1 exact conformance (#20/#23), timestamp/lineage/store audit families (#35), and GitLab exact-head approvals where needed (#58) | Accepted fixtures at the named boundary and explicit capability qualification; 62 named conformance cases remain without executable proof |
+| Close the remaining assurance gaps | B1 exact conformance (#20/#23), timestamp/lineage/store audit families (#35), and GitLab exact-head approvals where needed (#58) | 63 permanent operation cases now execute; independent exact-fixture/concrete-surface acceptance and T9 cell-key delivery remain |
 | Extend reach after the gates | Core GitLab Vital adapter and accepted TestState/Coverage/Deployment/Work Instrument carrier | B7 and compatibility gates, selected adopter needs, preserved historical replay; the existing GitLab work collector is a separate companion |
 
 **The highest-impact next major increment is operational adoption and a
@@ -370,35 +438,27 @@ share for Direction, and its own attention order is actionable.
 
 ## Phase B: make it trustworthy over time
 
-### B1. Executable conformance vectors — the format is built, the vectors are owed
+### B1. Executable conformance — implementation complete, independent acceptance pending
 
-The specification names **62 conformance cases with no test behind them**
-(T3, T6, T8, R5..R53, ART-05, ART-08..ART-11, ART-15, RPT-4..RPT-6, RPT-9).
-It named 70 until 0.1.9 adopted the seven exact vectors the research process
-has accepted so far (`T2`, `R1`, `R2`, `R3`, `R4`, `T4`, `T5`, `T7`), and 63
-until 0.2.0 held T9 to its accepted table with a generator; the rest are
-still the research process's to produce, one accepted family per unit.
+The former 62 named cases without executable materialization now run in the
+0.6 source-checkout operation bridge, with RPT-8 additionally exercised. The
+legacy v1 corpus remains unchanged at 148 CLI vectors. The bridge adds 63
+permanent cases across seven scenario versions; R11–R53 supply 43 cases and
+84 CI variants, with literal expectations and real evaluator/store/bundle
+execution. See [conformance surface](docs/spec/conformance-surface.md) and the
+[case-to-proof table](docs/spec/conformance.md).
 
-The half that was ours shipped in 0.1.8: `devostasis.vectors.v1`, a runner, a
-`devostasis vectors` command and a published schema
-([vectors.md](docs/spec/vectors.md)). A case is a JSON document that states
-evidence and expected result; the `vital` kind evaluates one Vital over raw
-observation envelopes, the `delta` kind compares two snapshots. It fails
-closed, so an unknown kind or a malformed vector is a red build rather than a
-case that silently did not run, and `ORDER-01..15` are already carried that
-way. 0.1.9 added the `ci` kind, which reaches the provider-native
-normalization `R5..R10` are about ([#20](https://github.com/drevendev/Devostasis/issues/20)),
-the `activity` kind for `ACT-COV-01..05`, and `variants`, the one-identifier
-multi-variant shape `T8` and `R9` need
-([#23](https://github.com/drevendev/Devostasis/issues/23)). Two more kinds
-remain deliberately absent until a case needs them: bundle-level identity
-cases (`ART-*`) and store cases (`RPT-4..RPT-6`, `RPT-9`) that need a fixture
-store rather than a snapshot pair; `T3` needs a surface that carries
-`RAW_RUNS` provenance into Integrity, which no accepted contract defines yet.
+The closed native CI projection admits exact parent identities/overlap/rerun
+links, current unresolved precedence, immutable commit ordering and durable
+failure history. Raw child fallback and incomplete parent-level histories
+remain explicitly degraded/unknown. New observation/rule inputs are opt in;
+historical bundles replay under their original semantics.
 
-Closing B1 needs the vectors themselves. Until then debt D-1 stays open, and
-the specification keeps saying that "conformance" covers about half of what it
-names.
+D-1's missing-implementation-fixture obligation is closed. B1 itself remains
+open for independent review of the concrete surface and whole-case fixture
+fidelity, plus separate T9 cell-key delivery. Accepted capability and research
+case expansion do not independently accept this implementation. No independent
+review or release acceptance is claimed by the implementer.
 
 ### B7. First outside repository integrates self-observation — the owner's move
 
@@ -412,8 +472,8 @@ templates and local proofs do not substitute for them.
 
 ### Also open from the reporting review
 
-`RPT-4..RPT-6` and `RPT-9` as executable cases, including a permission-domain
-fixture for the store. Ours, and covered by B1's format.
+`RPT-4..RPT-6` and `RPT-9` now execute real store operations, including a
+permission-domain fixture. Their independent exact-fixture review remains open.
 
 ### Done
 
@@ -575,14 +635,16 @@ evidence and could make the study look ready while it holds about one day of
 real signal. The study must count calendar days, not bundles, and manual
 triggering should stop now that the release chain is quiet.
 
-**Half of the named conformance surface is unproven.** 79 table rows cite a
-test; 70 named cases have none. The specification says so and the roadmap
+**Historical conformance finding (before the 0.6 materialization).** The audit
+then found 79 table rows citing a
+test and 70 named cases without one. The specification said so and the roadmap
 admits it, so nothing is being hidden, but "conformance" currently covers
 about half of what it names. This is debt D-1 and target B1. Since 0.1.8 the
 missing half is missing evidence, not missing machinery: a case can be written
 as a vector and executed, and the fifteen ordering cases are carried that way.
 Building the runner did not prove one of the 70, and counting it as progress on
-D-1 would be counting the tooling as the test.
+D-1 would be counting the tooling as the test. The 0.6 bridge now supplies
+the implementation fixtures; independent whole-case acceptance remains open.
 
 **Provider neutrality is a design intent, not a demonstrated property.** Every
 provider-neutral contract has exactly one implemented provider. The GitLab
