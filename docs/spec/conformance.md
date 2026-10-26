@@ -647,3 +647,17 @@ not close B1's missing accepted exact fixtures or B7's sustained calibration.
 | DEV-PAGES-02 | changed total between pages is partial | `test_work_pagination_changed_total_between_pages_is_partial` |
 | DEV-PAGES-03 | valid exact full empty and header absent responses are complete | `test_work_pagination_valid_exact_full_empty_and_header_absent_responses_are_complete` |
 | DEV-PAGES-04 | github result caps and invalid totals are not complete | `test_work_pagination_github_result_caps_and_invalid_totals_are_not_complete` |
+
+## Conditional-cache restoration (implementation-local DEV-CACHE-RESTORE)
+
+These cases enforce local retention settings; observation, bundle and cache-envelope
+contracts are unchanged. Tests live in `tests/test_cache_restore_bounds.py`.
+
+| Case | Meaning | Test |
+| --- | --- | --- |
+| DEV-CACHE-RESTORE-01 | lower entry cap applies immediately on reload | `test_dev_cache_restore_01_lower_entry_cap_keeps_recent_evidence` |
+| DEV-CACHE-RESTORE-02 | restored body size honors the current cap and exact boundary | `test_dev_cache_restore_02_current_body_cap_includes_exact_boundary` |
+| DEV-CACHE-RESTORE-03 | zero entry cap restores no validators | `test_dev_cache_restore_03_zero_entry_cap_retains_nothing` |
+| DEV-CACHE-RESTORE-04 | equal recency has a stable key tie break and later stores remain recent | `test_dev_cache_restore_04_equal_recency_has_stable_key_tie_break` |
+| DEV-CACHE-RESTORE-05 | digest mismatch remains a miss | `test_dev_cache_restore_05_tampering_still_becomes_a_miss` |
+| DEV-CACHE-RESTORE-06 | rejected large evidence refetches without its old validator | `test_dev_cache_restore_06_oversize_body_refetches_without_old_etag` |
