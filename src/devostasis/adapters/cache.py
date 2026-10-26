@@ -48,7 +48,7 @@ def _digest(serialized: str) -> str:
     return "sha256:" + hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
-def valid_entry(entry: Any) -> bool:
+def valid_entry(entry: Any, *, max_entry_bytes: int | None = None) -> bool:
     """Whether a persisted entry is complete, well typed and still hashes to its digest."""
     if not isinstance(entry, dict):
         return False
@@ -61,7 +61,7 @@ def valid_entry(entry: Any) -> bool:
     if "body" not in entry or entry["body"] is None:
         return False
     serialized = _serialized(entry["body"])
-    if serialized is None:
+    if serialized is None or (max_entry_bytes is not None and len(serialized) > max_entry_bytes):
         return False
     return entry.get("digest") == _digest(serialized)
 
@@ -106,12 +106,13 @@ class ConditionalCache:
             return
         kept: dict[str, dict[str, Any]] = {}
         for key, entry in entries.items():
-            if isinstance(key, str) and key and valid_entry(entry):
+            if isinstance(key, str) and key and valid_entry(entry, max_entry_bytes=self.max_entry_bytes):
                 kept[key] = {"etag": entry["etag"], "body": entry["body"], "used": entry.get("used", 0), "digest": entry["digest"]}
             else:
                 self.discarded += 1
         self._entries = kept
         self._tick = max((entry["used"] for entry in self._entries.values()), default=0)
+        self._evict()
 
     def save(self) -> None:
         if self.path is None:
@@ -124,7 +125,7 @@ class ConditionalCache:
     def _evict(self) -> None:
         if len(self._entries) <= self.max_entries:
             return
-        ordered = sorted(self._entries.items(), key=lambda item: int(item[1].get("used", 0)), reverse=True)
+        ordered = sorted(self._entries.items(), key=lambda item: (-int(item[1].get("used", 0)), item[0]))
         self._entries = dict(ordered[: self.max_entries])
 
     # ------------------------------------------------------------------ use

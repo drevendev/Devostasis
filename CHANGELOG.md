@@ -5,6 +5,10 @@ contract or a policy always come with a version bump of that contract.
 
 ## 0.6.0 (unreleased)
 
+- Apply the current conditional-cache entry-count and serialized-body limits when
+  restoring persisted entries; retain deterministic LRU eviction and treat oversized
+  restored bodies as misses without changing evidence or bundle contracts.
+
 Offline Repository Analysis, target E4, issue #72.
 
 - New stdlib-only `code` companion: immutable local Git snapshot, Python 3.12
